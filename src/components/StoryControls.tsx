@@ -1,17 +1,15 @@
 import React from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize, Eye, Sparkles } from 'lucide-react';
-import { STAGES } from '../types';
+import { STAGE_MARKERS, getStageInfo } from '../animation/timeline';
 
 interface StoryControlsProps {
+  progress: number;
   currentStage: number;
-  stageProgress: number;
   isPlaying: boolean;
   playbackSpeed: number;
   isMuted: boolean;
-  onSelectStage: (stage: number) => void;
+  onSeek: (progress: number) => void;
   onTogglePlay: () => void;
-  onNextStage: () => void;
-  onPrevStage: () => void;
   onToggleSpeed: () => void;
   onToggleMute: () => void;
   onToggleQA: () => void;
@@ -19,21 +17,35 @@ interface StoryControlsProps {
 }
 
 export const StoryControls: React.FC<StoryControlsProps> = ({
+  progress,
   currentStage,
-  stageProgress,
   isPlaying,
   playbackSpeed,
   isMuted,
-  onSelectStage,
+  onSeek,
   onTogglePlay,
-  onNextStage,
-  onPrevStage,
   onToggleSpeed,
   onToggleMute,
   onToggleQA,
-  onToggleFullscreen
+  onToggleFullscreen,
 }) => {
-  const currentInfo = STAGES.find((s) => s.id === currentStage) || STAGES[0];
+  const currentInfo = getStageInfo(currentStage);
+
+  const handlePrev = () => {
+    // Jump to the previous stage marker
+    const prevMarkers = STAGE_MARKERS.filter(s => s.progressStart < progress - 0.01);
+    if (prevMarkers.length > 0) {
+      onSeek(prevMarkers[prevMarkers.length - 1].progressStart);
+    }
+  };
+
+  const handleNext = () => {
+    // Jump to the next stage marker
+    const nextMarker = STAGE_MARKERS.find(s => s.progressStart > progress + 0.01);
+    if (nextMarker) {
+      onSeek(nextMarker.progressStart);
+    }
+  };
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col items-center pointer-events-none pb-4 sm:pb-6 px-3 sm:px-6">
@@ -57,28 +69,25 @@ export const StoryControls: React.FC<StoryControlsProps> = ({
 
       {/* Main Glass HUD Bar */}
       <div className="pointer-events-auto w-full max-w-2xl p-2.5 sm:p-3 rounded-2xl glass-panel flex flex-col gap-2.5 transition-all">
-        {/* Scrubber Progress Bar & 16 Step Notches */}
+        {/* Continuous progress bar */}
         <div className="relative w-full flex items-center px-1">
-          {/* Continuous progress track */}
           <div className="relative w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-amber-200 via-rose-400 to-pink-500 rounded-full transition-all duration-100"
-              style={{
-                width: `${((currentStage - 1 + stageProgress) / 15) * 100}%`
-              }}
+              className="h-full bg-gradient-to-r from-amber-200 via-rose-400 to-pink-500 rounded-full transition-[width] duration-100"
+              style={{ width: `${progress * 100}%` }}
             />
           </div>
 
           {/* 16 Clickable Stage Markers */}
           <div className="absolute inset-0 flex justify-between items-center pointer-events-none px-0.5">
-            {STAGES.map((st) => {
-              const isPassed = st.id < currentStage;
+            {STAGE_MARKERS.map(st => {
+              const isPassed = progress >= st.progressStart;
               const isCurrent = st.id === currentStage;
 
               return (
                 <button
                   key={st.id}
-                  onClick={() => onSelectStage(st.id)}
+                  onClick={() => onSeek(st.progressStart)}
                   title={`${st.id}. ${st.title}`}
                   className={`pointer-events-auto w-3 h-3 rounded-full transition-all transform hover:scale-150 flex items-center justify-center -translate-y-[1px] ${
                     isCurrent
@@ -95,7 +104,7 @@ export const StoryControls: React.FC<StoryControlsProps> = ({
 
         {/* Buttons Row */}
         <div className="flex items-center justify-between text-rose-100/90 text-xs pt-1">
-          {/* Left tools: Visual QA & Speed */}
+          {/* Left tools */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={onToggleQA}
@@ -115,10 +124,10 @@ export const StoryControls: React.FC<StoryControlsProps> = ({
             </button>
           </div>
 
-          {/* Center playback controls */}
+          {/* Center playback */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={onPrevStage}
+              onClick={handlePrev}
               disabled={currentStage <= 1}
               className="p-1.5 rounded-full glass-button disabled:opacity-30 disabled:pointer-events-none text-rose-100 hover:text-white"
               title="Previous Stage"
@@ -135,7 +144,7 @@ export const StoryControls: React.FC<StoryControlsProps> = ({
             </button>
 
             <button
-              onClick={onNextStage}
+              onClick={handleNext}
               disabled={currentStage >= 16}
               className="p-1.5 rounded-full glass-button disabled:opacity-30 disabled:pointer-events-none text-rose-100 hover:text-white"
               title="Next Stage"
@@ -144,7 +153,7 @@ export const StoryControls: React.FC<StoryControlsProps> = ({
             </button>
           </div>
 
-          {/* Right tools: Sound & Fullscreen */}
+          {/* Right tools */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={onToggleMute}

@@ -1,81 +1,38 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CinematicTreeCanvas } from './components/CinematicTreeCanvas';
+import React, { useState, useRef, useCallback } from 'react';
+import { ContinuousAnimation } from './components/ContinuousAnimation';
 import { DestinationPage } from './components/DestinationPage';
 import { StoryControls } from './components/StoryControls';
 import { VisualQAModal } from './components/VisualQAModal';
-import { STAGES } from './types';
+import { getStageFromProgress, STAGE_MARKERS } from './animation/timeline';
 import { soundManager } from './audio/soundManager';
 import { Heart, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentStage, setCurrentStage] = useState<number>(1);
-  const [stageProgress, setStageProgress] = useState<number>(0);
+  // Single progress value drives the entire animation
+  const [progress, setProgress] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isQAModalOpen, setIsQAModalOpen] = useState<boolean>(false);
 
-  const lastTimeRef = useRef<number>(0);
-  const progressRef = useRef<number>(0);
+  // Ref for seeking — animation reads this and nulls it
+  const seekTargetRef = useRef<number | null>(null);
 
+  const currentStage = getStageFromProgress(progress);
 
-  // Auto-play stage advance loop
-  useEffect(() => {
-    let animId: number;
+  const handleProgressUpdate = useCallback((p: number) => {
+    setProgress(p);
+  }, []);
 
-    const tick = (now: number) => {
-      const dt = (now - lastTimeRef.current) * 0.001;
-      lastTimeRef.current = now;
-
-      if (isPlaying && currentStage < 16) {
-        const stageInfo = STAGES[currentStage - 1] || STAGES[0];
-        const stageDuration = (stageInfo.duration || 3.5) / playbackSpeed;
-
-        progressRef.current += dt / stageDuration;
-
-        if (progressRef.current >= 1) {
-          progressRef.current = 0;
-          setCurrentStage((prev) => {
-            if (prev < 16) {
-              return prev + 1;
-            }
-            return prev;
-          });
-        }
-        setStageProgress(Math.min(1, progressRef.current));
-      }
-
-      animId = requestAnimationFrame(tick);
-    };
-
-    lastTimeRef.current = performance.now();
-    animId = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, currentStage, playbackSpeed]);
-
-  const handleSelectStage = useCallback((stage: number) => {
-    setCurrentStage(stage);
-    progressRef.current = 0;
-    setStageProgress(0);
+  const handleSeek = useCallback((p: number) => {
+    seekTargetRef.current = p;
+    setProgress(p);
     soundManager.startAmbient();
   }, []);
 
-  const handleNextStage = () => {
-    if (currentStage < 16) {
-      handleSelectStage(currentStage + 1);
-    }
-  };
-
-  const handlePrevStage = () => {
-    if (currentStage > 1) {
-      handleSelectStage(currentStage - 1);
-    }
-  };
-
   const handleTogglePlay = () => {
     soundManager.startAmbient();
-    setIsPlaying((prev) => !prev);
+    setIsPlaying(prev => !prev);
   };
 
   const handleToggleSpeed = () => {
@@ -88,9 +45,7 @@ export const App: React.FC = () => {
     const newMute = !isMuted;
     setIsMuted(newMute);
     soundManager.setMuted(newMute);
-    if (!newMute) {
-      soundManager.startAmbient();
-    }
+    if (!newMute) soundManager.startAmbient();
   };
 
   const handleToggleFullscreen = () => {
@@ -102,12 +57,13 @@ export const App: React.FC = () => {
   };
 
   const handleReplay = () => {
-    setCurrentStage(1);
-    progressRef.current = 0;
-    setStageProgress(0);
+    seekTargetRef.current = 0;
+    setProgress(0);
     setIsPlaying(true);
     soundManager.startAmbient();
   };
+
+  const showDestinationOverlay = progress >= 0.97;
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#12090b] text-[#fdf6f0] select-none">
@@ -135,38 +91,39 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Viewport */}
-      {currentStage === 16 ? (
+      {/* Canvas Animation — always rendered, single continuous world */}
+      <ContinuousAnimation
+        isPlaying={isPlaying}
+        playbackSpeed={playbackSpeed}
+        seekTargetRef={seekTargetRef}
+        onProgressUpdate={handleProgressUpdate}
+        isMuted={isMuted}
+      />
+
+      {/* Destination overlay — HTML interactive elements over the canvas */}
+      {showDestinationOverlay && (
         <DestinationPage
           onReplay={handleReplay}
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
         />
-      ) : (
-        <>
-          <CinematicTreeCanvas
-            currentStage={currentStage}
-            stageProgress={stageProgress}
-            isPlaying={isPlaying}
-            onAdvanceToNextPage={() => handleSelectStage(16)}
-          />
+      )}
 
-          <StoryControls
-            currentStage={currentStage}
-            stageProgress={stageProgress}
-            isPlaying={isPlaying}
-            playbackSpeed={playbackSpeed}
-            isMuted={isMuted}
-            onSelectStage={handleSelectStage}
-            onTogglePlay={handleTogglePlay}
-            onNextStage={handleNextStage}
-            onPrevStage={handlePrevStage}
-            onToggleSpeed={handleToggleSpeed}
-            onToggleMute={handleToggleMute}
-            onToggleQA={() => setIsQAModalOpen(true)}
-            onToggleFullscreen={handleToggleFullscreen}
-          />
-        </>
+      {/* Story Controls HUD */}
+      {!showDestinationOverlay && (
+        <StoryControls
+          progress={progress}
+          currentStage={currentStage}
+          isPlaying={isPlaying}
+          playbackSpeed={playbackSpeed}
+          isMuted={isMuted}
+          onSeek={handleSeek}
+          onTogglePlay={handleTogglePlay}
+          onToggleSpeed={handleToggleSpeed}
+          onToggleMute={handleToggleMute}
+          onToggleQA={() => setIsQAModalOpen(true)}
+          onToggleFullscreen={handleToggleFullscreen}
+        />
       )}
 
       {/* Visual QA Reference Inspector Modal */}
@@ -174,7 +131,10 @@ export const App: React.FC = () => {
         currentStage={currentStage}
         isOpen={isQAModalOpen}
         onClose={() => setIsQAModalOpen(false)}
-        onSelectStage={handleSelectStage}
+        onSelectStage={(stage: number) => {
+          const marker = STAGE_MARKERS.find(s => s.id === stage);
+          if (marker) handleSeek(marker.progressStart);
+        }}
       />
     </div>
   );
