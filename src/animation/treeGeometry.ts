@@ -225,12 +225,13 @@ export function buildTree(baseX: number, baseY: number, scale: number): TreeData
   // ── Hearts ─────────────────────────────────────
   let heartId = 0;
   const crownCenterX = baseX - 10 * s;
-  const crownCenterY = baseY - trunkH * 1.25;
   const crownRadiusX = 175 * s;
 
+
   // Helper: compute detach order (0=first to fly, 1=last)
-  const detachOrderFor = (x: number, y: number): number => {
+  const detachOrderFor = (x: number, _y?: number): number => {
     // Right-side hearts detach first (wind blows left-to-right),
+
     // outer hearts before inner
     const dx = (x - crownCenterX) / crownRadiusX;
     const normalised = 1 - (dx + 1) / 2; // 0 = far right, 1 = far left
