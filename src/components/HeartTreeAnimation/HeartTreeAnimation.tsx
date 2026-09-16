@@ -127,12 +127,12 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
 
     const handleResize = () => {
       const rect = container.getBoundingClientRect();
-      const w = rect.width || window.innerWidth;
-      const h = rect.height || window.innerHeight;
+      const w = Math.max(rect.width || 0, window.innerWidth || 0, 320);
+      const h = Math.max(rect.height || 0, window.innerHeight || 0, 320);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
 
@@ -186,8 +186,12 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
 
     const observer = new ResizeObserver(handleResize);
     observer.observe(container);
+    window.addEventListener('resize', handleResize);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Main animation loop

@@ -3,9 +3,10 @@
  * Strictly scoped to .heart-tree-wrapper to avoid global CSS pollution.
  */
 .heart-tree-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   user-select: none;
   background-color: #12090b;
@@ -13,7 +14,8 @@
 
 .heart-tree-canvas {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: block;
