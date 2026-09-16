@@ -1,0 +1,20 @@
+/**
+ * Scoped styles for HeartTreeAnimation
+ * Strictly scoped to .heart-tree-wrapper to avoid global CSS pollution.
+ */
+.heart-tree-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  background-color: #12090b;
+}
+
+.heart-tree-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
