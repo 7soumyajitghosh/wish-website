@@ -70,7 +70,7 @@ function getCamera(p: number, time: number, w: number) {
   let panX = 0;
   if (p >= T.TRANSITION_START) {
     const panP = easeInOutCubic(rangeProgress(p, T.TRANSITION_START, T.DESTINATION_FULL));
-    panX = panP * w * 1.5;
+    panX = panP * w * 2.0;
   }
 
   return { zoom, panX };
@@ -260,11 +260,11 @@ function drawSeed(
   // Tiny delicate core: ~3.6px
   const coreSize = 3.6 * pulse * scale;
 
-  // Localized subtle glow: ~12px radius, warm and localized, no large orb or spotlight
-  const haloR = 12 * pulse * scale;
+  // Localized subtle glow: ~8px radius, warm and localized, no large orb or spotlight
+  const haloR = 8 * pulse * scale;
   const seedGrd = ctx.createRadialGradient(baseX, baseY - 2 * scale, 0.5, baseX, baseY - 2 * scale, haloR);
-  seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.45 * alpha})`);
-  seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.18 * alpha})`);
+  seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.28 * alpha})`);
+  seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.08 * alpha})`);
   seedGrd.addColorStop(1, 'rgba(255, 195, 135, 0)');
 
   ctx.save();
@@ -491,14 +491,12 @@ function drawBudsAndHearts(
       if (p >= T.BUDS_START) {
         const budP = rangeProgress(p, T.BUDS_START, heart.bloomStart);
         const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 3 + idx * 0.5) * 0.1);
-        ctx.save();
-        // Natural rosy organic flower bud (no white circle, no glowing halo)
-        ctx.fillStyle = '#c72b4f';
-        ctx.globalAlpha = clamp01(budP * 0.85);
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 2.0 * budScale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        // Natural tiny heart-shaped bud (no circle/arc that looks like debug marker)
+        const budSize = 2.4 * budScale;
+        const budAlpha = clamp01(budP * 0.85);
+        if (budSize > 0.3 && budAlpha > 0) {
+          drawHeartShape(ctx, pos.x, pos.y, budSize, '#c72b4f', heart.rotation, budAlpha, false);
+        }
       }
       return;
     }

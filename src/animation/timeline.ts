@@ -39,9 +39,9 @@ export const T = {
   // Wind and flight
   WIND_START: 0.78,
   DETACH_START: 0.82,
-  STREAM_PEAK: 0.94,
+  STREAM_PEAK: 0.96,
   // Transition / camera pan
-  TRANSITION_START: 0.87,
+  TRANSITION_START: 0.83,
   DESTINATION_FULL: 0.97,
 } as const;
 
