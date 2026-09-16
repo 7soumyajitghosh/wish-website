@@ -22,14 +22,17 @@ export interface FlyingHeartParticle {
   vx: number;
   vy: number;
   size: number;
+  originalSize: number;
   color: string;
   rotation: number;
   rotSpeed: number;
   alpha: number;
+  starRatio: number; // 0 = heart, 1 = star
 }
 
 /**
- * Updates in-flight heart particles along the rightward wind vortex.
+ * Updates in-flight heart particles along the rightward and upward wind vortex,
+ * gradually transitioning them into luminous star embers.
  */
 export function updateFlyingHearts(
   particles: FlyingHeartParticle[],
@@ -45,18 +48,23 @@ export function updateFlyingHearts(
     ph.y += ph.vy * speed;
 
     // Sustained wind push rightward
-    ph.vx += 0.025 * speed;
+    ph.vx += 0.02 * speed;
 
-    // Graceful sinusoidal attractor flow
-    const targetY = groundY - 110 + Math.sin(ph.x * 0.0035 + time * 1.4) * 45;
-    ph.vy += (targetY - ph.y) * 0.0016 * speed;
-    ph.vy *= 0.98;
+    // Upward graceful loft into the celestial night sky
+    const targetY = groundY * 0.28 + Math.sin(ph.x * 0.003 + time * 1.6) * 55;
+    ph.vy += (targetY - ph.y) * 0.0018 * speed;
+    ph.vy *= 0.975;
 
     ph.rotation += ph.rotSpeed * speed;
 
+    // Gradually shrink and shift into star particle
+    ph.starRatio = Math.min(1, ph.starRatio + 0.008 * speed);
+    const targetSize = 2.0;
+    ph.size = ph.originalSize * (1 - ph.starRatio) + targetSize * ph.starRatio;
+
     // Fade out past right screen boundary
-    if (ph.x > w * 1.4) {
-      ph.alpha -= 0.02 * speed;
+    if (ph.x > w * 1.35) {
+      ph.alpha -= 0.015 * speed;
     }
 
     if (ph.alpha <= 0 || ph.x > w * 2.2) {

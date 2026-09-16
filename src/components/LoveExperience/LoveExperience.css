@@ -1,0 +1,601 @@
+/**
+ * LoveExperience Cinematic Stylesheet
+ * Palette: Deep burgundy, rich plum, warm crimson, soft blush rose, warm starlight
+ */
+
+:root {
+  --color-bg-deep: #0d0408;
+  --color-bg-plum: #14070e;
+  --color-bg-burgundy: #220b17;
+  --color-crimson: #a81438;
+  --color-crimson-bright: #d81b46;
+  --color-rose-soft: #ffb3c1;
+  --color-gold-warm: #ffd6a5;
+  --color-star-white: #fffdf8;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+/* Master Container */
+.love-experience-root {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--color-bg-deep);
+  color: var(--color-star-white);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.love-experience-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Transition Overlay */
+.cinematic-transition-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-deep);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ==========================================================================
+   SCENE: Heart Tree Wrapper
+   ========================================================================== */
+.heart-tree-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ==========================================================================
+   SCENE: Constellation
+   ========================================================================== */
+.constellation-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #200a16 0%, #0d0408 80%);
+  overflow: hidden;
+}
+
+.constellation-sky-glow {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(168, 20, 56, 0.18) 0%, rgba(13, 4, 8, 0) 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.constellation-svg {
+  width: min(85vw, 680px);
+  height: min(65vh, 520px);
+  z-index: 2;
+  filter: drop-shadow(0 0 16px rgba(245, 186, 164, 0.25));
+}
+
+.constellation-line {
+  fill: none;
+  stroke: rgba(255, 230, 215, 0.45);
+  stroke-width: 1.2;
+}
+
+.constellation-line-inner {
+  fill: none;
+  stroke: rgba(255, 200, 210, 0.25);
+  stroke-width: 0.9;
+  stroke-dasharray: 4 4;
+}
+
+.constellation-text-container {
+  position: absolute;
+  bottom: 8%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.constellation-quote-line {
+  font-family: var(--font-serif);
+  margin: 0;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+}
+
+.constellation-quote-line.line-1 {
+  font-size: clamp(1.25rem, 2.8vw, 2.2rem);
+  font-weight: 400;
+  color: #fff8eb;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8);
+}
+
+.constellation-quote-line.line-2 {
+  font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+  font-weight: 300;
+  color: var(--color-rose-soft);
+  margin-top: 8px;
+  font-style: italic;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+
+/* ==========================================================================
+   SCENE: Love Letter
+   ========================================================================== */
+.love-letter-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 50%, #1e0914 0%, #0a0306 85%);
+  perspective: 1200px;
+  overflow: hidden;
+}
+
+.letter-scene-atmosphere {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(168, 20, 56, 0.12) 0%, rgba(10, 3, 6, 0.6) 80%);
+  pointer-events: none;
+}
+
+.envelope-wrapper {
+  position: relative;
+  width: min(90vw, 440px);
+  height: 280px;
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.envelope-back {
+  position: absolute;
+  inset: 0;
+  background: #250713;
+  border-radius: 8px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 180, 190, 0.08);
+}
+
+.envelope-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  transform-origin: top center;
+  transform-style: preserve-3d;
+  z-index: 15;
+}
+
+.envelope-flap-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+
+.envelope-wax-seal {
+  position: absolute;
+  top: 105px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 54px;
+  z-index: 20;
+  cursor: default;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.wax-seal-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.envelope-front {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.envelope-front-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 -2px 6px rgba(0, 0, 0, 0.3));
+}
+
+/* Parchment Letter Paper */
+.letter-paper {
+  position: absolute;
+  width: min(88vw, 410px);
+  max-height: min(78vh, 560px);
+  background: #fbf7ef;
+  color: #2b1218;
+  border-radius: 4px;
+  padding: clamp(20px, 4vw, 36px) clamp(22px, 5vw, 40px);
+  box-sizing: border-box;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
+  z-index: 5;
+  border: 1px solid rgba(210, 185, 150, 0.4);
+}
+
+.letter-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.letter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(168, 20, 56, 0.15);
+  padding-bottom: 8px;
+}
+
+.letter-recipient {
+  font-family: var(--font-serif);
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+  color: #630e20;
+}
+
+.letter-date {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #7d5b63;
+}
+
+.letter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.letter-paragraph {
+  font-family: var(--font-serif);
+  font-size: clamp(0.92rem, 1.8vw, 1.05rem);
+  line-height: 1.65;
+  color: #33151c;
+  margin: 0;
+  text-align: justify;
+}
+
+.letter-footer {
+  margin-top: 10px;
+  border-top: 1px solid rgba(168, 20, 56, 0.12);
+  padding-top: 12px;
+}
+
+.letter-signoff {
+  font-style: italic;
+  font-size: 0.9rem;
+  color: #7d5b63;
+  margin: 0;
+}
+
+.letter-sender {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #630e20;
+  margin: 4px 0 0;
+}
+
+.letter-continue-btn {
+  position: absolute;
+  bottom: 5%;
+  padding: 12px 28px;
+  border-radius: 9999px;
+  background: rgba(168, 20, 56, 0.4);
+  border: 1px solid rgba(255, 179, 193, 0.35);
+  color: var(--color-star-white);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 40;
+  backdrop-filter: blur(8px);
+}
+
+.letter-continue-btn:hover {
+  background: rgba(168, 20, 56, 0.75);
+  border-color: rgba(255, 179, 193, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(168, 20, 56, 0.4);
+}
+
+/* ==========================================================================
+   SCENE: Flower Bloom
+   ========================================================================== */
+.flower-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 60%, #1c0812 0%, #090306 80%);
+  overflow: hidden;
+}
+
+.flower-ambient-glow {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(216, 27, 70, 0.15) 0%, rgba(9, 3, 6, 0) 70%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.flower-light-spark {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #fff8eb;
+  box-shadow: 0 0 20px 6px rgba(255, 245, 220, 0.85);
+  pointer-events: none;
+}
+
+.flower-svg {
+  width: min(85vw, 620px);
+  height: min(80vh, 600px);
+  z-index: 2;
+  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.8));
+}
+
+/* ==========================================================================
+   SCENE: Make a Wish
+   ========================================================================== */
+.wish-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0b0307;
+  overflow: hidden;
+}
+
+.wish-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wish-backdrop-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(68, 14, 35, 0.45) 0%, rgba(11, 3, 7, 0.95) 80%);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wish-center-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 24px;
+  max-width: 680px;
+}
+
+/* Interactive Heart Orb */
+.wish-heart-orb {
+  background: none;
+  border: none;
+  padding: 0;
+  width: clamp(90px, 14vw, 130px);
+  height: clamp(90px, 14vw, 130px);
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 30px rgba(220, 27, 76, 0.55));
+}
+
+.wish-heart-orb:hover:not(:disabled) {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 40px rgba(255, 117, 143, 0.8));
+}
+
+.wish-heart-orb:disabled {
+  cursor: default;
+}
+
+.wish-heart-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Prompt */
+.wish-prompt-container {
+  margin-top: 32px;
+}
+
+.wish-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 500;
+  color: #fff9f0;
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.wish-subtext {
+  font-family: var(--font-sans);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--color-rose-soft);
+  margin: 12px 0 0;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+}
+
+.wish-hint {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: rgba(255, 230, 215, 0.6);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Finale Reveal */
+.wish-finale-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 600px);
+  text-align: center;
+  pointer-events: none;
+}
+
+.finale-header {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 3.8vw, 2.8rem);
+  font-weight: 600;
+  color: #fff8ea;
+  margin: 0 0 24px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+}
+
+.finale-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.finale-line {
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  line-height: 1.6;
+  color: var(--color-rose-soft);
+  margin: 0;
+  font-weight: 300;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.85);
+}
+
+.finale-signature {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.signature-ornament {
+  color: var(--color-gold-warm);
+  font-size: 1.1rem;
+}
+
+.signature-text {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fffdf8;
+  margin: 0;
+}
+
+/* ==========================================================================
+   RESPONSIVE ADJUSTMENTS (Mobile Viewport)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .constellation-text-container {
+    bottom: 5%;
+  }
+
+  .envelope-wrapper {
+    width: 92vw;
+    height: 240px;
+  }
+
+  .letter-paper {
+    width: 92vw;
+    max-height: 75vh;
+    padding: 24px 20px;
+  }
+
+  .letter-paragraph {
+    text-align: left;
+  }
+
+  .flower-svg {
+    width: 95vw;
+    height: 70vh;
+  }
+
+  .wish-heart-orb {
+    width: 100px;
+    height: 100px;
+  }
+
+  .wish-prompt-container {
+    margin-top: 24px;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

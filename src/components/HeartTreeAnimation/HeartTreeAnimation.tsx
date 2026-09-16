@@ -31,6 +31,8 @@ export interface HeartTreeAnimationProps {
   autoPlay?: boolean;
   /** Whether the animation automatically loops upon completing heart flight. Default: true */
   loop?: boolean;
+  /** Callback fired when the tree and heart flight sequence completes (when loop is false) */
+  onComplete?: () => void;
   /** Optional starting progress [0, 1] for previewing or testing specific stages. Default: 0 */
   initialProgress?: number;
   /** Optional custom CSS class for the root wrapper */
@@ -73,6 +75,7 @@ interface Ember {
 export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
   autoPlay = true,
   loop = true,
+  onComplete,
   initialProgress = 0,
   className = '',
   style,
@@ -94,6 +97,8 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
   const progressRef = useRef(initialProgress);
   const isPlayingRef = useRef(autoPlay);
   const loopRef = useRef(loop);
+  const onCompleteRef = useRef(onComplete);
+  const hasCompletedRef = useRef(false);
   const fadeAlphaRef = useRef(1); // For smooth loop fading
   const particlesRef = useRef<FlyingHeartParticle[]>([]);
   const embersRef = useRef<Ember[]>([]);
@@ -110,6 +115,10 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
     { speed: 26, xRatio: 0.35, yOffset: 95, size: 5.2, color: '#ffb3c1' },
     { speed: 21, xRatio: 0.55, yOffset: 25, size: 4.6, color: '#ffa4b6' },
   ]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     isPlayingRef.current = autoPlay;
@@ -171,6 +180,8 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
                 vx: 2.2 + (1 - heart.detachOrder) * 3.2 + heart.size * 0.08,
                 vy: -0.4 + (heart.detachOrder - 0.5) * 0.4,
                 size: heart.size,
+                originalSize: heart.size,
+                starRatio: Math.min(1, age * 2.2),
                 color: heart.color,
                 rotation: heart.rotation + age * 8,
                 rotSpeed: (heart.detachOrder - 0.5) * 0.06,
@@ -233,7 +244,12 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
             }
           } else {
             progressRef.current = Math.min(FLIGHT_T.CYCLE_END, nextP);
-            fadeAlphaRef.current = 1;
+            const fadeProgress = (nextP - FLIGHT_T.FADE_LOOP_START) / (FLIGHT_T.CYCLE_END - FLIGHT_T.FADE_LOOP_START);
+            fadeAlphaRef.current = Math.max(0, 1 - fadeProgress);
+            if (nextP >= FLIGHT_T.CYCLE_END && !hasCompletedRef.current) {
+              hasCompletedRef.current = true;
+              onCompleteRef.current?.();
+            }
           }
         } else {
           progressRef.current = nextP;
@@ -268,6 +284,8 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
               vx: 2.2 + (1 - heart.detachOrder) * 3.2 + heart.size * 0.08,
               vy: -1.2 + (heart.detachOrder - 0.5) * 1.5,
               size: heart.size,
+              originalSize: heart.size,
+              starRatio: 0,
               color: heart.color,
               rotation: heart.rotation,
               rotSpeed: (heart.detachOrder - 0.5) * 0.06,
@@ -463,12 +481,32 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
         );
       }
 
-      // J. Flying Hearts Stream (Stage 14)
+      // J. Flying Hearts Stream (Stage 14) -> Transformation into Stars
       particlesRef.current.forEach(ph => {
         if (ph.alpha <= 0) return;
-        const flip3D = Math.cos(time * 3 + ph.rotation * 5);
-        const displaySize = ph.size * Math.max(0.35, Math.abs(flip3D));
-        drawHeartShape(ctx, ph.x, ph.y, displaySize, ph.color, ph.rotation, ph.alpha);
+        if (ph.starRatio > 0.45) {
+          ctx.save();
+          ctx.globalAlpha = clamp01(ph.alpha);
+          ctx.fillStyle = '#fff5dc';
+          ctx.beginPath();
+          ctx.arc(ph.x, ph.y, Math.max(1.2, ph.size * 0.7), 0, Math.PI * 2);
+          ctx.fill();
+
+          // Delicate 4-point sparkle cross glint
+          ctx.strokeStyle = 'rgba(255, 245, 220, 0.65)';
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(ph.x - ph.size * 1.5, ph.y);
+          ctx.lineTo(ph.x + ph.size * 1.5, ph.y);
+          ctx.moveTo(ph.x, ph.y - ph.size * 1.5);
+          ctx.lineTo(ph.x, ph.y + ph.size * 1.5);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          const flip3D = Math.cos(time * 3 + ph.rotation * 5);
+          const displaySize = ph.size * Math.max(0.35, Math.abs(flip3D));
+          drawHeartShape(ctx, ph.x, ph.y, displaySize, ph.color, ph.rotation, ph.alpha);
+        }
       });
 
       // K. Subtle Firefly Embers
