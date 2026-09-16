@@ -416,11 +416,11 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
         if (seedAlpha > 0) {
           const pulse = 1 + Math.sin(rangeProgress(p, GROWTH_T.SEED_START, GROWTH_T.ROOTS_START) * Math.PI) * 0.1;
           const coreSize = 3.6 * pulse * scale;
-          const haloR = 12 * pulse * scale;
+          const haloR = 8 * pulse * scale;
 
           const seedGrd = ctx.createRadialGradient(baseX, baseY - 2 * scale, 0.5, baseX, baseY - 2 * scale, haloR);
-          seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.45 * seedAlpha})`);
-          seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.18 * seedAlpha})`);
+          seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.28 * seedAlpha})`);
+          seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.08 * seedAlpha})`);
           seedGrd.addColorStop(1, 'rgba(255, 195, 135, 0)');
 
           ctx.save();

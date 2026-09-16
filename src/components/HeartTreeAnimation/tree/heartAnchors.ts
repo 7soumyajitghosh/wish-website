@@ -238,18 +238,16 @@ export function drawBudsAndHearts(
 
     const pos = getHeartWorldPos(heart, branches, windStr, time, baseX, baseY);
 
-    // Bud phase (Stage 9 only)
+    // Bud phase (Stage 9 only — tiny heart-shaped bud, NOT a circle)
     if (p < heart.bloomStart) {
       if (p >= BLOOM_T.BUDS_START) {
         const budP = rangeProgress(p, BLOOM_T.BUDS_START, heart.bloomStart);
         const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 3 + idx * 0.5) * 0.1);
-        ctx.save();
-        ctx.fillStyle = '#c72b4f';
-        ctx.globalAlpha = clamp01(budP * 0.85);
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 2.0 * budScale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        const budSize = 2.4 * budScale;
+        const budAlpha = clamp01(budP * 0.85);
+        if (budSize > 0.3 && budAlpha > 0) {
+          drawHeartShape(ctx, pos.x, pos.y, budSize, '#c72b4f', heart.rotation, budAlpha);
+        }
       }
       return;
     }
