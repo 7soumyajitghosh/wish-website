@@ -8,15 +8,31 @@ import { soundManager } from './audio/soundManager';
 import { Heart, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
+  const queryParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const initialStage = parseInt(queryParams.get('stage') || '0', 10);
+  const initialP = queryParams.get('p') !== null ? parseFloat(queryParams.get('p')!) : null;
+  const initialPlay = queryParams.get('play') === 'false' ? false : true;
+
+  const getStartProgress = () => {
+    if (initialP !== null && !isNaN(initialP)) return initialP;
+    if (initialStage >= 1 && initialStage <= 16) {
+      const marker = STAGE_MARKERS.find(s => s.id === initialStage);
+      if (marker) return marker.progressStart;
+    }
+    return 0;
+  };
+
+  const startProgress = getStartProgress();
+
   // Single progress value drives the entire animation
-  const [progress, setProgress] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [progress, setProgress] = useState<number>(startProgress);
+  const [isPlaying, setIsPlaying] = useState<boolean>(initialPlay);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(true);
   const [isQAModalOpen, setIsQAModalOpen] = useState<boolean>(false);
 
   // Ref for seeking — animation reads this and nulls it
-  const seekTargetRef = useRef<number | null>(null);
+  const seekTargetRef = useRef<number | null>(startProgress > 0 ? startProgress : null);
 
   const currentStage = getStageFromProgress(progress);
 

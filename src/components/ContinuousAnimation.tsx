@@ -3,7 +3,7 @@
  *
  * A single `progress` value [0, 1] drives EVERYTHING.
  * No stages, no cuts, no scene switches.
- * The same tree grows, blooms, sheds hearts, and the camera follows them.
+ * The SAME underlying tree grows, blooms, sheds hearts, and the camera follows them.
  */
 import React, { useEffect, useRef } from 'react';
 import {
@@ -48,7 +48,7 @@ interface Ember {
   alpha: number; life: number; maxLife: number;
 }
 
-// ─── Heart colours (re-export for external use) ──────────────────────
+// ─── Heart colours ───────────────────────────────────────────────────
 
 const HEART_COLORS = [
   '#c9184a', '#a4133c', '#d90429', '#ff0054', '#ff4d6d',
@@ -109,9 +109,9 @@ function drawHeartShape(
 
   if (glow) {
     ctx.shadowColor = color;
-    ctx.shadowBlur = size * 1.0;
+    ctx.shadowBlur = size * 0.9;
   } else {
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowColor = 'rgba(0,0,0,0.18)';
     ctx.shadowBlur = 3;
   }
 
@@ -130,30 +130,43 @@ function drawHeartShape(
 
 function drawSky(ctx: CanvasRenderingContext2D, w: number, h: number, groundY: number) {
   const grd = ctx.createLinearGradient(0, 0, 0, groundY);
-  grd.addColorStop(0.0, '#be8fa1');
-  grd.addColorStop(0.25, '#dca0b0');
-  grd.addColorStop(0.55, '#f6bca5');
-  grd.addColorStop(0.82, '#fedbb1');
-  grd.addColorStop(1.0, '#fff6e4');
+  grd.addColorStop(0.0, '#ba8b9d');
+  grd.addColorStop(0.25, '#d99dae');
+  grd.addColorStop(0.55, '#f5baa4');
+  grd.addColorStop(0.82, '#fdd8b0');
+  grd.addColorStop(1.0, '#fff5e3');
   ctx.fillStyle = grd;
   ctx.fillRect(-w, 0, w * 4, groundY);
 }
 
 function drawSunGlow(ctx: CanvasRenderingContext2D, baseX: number, groundY: number, w: number, h: number) {
-  const sunX = baseX - w * 0.03;
-  const sunY = groundY - 14;
-  const sunR = Math.max(w, h) * 0.35;
-  const grd = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, sunR);
-  grd.addColorStop(0, 'rgba(255,252,240,0.95)');
-  grd.addColorStop(0.12, 'rgba(255,232,185,0.7)');
-  grd.addColorStop(0.35, 'rgba(255,186,145,0.35)');
-  grd.addColorStop(0.7, 'rgba(235,150,160,0.12)');
-  grd.addColorStop(1, 'rgba(200,130,150,0)');
+  const sunX = baseX - w * 0.02;
+  const sunY = groundY - 10;
+  const sunR = Math.max(w, h) * 0.38;
+
+  // Broad soft radial sunset bloom
+  const grd = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, sunR);
+  grd.addColorStop(0, 'rgba(255, 250, 230, 0.96)');
+  grd.addColorStop(0.08, 'rgba(255, 230, 180, 0.75)');
+  grd.addColorStop(0.24, 'rgba(255, 185, 140, 0.40)');
+  grd.addColorStop(0.55, 'rgba(235, 145, 155, 0.15)');
+  grd.addColorStop(1, 'rgba(200, 130, 150, 0)');
   ctx.fillStyle = grd;
-  ctx.fillRect(-w, 0, w * 4, groundY);
+  ctx.fillRect(-w, 0, w * 4, groundY + 12);
+
+  // Soft luminous sun disk at the horizon (matching panel 1)
+  const diskGrd = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 18);
+  diskGrd.addColorStop(0, 'rgba(255, 255, 248, 0.98)');
+  diskGrd.addColorStop(0.45, 'rgba(255, 240, 205, 0.85)');
+  diskGrd.addColorStop(1, 'rgba(255, 220, 170, 0)');
+  ctx.fillStyle = diskGrd;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawMountains(ctx: CanvasRenderingContext2D, w: number, groundY: number) {
+  // Far ridge
   ctx.fillStyle = 'rgba(195,138,152,0.38)';
   ctx.beginPath();
   ctx.moveTo(-w, groundY);
@@ -163,6 +176,7 @@ function drawMountains(ctx: CanvasRenderingContext2D, w: number, groundY: number
   ctx.closePath();
   ctx.fill();
 
+  // Near ridge
   ctx.fillStyle = 'rgba(182,114,126,0.52)';
   ctx.beginPath();
   ctx.moveTo(-w, groundY);
@@ -176,7 +190,7 @@ function drawMountains(ctx: CanvasRenderingContext2D, w: number, groundY: number
 function drawGround(ctx: CanvasRenderingContext2D, w: number, h: number, groundY: number) {
   ctx.beginPath();
   ctx.moveTo(-w, groundY + 12);
-  ctx.bezierCurveTo(w * 0.28, groundY - 12, w * 0.65, groundY - 8, w * 1.1, groundY + 18);
+  ctx.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.1, groundY + 18);
   ctx.lineTo(w * 3, groundY + 18);
   ctx.lineTo(w * 3, h);
   ctx.lineTo(-w, h);
@@ -184,67 +198,94 @@ function drawGround(ctx: CanvasRenderingContext2D, w: number, h: number, groundY
 
   const grd = ctx.createLinearGradient(0, groundY - 15, 0, h);
   grd.addColorStop(0.0, '#e58058');
-  grd.addColorStop(0.03, '#a34832');
-  grd.addColorStop(0.12, '#381c16');
-  grd.addColorStop(0.4, '#200f0d');
+  grd.addColorStop(0.02, '#a5442e');
+  grd.addColorStop(0.08, '#3c1b15');
+  grd.addColorStop(0.35, '#200e0c');
   grd.addColorStop(1.0, '#100706');
   ctx.fillStyle = grd;
   ctx.fill();
 
-  // Grass texture marks
+  // Warm rim highlight along crest
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(-w, groundY + 12);
+  ctx.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.1, groundY + 18);
+  ctx.strokeStyle = 'rgba(255, 180, 130, 0.42)';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  ctx.restore();
+
+  // Soil texture marks
   ctx.fillStyle = '#220e0b';
-  for (let gx = -20; gx < w * 1.2; gx += 16) {
+  for (let gx = -20; gx < w * 1.2; gx += 14) {
     const hOff = Math.sin(gx * 0.05) * 4 + Math.cos(gx * 0.12) * 3;
-    const gy = groundY - 4 + Math.sin((gx / w) * Math.PI) * -8;
-    ctx.fillRect(gx, gy, 1.8, 6 + hOff);
+    const gy = groundY - 6 + Math.sin((gx / w) * Math.PI) * -8;
+    ctx.fillRect(gx, gy, 1.8, 5 + hOff);
   }
 }
 
-// ─── Drawing: Seed ───────────────────────────────────────────────────
+// ─── Drawing: Floating Petals in Landscape ────────────────────────────
 
-function drawSeed(ctx: CanvasRenderingContext2D, p: number, time: number, baseX: number, baseY: number, scale: number) {
-  const appear = rangeProgress(p, T.SEED_START, T.SEED_PEAK);
-  const fadeOut = 1 - rangeProgress(p, T.TRUNK_START, T.TRUNK_END);
+function drawFloatingPetals(ctx: CanvasRenderingContext2D, time: number, w: number, groundY: number) {
+  const count = 16;
+  for (let i = 0; i < count; i++) {
+    const speed = 18 + (i * 7) % 22;
+    const px = ((time * speed + i * (w / count) * 1.7) % (w * 1.6)) - w * 0.3;
+    const py = (groundY * 0.28) + ((i * 53) % (groundY * 0.68)) + Math.sin(time * 1.5 + i) * 14;
+    const pSize = 4.5 + (i % 4) * 1.8;
+    const rot = time * 1.2 + i * 0.8;
+    const pAlpha = 0.30 + ((i % 5) / 5) * 0.32;
+    const pColor = i % 3 === 0 ? '#ffb3c1' : i % 3 === 1 ? '#ffa4b6' : '#ff758f';
+    drawHeartShape(ctx, px, py, pSize, pColor, rot, pAlpha, false);
+  }
+}
+
+// ─── Drawing: Seed (Stage 2) ─────────────────────────────────────────
+
+function drawSeed(
+  ctx: CanvasRenderingContext2D,
+  p: number,
+  baseX: number,
+  baseY: number,
+  scale: number
+) {
+  // Visible starting from T.SEED_START
+  const appear = rangeProgress(p, T.SEED_START - 0.005, T.SEED_START + 0.02);
+  const fadeOut = 1 - rangeProgress(p, T.ROOTS_START, T.TRUNK_MID);
   const alpha = Math.min(appear, fadeOut);
   if (alpha <= 0) return;
 
-  const pulse = 1 + Math.sin(time * 5) * 0.18;
-  const seedSize = 14 * pulse * scale;
+  // Gentle single pulse cycle
+  const seedP = rangeProgress(p, T.SEED_START, T.ROOTS_START);
+  const pulse = 1 + Math.sin(seedP * Math.PI) * 0.12;
 
-  // Radial glow
-  const glowR = 45 * pulse * scale;
-  const grd = ctx.createRadialGradient(baseX, baseY - 2, 2, baseX, baseY - 2, glowR);
-  grd.addColorStop(0, `rgba(255,245,210,${0.95 * alpha})`);
-  grd.addColorStop(0.3, `rgba(255,180,100,${0.6 * alpha})`);
-  grd.addColorStop(0.7, `rgba(255,90,120,${0.25 * alpha})`);
-  grd.addColorStop(1, 'rgba(255,50,100,0)');
-  ctx.fillStyle = grd;
+  // Tiny core: 5.5 to 7.2px
+  const coreSize = 5.8 * pulse * scale;
+
+  // Subtle delicate halo: 20 to 26px (very low bloom, no spotlight)
+  const haloR = 24 * pulse * scale;
+  const seedGrd = ctx.createRadialGradient(baseX, baseY - 3 * scale, 1, baseX, baseY - 3 * scale, haloR);
+  seedGrd.addColorStop(0, `rgba(255, 252, 235, ${0.75 * alpha})`);
+  seedGrd.addColorStop(0.35, `rgba(255, 205, 140, ${0.28 * alpha})`);
+  seedGrd.addColorStop(0.70, `rgba(240, 120, 130, ${0.08 * alpha})`);
+  seedGrd.addColorStop(1, 'rgba(240, 120, 130, 0)');
+
+  ctx.save();
+  ctx.fillStyle = seedGrd;
   ctx.beginPath();
-  ctx.arc(baseX, baseY - 2, glowR, 0, Math.PI * 2);
+  ctx.arc(baseX, baseY - 3 * scale, haloR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Heart seed
-  drawHeartShape(ctx, baseX, baseY - 8, seedSize, '#fff4e0', 0, alpha, true);
-
-  // Light rays
-  ctx.save();
-  ctx.strokeStyle = `rgba(255,235,180,${0.6 * alpha})`;
-  ctx.lineWidth = 1.2;
-  for (let r = 0; r < 6; r++) {
-    const rayAngle = time * 0.8 + r * Math.PI / 3;
-    const rLen = (18 + Math.sin(time * 4 + r) * 6) * scale;
-    ctx.beginPath();
-    ctx.moveTo(baseX, baseY - 6);
-    ctx.lineTo(baseX + Math.cos(rayAngle) * rLen, baseY - 6 + Math.sin(rayAngle) * rLen);
-    ctx.stroke();
-  }
+  // Magical heart seed core
+  drawHeartShape(ctx, baseX, baseY - 5 * scale, coreSize, '#fffdf2', 0, alpha, true);
   ctx.restore();
 }
 
-// ─── Drawing: Roots ──────────────────────────────────────────────────
+// ─── Drawing: Roots (Stage 3) ────────────────────────────────────────
 
 function drawRoots(
-  ctx: CanvasRenderingContext2D, p: number, time: number,
+  ctx: CanvasRenderingContext2D,
+  p: number,
   roots: TreeData['roots'],
 ) {
   ctx.save();
@@ -269,25 +310,46 @@ function drawRoots(
     ctx.quadraticCurveTo(curCp.x, curCp.y, curEnd.x, curEnd.y);
 
     const isFresh = gp < 1;
-    ctx.strokeStyle = isFresh ? '#fed287' : 'rgba(200,150,100,0.7)';
-    ctx.shadowColor = '#ffbb55';
-    ctx.shadowBlur = isFresh ? 8 : 3;
-    ctx.lineWidth = root.width * growEased;
+    ctx.strokeStyle = isFresh ? '#fed287' : 'rgba(74, 34, 25, 0.88)';
+    ctx.shadowColor = isFresh ? '#ffbb55' : 'transparent';
+    ctx.shadowBlur = isFresh ? 6 : 0;
+    ctx.lineWidth = Math.max(1.0, root.width * growEased);
     ctx.stroke();
 
-    // Glowing tip
-    if (isFresh && gp > 0.15) {
+    // Glowing tip traveling visibly through soil
+    if (isFresh && gp > 0.08) {
       ctx.fillStyle = '#fff6d5';
       ctx.beginPath();
-      ctx.arc(curEnd.x, curEnd.y, 2, 0, Math.PI * 2);
+      ctx.arc(curEnd.x, curEnd.y, Math.max(1.5, root.width * 0.45), 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Secondary rootlets branching gradually
+    if (root.subRoots && gp > 0.45) {
+      const subGp = easeOutCubic(rangeProgress(gp, 0.45, 1.0));
+      root.subRoots.forEach(sub => {
+        const send: Vec2 = {
+          x: sub.p0.x + (sub.p1.x - sub.p0.x) * subGp,
+          y: sub.p0.y + (sub.p1.y - sub.p0.y) * subGp,
+        };
+        const scp: Vec2 = {
+          x: sub.p0.x + (sub.cp.x - sub.p0.x) * subGp,
+          y: sub.p0.y + (sub.cp.y - sub.p0.y) * subGp,
+        };
+        ctx.beginPath();
+        ctx.moveTo(sub.p0.x, sub.p0.y);
+        ctx.quadraticCurveTo(scp.x, scp.y, send.x, send.y);
+        ctx.strokeStyle = isFresh ? '#fec875' : 'rgba(65, 28, 20, 0.78)';
+        ctx.lineWidth = Math.max(0.8, sub.width * subGp);
+        ctx.stroke();
+      });
     }
   });
 
   ctx.restore();
 }
 
-// ─── Drawing: Branches (tapered fill for thick, stroke for thin) ─────
+// ─── Drawing: Branches & Trunk ───────────────────────────────────────
 
 function drawTaperedBranch(
   ctx: CanvasRenderingContext2D,
@@ -300,81 +362,138 @@ function drawTaperedBranch(
 
   const gp = easeOutCubic(Math.min(1, growthP));
 
-  // Split bezier to show only grown portion
+  // Split bezier to reveal only grown portion
   const [visible] = splitCubicBezier(branch.p0, branch.p1, branch.p2, branch.p3, gp);
   const [vp0, vp1, vp2, vp3] = visible;
 
   const startW = branch.widthStart;
   const endW = lerp(branch.widthStart, branch.widthEnd, gp);
 
-  if (branch.level <= 1 && startW > 6) {
-    // Filled tapered polygon for trunk/primary
-    const N = Math.max(12, Math.ceil(startW * 1.5));
-    const leftEdge: Vec2[] = [];
-    const rightEdge: Vec2[] = [];
+  // Multi-sample overlapping round-cap strokes for perfectly seamless joints and organic taper
+  const N = branch.level === 0 ? 32 : branch.level === 1 ? 24 : branch.level === 2 ? 14 : 8;
 
-    for (let i = 0; i <= N; i++) {
+  const pts: { x: number; y: number; w: number }[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const pt = pointOnCubicBezier(vp0, vp1, vp2, vp3, t);
+    const wx = windDisplace(pt.x, pt.y, baseX, baseY, windStr, time);
+    const w = lerp(startW, endW, t);
+    pts.push({ x: pt.x + wx, y: pt.y, w });
+  }
+
+  const branchColor = branch.level === 0
+    ? '#220d09'
+    : branch.level === 1
+    ? '#2b120c'
+    : branch.level === 2
+    ? '#381c15'
+    : '#46241b';
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = branchColor;
+
+  for (let i = 0; i < N; i++) {
+    ctx.beginPath();
+    ctx.lineWidth = pts[i].w;
+    ctx.moveTo(pts[i].x, pts[i].y);
+    ctx.lineTo(pts[i + 1].x, pts[i + 1].y);
+    ctx.stroke();
+  }
+
+  // Sunset rim light highlight on upper-left edge of trunk and primary branches
+  if (branch.level <= 1 && startW > 6) {
+    ctx.strokeStyle = 'rgba(255, 185, 140, 0.35)';
+    for (let i = 0; i < N; i++) {
       const t = i / N;
-      const pt = pointOnCubicBezier(vp0, vp1, vp2, vp3, t);
-      const tang = tangentOnCubicBezier(vp0, vp1, vp2, vp3, Math.max(0.001, Math.min(0.999, t)));
+      const tang = tangentOnCubicBezier(vp0, vp1, vp2, vp3, Math.max(0.01, Math.min(0.99, t)));
       const len = Math.sqrt(tang.x * tang.x + tang.y * tang.y) || 1;
       const nx = -tang.y / len;
       const ny = tang.x / len;
-      const w = lerp(startW, endW, t) / 2;
-      const wx = windDisplace(pt.x, pt.y, baseX, baseY, windStr, time);
 
-      leftEdge.push({ x: pt.x + nx * w + wx, y: pt.y + ny * w });
-      rightEdge.push({ x: pt.x - nx * w + wx, y: pt.y - ny * w });
+      const edgeOffset = pts[i].w * 0.30;
+      const p1x = pts[i].x + nx * edgeOffset;
+      const p1y = pts[i].y + ny * edgeOffset;
+      const p2x = pts[i + 1].x + nx * edgeOffset;
+      const p2y = pts[i + 1].y + ny * edgeOffset;
+
+      ctx.beginPath();
+      ctx.lineWidth = Math.max(1.0, pts[i].w * 0.16);
+      ctx.moveTo(p1x, p1y);
+      ctx.lineTo(p2x, p2y);
+      ctx.stroke();
     }
-
-    ctx.beginPath();
-    ctx.moveTo(leftEdge[0].x, leftEdge[0].y);
-    for (let i = 1; i <= N; i++) ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
-    for (let i = N; i >= 0; i--) ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
-    ctx.closePath();
-
-    ctx.fillStyle = branch.level === 0 ? '#26120e' : '#331711';
-    ctx.fill();
-
-    // Highlight edge
-    ctx.beginPath();
-    ctx.moveTo(leftEdge[0].x, leftEdge[0].y);
-    for (let i = 1; i <= N; i++) ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
-    ctx.strokeStyle = 'rgba(255,175,130,0.25)';
-    ctx.lineWidth = Math.max(1, startW * 0.12);
-    ctx.stroke();
-  } else {
-    // Simple stroke for thinner branches
-    const wx0 = windDisplace(vp0.x, vp0.y, baseX, baseY, windStr, time);
-    const wx1 = windDisplace(vp1.x, vp1.y, baseX, baseY, windStr, time);
-    const wx2 = windDisplace(vp2.x, vp2.y, baseX, baseY, windStr, time);
-    const wx3 = windDisplace(vp3.x, vp3.y, baseX, baseY, windStr, time);
-
-    ctx.beginPath();
-    ctx.moveTo(vp0.x + wx0, vp0.y);
-    ctx.bezierCurveTo(
-      vp1.x + wx1, vp1.y,
-      vp2.x + wx2, vp2.y,
-      vp3.x + wx3, vp3.y,
-    );
-    ctx.strokeStyle = branch.level === 2 ? '#3d2019' : '#4a2a1e';
-    ctx.lineWidth = lerp(startW, endW, 0.5);
-    ctx.lineCap = 'round';
-    ctx.stroke();
   }
+
+  ctx.restore();
 }
 
 function drawAllBranches(
-  ctx: CanvasRenderingContext2D, p: number, time: number,
+  ctx: CanvasRenderingContext2D,
+  p: number,
+  time: number,
   branches: TreeBranch[],
-  windStr: number, baseX: number, baseY: number,
+  windStr: number,
+  baseX: number,
+  baseY: number,
+  scale: number,
 ) {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
 
+  // 1. Grounded Trunk Buttress Base (Revealed during Stage 4 Trunk Growth)
+  if (p >= T.TRUNK_START) {
+    const buttressP = easeOutCubic(rangeProgress(p, T.TRUNK_START, T.TRUNK_MID));
+    if (buttressP > 0) {
+      ctx.save();
+      ctx.fillStyle = '#220d09';
+
+      // Left flare polygon (anchors into left ground mound)
+      ctx.beginPath();
+      ctx.moveTo(baseX - 10 * scale, baseY - 24 * scale * buttressP);
+      ctx.quadraticCurveTo(
+        baseX - 22 * scale * buttressP,
+        baseY + 2 * scale,
+        baseX - 38 * scale * buttressP,
+        baseY + 10 * scale
+      );
+      ctx.lineTo(baseX, baseY + 6 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right flare polygon (anchors into right ground mound)
+      ctx.beginPath();
+      ctx.moveTo(baseX + 8 * scale, baseY - 20 * scale * buttressP);
+      ctx.quadraticCurveTo(
+        baseX + 18 * scale * buttressP,
+        baseY + 2 * scale,
+        baseX + 34 * scale * buttressP,
+        baseY + 8 * scale
+      );
+      ctx.lineTo(baseX, baseY + 6 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rim highlight on left flare
+      ctx.strokeStyle = 'rgba(255, 175, 130, 0.32)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(baseX - 10 * scale, baseY - 24 * scale * buttressP);
+      ctx.quadraticCurveTo(
+        baseX - 22 * scale * buttressP,
+        baseY + 2 * scale,
+        baseX - 38 * scale * buttressP,
+        baseY + 10 * scale
+      );
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  }
+
+  // 2. Progressive Branches
   branches.forEach(branch => {
     const gp = rangeProgress(p, branch.growStart, branch.growEnd);
     if (gp <= 0) return;
@@ -387,8 +506,12 @@ function drawAllBranches(
 // ─── Drawing: Buds & Hearts ──────────────────────────────────────────
 
 function getHeartWorldPos(
-  heart: TreeHeart, branches: TreeBranch[],
-  windStr: number, time: number, baseX: number, baseY: number,
+  heart: TreeHeart,
+  branches: TreeBranch[],
+  windStr: number,
+  time: number,
+  baseX: number,
+  baseY: number,
 ): Vec2 {
   const branch = branches[heart.branchIndex];
   if (!branch) return { x: 0, y: 0 };
@@ -398,57 +521,73 @@ function getHeartWorldPos(
 }
 
 function drawBudsAndHearts(
-  ctx: CanvasRenderingContext2D, p: number, time: number,
-  tree: TreeData, windStr: number,
-  baseX: number, baseY: number,
+  ctx: CanvasRenderingContext2D,
+  p: number,
+  time: number,
+  tree: TreeData,
+  windStr: number,
+  baseX: number,
+  baseY: number,
   detached: Set<number>,
 ) {
   tree.hearts.forEach((heart, idx) => {
     if (detached.has(idx)) return;
 
-    // Check if the branch this heart is on has finished growing
+    // Verify parent branch has grown past this heart's anchor parameter
     const branch = tree.branches[heart.branchIndex];
     if (!branch) return;
     const branchGrown = rangeProgress(p, branch.growStart, branch.growEnd);
-    if (branchGrown < heart.branchT) return; // branch hasn't reached this heart yet
+    if (branchGrown < heart.branchT) return;
 
     const pos = getHeartWorldPos(heart, tree.branches, windStr, time, baseX, baseY);
 
-    // Bud phase
+    // Bud phase (Stage 9)
     if (p < heart.bloomStart) {
       if (p >= T.BUDS_START) {
         const budP = rangeProgress(p, T.BUDS_START, heart.bloomStart);
-        const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 4 + idx) * 0.15);
+        const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 3 + idx * 0.5) * 0.12);
         ctx.save();
-        ctx.fillStyle = '#ff9ebb';
+        ctx.fillStyle = '#ff8fa3';
         ctx.shadowColor = '#ffa0b0';
-        ctx.shadowBlur = 6;
-        ctx.globalAlpha = clamp01(budP);
+        ctx.shadowBlur = 5;
+        ctx.globalAlpha = clamp01(budP * 0.9);
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 3 * budScale, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 2.6 * budScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Luminous core
+        ctx.fillStyle = '#fff6f8';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 1.2 * budScale, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
       return;
     }
 
-    // Bloom phase
+    // Bloom phase (Stages 10 - 12)
     const bloomP = rangeProgress(p, heart.bloomStart, heart.bloomEnd);
     const bloomScale = easeOrganicBloom(bloomP);
     const size = heart.size * bloomScale;
 
-    // Depth-based alpha & blur
+    // 3 Depth layer styling
     let alpha = clamp01(bloomP);
-    if (heart.layer === 0) alpha *= 0.55;
-    else if (heart.layer === 1) alpha *= 0.8;
+    let glow = false;
+    if (heart.layer === 0) {
+      alpha *= 0.65;
+    } else if (heart.layer === 1) {
+      alpha *= 0.88;
+    } else {
+      alpha *= 1.0;
+      glow = p >= T.FULL_BLOOM;
+    }
 
     const wobble = Math.sin(time * 1.8 + idx * 0.7) * 0.04;
-
-    drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + wobble, alpha, p >= T.FULL_BLOOM);
+    drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + wobble, alpha, glow);
   });
 }
 
-// ─── Drawing: Flying hearts ──────────────────────────────────────────
+// ─── Drawing: Flying hearts (Stage 14) ────────────────────────────────
 
 function drawFlyingHearts(ctx: CanvasRenderingContext2D, time: number, particles: FlyingHeart[]) {
   particles.forEach(ph => {
@@ -461,7 +600,7 @@ function drawFlyingHearts(ctx: CanvasRenderingContext2D, time: number, particles
 
 // ─── Drawing: Embers ─────────────────────────────────────────────────
 
-function drawEmbers(ctx: CanvasRenderingContext2D, time: number, embers: Ember[]) {
+function drawEmbers(ctx: CanvasRenderingContext2D, embers: Ember[]) {
   embers.forEach(emb => {
     const fade = Math.sin((emb.life / emb.maxLife) * Math.PI);
     const a = emb.alpha * fade;
@@ -478,10 +617,10 @@ function drawEmbers(ctx: CanvasRenderingContext2D, time: number, embers: Ember[]
   });
 }
 
-// ─── Drawing: Destination scene (canvas-drawn) ───────────────────────
+// ─── Drawing: Destination scene ──────────────────────────────────────
 
 function drawDestinationScene(
-  ctx: CanvasRenderingContext2D, p: number, time: number,
+  ctx: CanvasRenderingContext2D, p: number,
   destCenterX: number, groundY: number, w: number, h: number,
 ) {
   const fadeIn = rangeProgress(p, T.TRANSITION_START, T.DESTINATION_FULL);
@@ -577,9 +716,9 @@ function drawDestinationScene(
   ctx.moveTo(lampX, lampBaseY);
   ctx.lineTo(lampX, lampBaseY - 100);
   ctx.stroke();
-  // Lamp head
   ctx.fillStyle = '#1b0e10';
   ctx.fillRect(lampX - 8, lampBaseY - 110, 16, 14);
+
   // Lamp glow
   ctx.save();
   ctx.fillStyle = '#fff5cc';
@@ -592,29 +731,25 @@ function drawDestinationScene(
   const benchX = destCenterX + 105;
   const benchY = groundY + 15;
   ctx.fillStyle = '#1b0e10';
-  // Seat
   ctx.fillRect(benchX - 25, benchY - 8, 50, 5);
-  // Legs
   ctx.fillRect(benchX - 22, benchY - 3, 3, 18);
   ctx.fillRect(benchX + 19, benchY - 3, 3, 18);
-  // Back
   ctx.fillRect(benchX - 25, benchY - 22, 50, 4);
   ctx.fillRect(benchX - 25, benchY - 16, 50, 4);
 
-  // Cherry blossom trees (simple silhouettes)
+  // Cherry trees
   const treeSilhouettes = [
     { x: destCenterX - w * 0.35, y: groundY, size: 0.6 },
     { x: destCenterX + w * 0.3, y: groundY - 5, size: 0.5 },
   ];
   treeSilhouettes.forEach(ts => {
-    // Trunk
     ctx.strokeStyle = '#2b0e16';
     ctx.lineWidth = 5 * ts.size;
     ctx.beginPath();
     ctx.moveTo(ts.x, ts.y);
     ctx.bezierCurveTo(ts.x - 3, ts.y - 40 * ts.size, ts.x + 5, ts.y - 70 * ts.size, ts.x + 2, ts.y - 90 * ts.size);
     ctx.stroke();
-    // Blossom crown
+
     const crownColors = ['#ffb3c1', '#ff758f', '#ff8fa3'];
     for (let ci = 0; ci < 5; ci++) {
       ctx.fillStyle = crownColors[ci % crownColors.length];
@@ -645,7 +780,7 @@ function updateParticles(
   const windStr = getWindStrength(p);
   const { w, h, groundY, baseX, baseY } = layout;
 
-  // --- Heart detachment ---
+  // --- Heart detachment: EXACT ATTACHMENT COORDINATES ---
   if (p >= T.DETACH_START && p < T.DESTINATION_FULL) {
     const detachP = rangeProgress(p, T.DETACH_START, T.STREAM_PEAK);
     tree.hearts.forEach((heart, idx) => {
@@ -654,9 +789,9 @@ function updateParticles(
         detached.add(idx);
         const pos = getHeartWorldPos(heart, tree.branches, windStr, time, baseX, baseY);
         particles.push({
-          x: pos.x, y: pos.y,
-          vx: 3 + heart.detachOrder * 4 + heart.size * 0.2,
-          vy: -1.5 + (heart.detachOrder - 0.5) * 2,
+          x: pos.x, y: pos.y, // Exactly from anchor point!
+          vx: 3 + heart.detachOrder * 4 + heart.size * 0.18,
+          vy: -1.6 + (heart.detachOrder - 0.5) * 2,
           size: heart.size,
           color: heart.color,
           rotation: heart.rotation,
@@ -668,23 +803,22 @@ function updateParticles(
   }
 
   // --- Update flying hearts ---
-  const speed = dt * 60; // normalise to ~60fps
+  const speed = dt * 60;
   for (let i = particles.length - 1; i >= 0; i--) {
     const ph = particles[i];
     ph.x += ph.vx * speed;
     ph.y += ph.vy * speed;
-    ph.vy += 0.015 * speed; // gentle gravity
+    ph.vy += 0.015 * speed;
 
     // Wind push
     ph.vx += 0.04 * speed;
 
-    // Stream attractor: gently pull hearts toward a sinusoidal stream path
+    // Stream attractor towards destination
     const targetY = groundY - 100 + Math.sin(ph.x * 0.004 + time) * 40;
     ph.vy += (targetY - ph.y) * 0.002 * speed;
 
     ph.rotation += ph.rotSpeed * speed;
 
-    // Fade out when far right
     if (ph.x > w * 2.5) {
       ph.alpha -= 0.03 * speed;
     }
@@ -770,29 +904,32 @@ function drawFrame(
 
   const windStr = getWindStrength(p);
 
-  // Background
+  // 1. Background (Always drawn)
   drawSky(ctx, w, h, groundY);
   drawSunGlow(ctx, baseX, groundY, w, h);
   drawMountains(ctx, w, groundY);
   drawGround(ctx, w, h, groundY);
 
-  // Tree
-  if (p >= T.SEED_START) drawSeed(ctx, p, time, baseX, baseY, scale);
-  if (p >= T.ROOTS_START) drawRoots(ctx, p, time, tree.roots);
-  if (p >= T.TRUNK_START) drawAllBranches(ctx, p, time, tree.branches, windStr, baseX, baseY);
+  // 2. Floating Petals in Landscape (Subtle, matches Stage 1 reference)
+  drawFloatingPetals(ctx, time, w, groundY);
+
+  // 3. Tree Components (Single continuous growth progression)
+  if (p >= T.SEED_START) drawSeed(ctx, p, baseX, baseY, scale);
+  if (p >= T.ROOTS_START) drawRoots(ctx, p, tree.roots);
+  if (p >= T.TRUNK_START) drawAllBranches(ctx, p, time, tree.branches, windStr, baseX, baseY, scale);
   if (p >= T.BUDS_START) drawBudsAndHearts(ctx, p, time, tree, windStr, baseX, baseY, detached);
 
-  // Flying hearts (world space)
+  // 4. Flying hearts (world space)
   drawFlyingHearts(ctx, time, particles);
 
-  // Destination (world space, offset to the right)
+  // 5. Destination (world space, offset to the right)
   const destCenterX = baseX + w * 1.5;
-  drawDestinationScene(ctx, p, time, destCenterX, groundY, w, h);
+  drawDestinationScene(ctx, p, destCenterX, groundY, w, h);
 
   ctx.restore(); // camera
 
   // Screen-space effects
-  drawEmbers(ctx, time, embers);
+  drawEmbers(ctx, embers);
 
   // Click hearts
   for (let i = clickHearts.length - 1; i >= 0; i--) {
@@ -869,7 +1006,7 @@ export const ContinuousAnimation: React.FC<Props> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Main animation loop (runs once, reads refs)
+  // Main animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -891,7 +1028,7 @@ export const ContinuousAnimation: React.FC<Props> = ({
         const target = seekTargetRef.current;
         seekTargetRef.current = null;
 
-        // If seeking backward, reset state
+        // If seeking backward, reset detachment state
         if (target < progressRef.current) {
           detachedRef.current.clear();
           particlesRef.current = [];
@@ -921,7 +1058,7 @@ export const ContinuousAnimation: React.FC<Props> = ({
       // Update particles
       updateParticles(p, time, dt, tree, layout, particlesRef.current, embersRef.current, detachedRef.current);
 
-      // Draw
+      // Draw frame
       drawFrame(ctx, layout, p, time, tree, particlesRef.current, embersRef.current, detachedRef.current, clickHeartsRef.current);
 
       // Report progress (throttled ~10fps)
@@ -938,7 +1075,7 @@ export const ContinuousAnimation: React.FC<Props> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Click handler
+  // Interactive click handler
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     soundManager.startAmbient();
     soundManager.playBloomChime();
