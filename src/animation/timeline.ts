@@ -27,21 +27,21 @@ export const T = {
   TWIGS_START: 0.44,
   TWIGS_END: 0.54,
   // Buds
-  BUDS_START: 0.52,
-  BUDS_END: 0.58,
+  BUDS_START: 0.55,
+  BUDS_END: 0.60,
   // Bloom waves
-  BLOOM1_START: 0.58,
+  BLOOM1_START: 0.60,
   BLOOM1_END: 0.68,
-  BLOOM2_START: 0.66,
-  BLOOM2_END: 0.76,
+  BLOOM2_START: 0.67,
+  BLOOM2_END: 0.75,
   // Full bloom hold
   FULL_BLOOM: 0.76,
   // Wind and flight
   WIND_START: 0.78,
   DETACH_START: 0.82,
-  STREAM_PEAK: 0.88,
+  STREAM_PEAK: 0.94,
   // Transition / camera pan
-  TRANSITION_START: 0.90,
+  TRANSITION_START: 0.87,
   DESTINATION_FULL: 0.97,
 } as const;
 

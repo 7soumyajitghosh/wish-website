@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useRef } from 'react';
 import {
-  type Vec2, lerp, pointOnCubicBezier, tangentOnCubicBezier,
+  type Vec2, lerp, pointOnCubicBezier,
   splitCubicBezier, rangeProgress, easeInOutCubic, easeOrganicBloom,
   easeOutCubic, SeededRandom, clamp01,
 } from '../animation/bezierUtils';
@@ -69,7 +69,8 @@ function getCamera(p: number, time: number, w: number) {
 
   let panX = 0;
   if (p >= T.TRANSITION_START) {
-    panX = easeInOutCubic(rangeProgress(p, T.TRANSITION_START, T.DESTINATION_FULL)) * w * 1.4;
+    const panP = easeInOutCubic(rangeProgress(p, T.TRANSITION_START, T.DESTINATION_FULL));
+    panX = panP * w * 1.5;
   }
 
   return { zoom, panX };
@@ -99,7 +100,7 @@ function drawHeartShape(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number, size: number,
   color: string, rotation: number,
-  alpha: number, glow: boolean,
+  alpha: number, _glow: boolean = false,
 ) {
   if (alpha <= 0 || size <= 0) return;
   ctx.save();
@@ -107,13 +108,10 @@ function drawHeartShape(
   ctx.rotate(rotation);
   ctx.globalAlpha = clamp01(alpha);
 
-  if (glow) {
-    ctx.shadowColor = color;
-    ctx.shadowBlur = size * 0.9;
-  } else {
-    ctx.shadowColor = 'rgba(0,0,0,0.18)';
-    ctx.shadowBlur = 3;
-  }
+  // Subtle clean botanical shadow for leaf depth, strictly NO neon bloom
+  ctx.shadowColor = 'rgba(20, 5, 10, 0.20)';
+  ctx.shadowBlur = 2.0;
+  ctx.shadowOffsetY = 1.0;
 
   const s = size;
   const top = s * 0.3;
@@ -257,27 +255,26 @@ function drawSeed(
 
   // Gentle single pulse cycle
   const seedP = rangeProgress(p, T.SEED_START, T.ROOTS_START);
-  const pulse = 1 + Math.sin(seedP * Math.PI) * 0.12;
+  const pulse = 1 + Math.sin(seedP * Math.PI) * 0.1;
 
-  // Tiny core: 5.5 to 7.2px
-  const coreSize = 5.8 * pulse * scale;
+  // Tiny delicate core: ~3.6px
+  const coreSize = 3.6 * pulse * scale;
 
-  // Subtle delicate halo: 20 to 26px (very low bloom, no spotlight)
-  const haloR = 24 * pulse * scale;
-  const seedGrd = ctx.createRadialGradient(baseX, baseY - 3 * scale, 1, baseX, baseY - 3 * scale, haloR);
-  seedGrd.addColorStop(0, `rgba(255, 252, 235, ${0.75 * alpha})`);
-  seedGrd.addColorStop(0.35, `rgba(255, 205, 140, ${0.28 * alpha})`);
-  seedGrd.addColorStop(0.70, `rgba(240, 120, 130, ${0.08 * alpha})`);
-  seedGrd.addColorStop(1, 'rgba(240, 120, 130, 0)');
+  // Localized subtle glow: ~12px radius, warm and localized, no large orb or spotlight
+  const haloR = 12 * pulse * scale;
+  const seedGrd = ctx.createRadialGradient(baseX, baseY - 2 * scale, 0.5, baseX, baseY - 2 * scale, haloR);
+  seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.45 * alpha})`);
+  seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.18 * alpha})`);
+  seedGrd.addColorStop(1, 'rgba(255, 195, 135, 0)');
 
   ctx.save();
   ctx.fillStyle = seedGrd;
   ctx.beginPath();
-  ctx.arc(baseX, baseY - 3 * scale, haloR, 0, Math.PI * 2);
+  ctx.arc(baseX, baseY - 2 * scale, haloR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Magical heart seed core
-  drawHeartShape(ctx, baseX, baseY - 5 * scale, coreSize, '#fffdf2', 0, alpha, true);
+  // Magical heart seed core (soft warm light, not neon)
+  drawHeartShape(ctx, baseX, baseY - 3.5 * scale, coreSize, '#fff5dc', 0, alpha, false);
   ctx.restore();
 }
 
@@ -298,7 +295,7 @@ function drawRoots(
     const growEased = easeOutCubic(gp);
     const curEnd: Vec2 = {
       x: root.p0.x + (root.p1.x - root.p0.x) * growEased,
-      y: root.p0.y + (root.p1.y - root.p0.y) * growEased,
+      y: root.p0.y + (root.cp.y - root.p0.y) * growEased, // smoothed trajectory
     };
     const curCp: Vec2 = {
       x: root.p0.x + (root.cp.x - root.p0.x) * growEased,
@@ -309,22 +306,12 @@ function drawRoots(
     ctx.moveTo(root.p0.x, root.p0.y);
     ctx.quadraticCurveTo(curCp.x, curCp.y, curEnd.x, curEnd.y);
 
-    const isFresh = gp < 1;
-    ctx.strokeStyle = isFresh ? '#fed287' : 'rgba(74, 34, 25, 0.88)';
-    ctx.shadowColor = isFresh ? '#ffbb55' : 'transparent';
-    ctx.shadowBlur = isFresh ? 6 : 0;
+    // Naturally dark organic roots into the earth (no glowing tips or neon halos)
+    ctx.strokeStyle = 'rgba(64, 26, 19, 0.88)';
     ctx.lineWidth = Math.max(1.0, root.width * growEased);
     ctx.stroke();
 
-    // Glowing tip traveling visibly through soil
-    if (isFresh && gp > 0.08) {
-      ctx.fillStyle = '#fff6d5';
-      ctx.beginPath();
-      ctx.arc(curEnd.x, curEnd.y, Math.max(1.5, root.width * 0.45), 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Secondary rootlets branching gradually
+    // Secondary rootlets branching naturally
     if (root.subRoots && gp > 0.45) {
       const subGp = easeOutCubic(rangeProgress(gp, 0.45, 1.0));
       root.subRoots.forEach(sub => {
@@ -339,7 +326,7 @@ function drawRoots(
         ctx.beginPath();
         ctx.moveTo(sub.p0.x, sub.p0.y);
         ctx.quadraticCurveTo(scp.x, scp.y, send.x, send.y);
-        ctx.strokeStyle = isFresh ? '#fec875' : 'rgba(65, 28, 20, 0.78)';
+        ctx.strokeStyle = 'rgba(56, 22, 16, 0.78)';
         ctx.lineWidth = Math.max(0.8, sub.width * subGp);
         ctx.stroke();
       });
@@ -381,13 +368,8 @@ function drawTaperedBranch(
     pts.push({ x: pt.x + wx, y: pt.y, w });
   }
 
-  const branchColor = branch.level === 0
-    ? '#220d09'
-    : branch.level === 1
-    ? '#2b120c'
-    : branch.level === 2
-    ? '#381c15'
-    : '#46241b';
+  // Naturally dark illustrated tree wood across all branch levels
+  const branchColor = '#1f0d09';
 
   ctx.save();
   ctx.lineCap = 'round';
@@ -400,30 +382,6 @@ function drawTaperedBranch(
     ctx.moveTo(pts[i].x, pts[i].y);
     ctx.lineTo(pts[i + 1].x, pts[i + 1].y);
     ctx.stroke();
-  }
-
-  // Sunset rim light highlight on upper-left edge of trunk and primary branches
-  if (branch.level <= 1 && startW > 6) {
-    ctx.strokeStyle = 'rgba(255, 185, 140, 0.35)';
-    for (let i = 0; i < N; i++) {
-      const t = i / N;
-      const tang = tangentOnCubicBezier(vp0, vp1, vp2, vp3, Math.max(0.01, Math.min(0.99, t)));
-      const len = Math.sqrt(tang.x * tang.x + tang.y * tang.y) || 1;
-      const nx = -tang.y / len;
-      const ny = tang.x / len;
-
-      const edgeOffset = pts[i].w * 0.30;
-      const p1x = pts[i].x + nx * edgeOffset;
-      const p1y = pts[i].y + ny * edgeOffset;
-      const p2x = pts[i + 1].x + nx * edgeOffset;
-      const p2y = pts[i + 1].y + ny * edgeOffset;
-
-      ctx.beginPath();
-      ctx.lineWidth = Math.max(1.0, pts[i].w * 0.16);
-      ctx.moveTo(p1x, p1y);
-      ctx.lineTo(p2x, p2y);
-      ctx.stroke();
-    }
   }
 
   ctx.restore();
@@ -448,7 +406,7 @@ function drawAllBranches(
     const buttressP = easeOutCubic(rangeProgress(p, T.TRUNK_START, T.TRUNK_MID));
     if (buttressP > 0) {
       ctx.save();
-      ctx.fillStyle = '#220d09';
+      ctx.fillStyle = '#1f0d09';
 
       // Left flare polygon (anchors into left ground mound)
       ctx.beginPath();
@@ -475,19 +433,6 @@ function drawAllBranches(
       ctx.lineTo(baseX, baseY + 6 * scale);
       ctx.closePath();
       ctx.fill();
-
-      // Rim highlight on left flare
-      ctx.strokeStyle = 'rgba(255, 175, 130, 0.32)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(baseX - 10 * scale, baseY - 24 * scale * buttressP);
-      ctx.quadraticCurveTo(
-        baseX - 22 * scale * buttressP,
-        baseY + 2 * scale,
-        baseX - 38 * scale * buttressP,
-        baseY + 10 * scale
-      );
-      ctx.stroke();
 
       ctx.restore();
     }
@@ -541,24 +486,17 @@ function drawBudsAndHearts(
 
     const pos = getHeartWorldPos(heart, tree.branches, windStr, time, baseX, baseY);
 
-    // Bud phase (Stage 9)
+    // Bud phase (Stage 9 only — strictly invisible during Stage 8 Fine Twigs)
     if (p < heart.bloomStart) {
       if (p >= T.BUDS_START) {
         const budP = rangeProgress(p, T.BUDS_START, heart.bloomStart);
-        const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 3 + idx * 0.5) * 0.12);
+        const budScale = easeOutCubic(budP) * (1 + Math.sin(time * 3 + idx * 0.5) * 0.1);
         ctx.save();
-        ctx.fillStyle = '#ff8fa3';
-        ctx.shadowColor = '#ffa0b0';
-        ctx.shadowBlur = 5;
-        ctx.globalAlpha = clamp01(budP * 0.9);
+        // Natural rosy organic flower bud (no white circle, no glowing halo)
+        ctx.fillStyle = '#c72b4f';
+        ctx.globalAlpha = clamp01(budP * 0.85);
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 2.6 * budScale, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Luminous core
-        ctx.fillStyle = '#fff6f8';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 1.2 * budScale, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, 2.0 * budScale, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -570,20 +508,18 @@ function drawBudsAndHearts(
     const bloomScale = easeOrganicBloom(bloomP);
     const size = heart.size * bloomScale;
 
-    // 3 Depth layer styling
+    // 3 Depth layer styling — crisp defined leaves without neon pink blur
     let alpha = clamp01(bloomP);
-    let glow = false;
     if (heart.layer === 0) {
-      alpha *= 0.65;
+      alpha *= 0.80;
     } else if (heart.layer === 1) {
-      alpha *= 0.88;
+      alpha *= 0.92;
     } else {
       alpha *= 1.0;
-      glow = p >= T.FULL_BLOOM;
     }
 
     const wobble = Math.sin(time * 1.8 + idx * 0.7) * 0.04;
-    drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + wobble, alpha, glow);
+    drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + wobble, alpha, false);
   });
 }
 
@@ -593,8 +529,8 @@ function drawFlyingHearts(ctx: CanvasRenderingContext2D, time: number, particles
   particles.forEach(ph => {
     if (ph.alpha <= 0) return;
     const flip3D = Math.cos(time * 3 + ph.rotation * 5);
-    const displaySize = ph.size * Math.max(0.3, Math.abs(flip3D));
-    drawHeartShape(ctx, ph.x, ph.y, displaySize, ph.color, ph.rotation, ph.alpha, true);
+    const displaySize = ph.size * Math.max(0.35, Math.abs(flip3D));
+    drawHeartShape(ctx, ph.x, ph.y, displaySize, ph.color, ph.rotation, ph.alpha, false);
   });
 }
 
@@ -781,6 +717,7 @@ function updateParticles(
   const { w, h, groundY, baseX, baseY } = layout;
 
   // --- Heart detachment: EXACT ATTACHMENT COORDINATES ---
+  // --- Heart detachment: EXACT ATTACHMENT COORDINATES ---
   if (p >= T.DETACH_START && p < T.DESTINATION_FULL) {
     const detachP = rangeProgress(p, T.DETACH_START, T.STREAM_PEAK);
     tree.hearts.forEach((heart, idx) => {
@@ -790,12 +727,12 @@ function updateParticles(
         const pos = getHeartWorldPos(heart, tree.branches, windStr, time, baseX, baseY);
         particles.push({
           x: pos.x, y: pos.y, // Exactly from anchor point!
-          vx: 3 + heart.detachOrder * 4 + heart.size * 0.18,
-          vy: -1.6 + (heart.detachOrder - 0.5) * 2,
+          vx: 2.2 + (1 - heart.detachOrder) * 3.2 + heart.size * 0.08,
+          vy: -1.2 + (heart.detachOrder - 0.5) * 1.5,
           size: heart.size,
           color: heart.color,
           rotation: heart.rotation,
-          rotSpeed: (heart.detachOrder - 0.5) * 0.08,
+          rotSpeed: (heart.detachOrder - 0.5) * 0.06,
           alpha: 1,
         });
       }
@@ -808,22 +745,22 @@ function updateParticles(
     const ph = particles[i];
     ph.x += ph.vx * speed;
     ph.y += ph.vy * speed;
-    ph.vy += 0.015 * speed;
 
-    // Wind push
-    ph.vx += 0.04 * speed;
+    // Wind push rightward
+    ph.vx += 0.02 * speed;
 
-    // Stream attractor towards destination
-    const targetY = groundY - 100 + Math.sin(ph.x * 0.004 + time) * 40;
-    ph.vy += (targetY - ph.y) * 0.002 * speed;
+    // Stream attractor towards destination landscape
+    const targetY = groundY - 110 + Math.sin(ph.x * 0.003 + time * 1.2) * 45;
+    ph.vy += (targetY - ph.y) * 0.0015 * speed;
+    ph.vy *= 0.98;
 
     ph.rotation += ph.rotSpeed * speed;
 
-    if (ph.x > w * 2.5) {
-      ph.alpha -= 0.03 * speed;
+    if (ph.x > w * 3.2) {
+      ph.alpha -= 0.02 * speed;
     }
 
-    if (ph.alpha <= 0 || ph.x > w * 3.5) {
+    if (ph.alpha <= 0 || ph.x > w * 4.2) {
       particles.splice(i, 1);
     }
   }
@@ -919,12 +856,12 @@ function drawFrame(
   if (p >= T.TRUNK_START) drawAllBranches(ctx, p, time, tree.branches, windStr, baseX, baseY, scale);
   if (p >= T.BUDS_START) drawBudsAndHearts(ctx, p, time, tree, windStr, baseX, baseY, detached);
 
-  // 4. Flying hearts (world space)
-  drawFlyingHearts(ctx, time, particles);
-
-  // 5. Destination (world space, offset to the right)
+  // 4. Destination (world space, offset to the right)
   const destCenterX = baseX + w * 1.5;
   drawDestinationScene(ctx, p, destCenterX, groundY, w, h);
+
+  // 5. Flying hearts (world space, flows across sky and into destination scene)
+  drawFlyingHearts(ctx, time, particles);
 
   ctx.restore(); // camera
 
@@ -1028,12 +965,46 @@ export const ContinuousAnimation: React.FC<Props> = ({
         const target = seekTargetRef.current;
         seekTargetRef.current = null;
 
-        // If seeking backward, reset detachment state
+        detachedRef.current.clear();
+        particlesRef.current = [];
         if (target < progressRef.current) {
-          detachedRef.current.clear();
-          particlesRef.current = [];
           soundFlagsRef.current.clear();
         }
+
+        // If target is during or after detachment, seed the active heart stream so Stage 14 is never bare
+        if (target >= T.DETACH_START && treeRef.current && layoutRef.current.w > 0) {
+          const detachP = rangeProgress(target, T.DETACH_START, T.STREAM_PEAK);
+          const windStr = getWindStrength(target);
+          const time = now * 0.001;
+          const { w, groundY, baseX, baseY } = layoutRef.current;
+          treeRef.current.hearts.forEach((heart, idx) => {
+            if (detachP > heart.detachOrder) {
+              detachedRef.current.add(idx);
+              const pos = getHeartWorldPos(heart, treeRef.current!.branches, windStr, time, baseX, baseY);
+              const age = detachP - heart.detachOrder;
+              const dist = age * w * 2.0;
+              const px = pos.x + dist + Math.sin(idx * 2.3) * 35;
+              const py = groundY - 110
+                + Math.sin(px * 0.0035 + time * 1.5 + idx * 0.4) * 40
+                - Math.sin(Math.min(1, age * 2.5) * Math.PI) * 45
+                + (heart.detachOrder - 0.5) * 55;
+              if (px < baseX + w * 2.8) {
+                particlesRef.current.push({
+                  x: px,
+                  y: py,
+                  vx: 2.2 + (1 - heart.detachOrder) * 3.2 + heart.size * 0.08,
+                  vy: -0.4 + (heart.detachOrder - 0.5) * 0.4,
+                  size: heart.size,
+                  color: heart.color,
+                  rotation: heart.rotation + age * 8,
+                  rotSpeed: (heart.detachOrder - 0.5) * 0.06,
+                  alpha: clamp01(1 - (px - (baseX + w * 2.2)) / (w * 0.6)),
+                });
+              }
+            }
+          });
+        }
+
         progressRef.current = target;
       }
 

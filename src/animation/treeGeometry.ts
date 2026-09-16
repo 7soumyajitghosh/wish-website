@@ -8,7 +8,7 @@
  * Hierarchy:
  * ROOT → TRUNK → PRIMARY BRANCH → SECONDARY BRANCH → TWIG → BUD → HEART
  */
-import { type Vec2, SeededRandom, pointOnCubicBezier } from './bezierUtils';
+import { type Vec2, SeededRandom, pointOnCubicBezier, clamp01 } from './bezierUtils';
 import { T } from './timeline';
 
 // ─── Data types ──────────────────────────────────────────────────────
@@ -65,15 +65,15 @@ export interface TreeData {
 // with a subtle touch of warm honey gold accents.
 
 const PALETTE_BACK = [
-  '#590d22', '#72092c', '#800f2f', '#8f1036', '#a4133c'
+  '#5c0d1e', '#730d26', '#87102e', '#9b1336', '#b0163c'
 ];
 
 const PALETTE_MID = [
-  '#a4133c', '#c9184a', '#d90429', '#e61c5d', '#ff0054', '#ff2a6d'
+  '#a81438', '#bd183f', '#cb1844', '#dc1b4c', '#e62454', '#ee3463'
 ];
 
 const PALETTE_FRONT = [
-  '#c9184a', '#d90429', '#ff0054', '#ff4d6d', '#ff6b8b', '#ff758f', '#ff8fa3', '#ffa4b6'
+  '#c7163f', '#d81b46', '#e62250', '#ed2e5c', '#f4436c', '#f75c80', '#f97696', '#fa92ad', '#f8b4a6'
 ];
 
 // ─── Tree Builder ────────────────────────────────────────────────────
@@ -458,12 +458,16 @@ export function buildTree(baseX: number, baseY: number, scale: number): TreeData
   const crownRadiusX = 185 * s;
 
   // Compute detach order for wind flight (wind flows left to right)
+  // Rightmost/outermost hearts detach first (near 0), inner and left hearts detach progressively (up to 1)
   const detachOrderFor = (x: number, y: number): number => {
-    const dx = (x - crownCenterX) / crownRadiusX;
+    const dx = (x - crownCenterX) / crownRadiusX; // [-1.2, 1.2]
+    // Normalized right-to-left factor: 0 at rightmost edge, 1 at leftmost edge
+    const rightToLeft = clamp01((1.2 - dx) / 2.4);
+    // Slight height bias: upper wind-exposed canopy detaches slightly earlier
     const dy = (baseY - y) / (trunkH * 1.8);
-    const rightBias = 1 - (dx + 1) / 2; // 0 = far right, 1 = far left
-    const heightFactor = Math.sin(dy * Math.PI) * 0.15;
-    return Math.max(0, Math.min(1, rightBias * 0.78 + heightFactor + rng.next() * 0.18));
+    const heightFactor = (1 - clamp01(dy)) * 0.12;
+    const randomJitter = rng.range(-0.08, 0.08);
+    return clamp01(rightToLeft * 0.88 + heightFactor + randomJitter);
   };
 
   const addHeart = (
