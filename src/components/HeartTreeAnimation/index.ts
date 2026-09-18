@@ -1,4 +1,4 @@
-import { HeartTreeAnimation, type HeartTreeAnimationProps } from './HeartTreeAnimation';
+import { HeartTreeAnimation, type HeartTreeAnimationProps, type HeartTreeHandle } from './HeartTreeAnimation';
 
-export { HeartTreeAnimation, type HeartTreeAnimationProps };
+export { HeartTreeAnimation, type HeartTreeAnimationProps, type HeartTreeHandle };
 export default HeartTreeAnimation;

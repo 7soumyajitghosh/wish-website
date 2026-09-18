@@ -72,7 +72,7 @@ export class ParticleEmitter {
     }
   }
 
-  update(dt: number, time: number) {
+  update(dt: number, _time: number) {
     const speed = dt * 60;
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];

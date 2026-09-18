@@ -1,12 +1,12 @@
 /**
  * Scoped styles for HeartTreeAnimation
- * Strictly scoped to .heart-tree-wrapper to avoid global CSS pollution.
+ * Uses position:absolute within its parent container instead of fixed fullscreen.
  */
 .heart-tree-wrapper {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   user-select: none;
   background-color: #12090b;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import {
   rangeProgress,
   clamp01,
@@ -26,6 +26,15 @@ import {
 } from './tree/heartAnchors';
 import './HeartTreeAnimation.css';
 
+export interface HeartTreeHandle {
+  play: () => void;
+  pause: () => void;
+  replay: () => void;
+  setSpeed: (speed: number) => void;
+  getProgress: () => number;
+  getStage: () => number;
+}
+
 export interface HeartTreeAnimationProps {
   /** Whether the animation begins playing automatically. Default: true */
   autoPlay?: boolean;
@@ -39,6 +48,8 @@ export interface HeartTreeAnimationProps {
   className?: string;
   /** Optional inline styles for the root wrapper */
   style?: React.CSSProperties;
+  /** Callback fired on each frame with current progress [0, 1] */
+  onProgressUpdate?: (progress: number, stage: number) => void;
 }
 
 interface Layout {
@@ -72,14 +83,35 @@ interface Ember {
   maxLife: number;
 }
 
-export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
+/** Map progress [0,1] to stage number [1..16] */
+function getStageFromProgress(p: number): number {
+  if (p < GROWTH_T.SEED_START) return 1;
+  if (p < GROWTH_T.ROOTS_START) return 2;
+  if (p < GROWTH_T.TRUNK_START) return 3;
+  if (p < GROWTH_T.TRUNK_MID) return 4;
+  if (p < GROWTH_T.PRIMARY_START) return 5;
+  if (p < GROWTH_T.SECONDARY_START) return 6;
+  if (p < GROWTH_T.TWIGS_START) return 7;
+  if (p < BLOOM_T.BUDS_START) return 8;
+  if (p < BLOOM_T.BLOOM1_START) return 9;
+  if (p < BLOOM_T.BLOOM2_START) return 10;
+  if (p < BLOOM_T.FULL_BLOOM) return 11;
+  if (p < WIND_T.WIND_START) return 12;
+  if (p < FLIGHT_T.DETACH_START) return 13;
+  if (p < FLIGHT_T.FADE_LOOP_START) return 14;
+  if (p < FLIGHT_T.CYCLE_END) return 15;
+  return 16;
+}
+
+export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimationProps>(({
   autoPlay = true,
   loop = true,
   onComplete,
   initialProgress = 0,
   className = '',
   style,
-}) => {
+  onProgressUpdate,
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const treeRef = useRef<TreeData | null>(null);
@@ -98,11 +130,33 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
   const isPlayingRef = useRef(autoPlay);
   const loopRef = useRef(loop);
   const onCompleteRef = useRef(onComplete);
+  const onProgressUpdateRef = useRef(onProgressUpdate);
   const hasCompletedRef = useRef(false);
   const fadeAlphaRef = useRef(1); // For smooth loop fading
   const particlesRef = useRef<FlyingHeartParticle[]>([]);
   const embersRef = useRef<Ember[]>([]);
   const detachedRef = useRef<Set<number>>(new Set());
+  const speedRef = useRef(1.0);
+
+  // Imperative handle for external controls
+  const replayFn = useCallback(() => {
+    progressRef.current = 0;
+    detachedRef.current.clear();
+    particlesRef.current = [];
+    embersRef.current = [];
+    fadeAlphaRef.current = 1;
+    hasCompletedRef.current = false;
+    isPlayingRef.current = true;
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    play: () => { isPlayingRef.current = true; },
+    pause: () => { isPlayingRef.current = false; },
+    replay: replayFn,
+    setSpeed: (s: number) => { speedRef.current = Math.max(0.25, Math.min(4, s)); },
+    getProgress: () => progressRef.current,
+    getStage: () => getStageFromProgress(progressRef.current),
+  }), [replayFn]);
 
   // Stable ambient petals definition
   const ambientPetalsRef = useRef<AmbientPetal[]>([
@@ -121,6 +175,10 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
   }, [onComplete]);
 
   useEffect(() => {
+    onProgressUpdateRef.current = onProgressUpdate;
+  }, [onProgressUpdate]);
+
+  useEffect(() => {
     isPlayingRef.current = autoPlay;
   }, [autoPlay]);
 
@@ -136,8 +194,8 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
 
     const handleResize = () => {
       const rect = container.getBoundingClientRect();
-      const w = Math.max(rect.width || 0, window.innerWidth || 0, 320);
-      const h = Math.max(rect.height || 0, window.innerHeight || 0, 320);
+      const w = Math.max(rect.width || window.innerWidth || 320, 320);
+      const h = Math.max(rect.height || window.innerHeight || 320, 320);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       canvas.width = Math.floor(w * dpr);
@@ -225,7 +283,7 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
       // Stages 1–3 = 1.0x (calm seed and roots)
       // Stages 4–14 = 1.5x (organic tree growth, bloom, wind, and flight)
       if (isPlayingRef.current) {
-        const speedMultiplier = getTimelineSpeed(progressRef.current);
+        const speedMultiplier = getTimelineSpeed(progressRef.current) * speedRef.current;
         const nextP = progressRef.current + (dt / BASE_CYCLE_DURATION) * speedMultiplier;
 
         if (nextP >= FLIGHT_T.FADE_LOOP_START) {
@@ -255,6 +313,9 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
           progressRef.current = nextP;
           fadeAlphaRef.current = 1;
         }
+
+        // Fire progress callback
+        onProgressUpdateRef.current?.(progressRef.current, getStageFromProgress(progressRef.current));
       }
 
       const p = progressRef.current;
@@ -539,10 +600,14 @@ export const HeartTreeAnimation: React.FC<HeartTreeAnimationProps> = ({
       ref={containerRef}
       className={`heart-tree-wrapper ${className}`}
       style={style}
+      role="img"
+      aria-label="Heart tree cinematic animation"
     >
       <canvas ref={canvasRef} className="heart-tree-canvas" />
     </div>
   );
-};
+});
+
+HeartTreeAnimation.displayName = 'HeartTreeAnimation';
 
 export default HeartTreeAnimation;
