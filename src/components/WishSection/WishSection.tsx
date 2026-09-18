@@ -6,100 +6,29 @@ type Wish = {
   text: string;
 };
 
-// SVG Heart Icon
-const HeartIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-[#ffb3c1]">
-    <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-  </svg>
-);
-
-// SVG Sparkle Icon
-const SparkleIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-[#ffd6a5]">
-    <path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z" />
-  </svg>
-);
-
-const FloatingWish = ({ wish, onComplete }: { wish: Wish; onComplete: (id: string) => void }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const ctx = gsap.context(() => {
-      const duration = prefersReducedMotion ? 0.1 : 6;
-      
-      const tl = gsap.timeline({
-        onComplete: () => onComplete(wish.id)
-      });
-      
-      if (prefersReducedMotion) {
-        tl.to(containerRef.current, { opacity: 0, duration: 0.1, delay: 2 });
-      } else {
-        tl.fromTo(containerRef.current, 
-          { y: 50, opacity: 0, scale: 0.8 },
-          { y: 0, opacity: 1, scale: 1, duration: 1, ease: "back.out(1.5)" }
-        )
-        .to(containerRef.current, 
-          { y: -400, opacity: 0, scale: 0.5, duration: duration - 1, ease: "power1.inOut" },
-          "+=0.5"
-        );
-        
-        const sparkles = gsap.utils.toArray('.sparkle');
-        sparkles.forEach((sparkle: any) => {
-          gsap.to(sparkle, {
-            x: () => gsap.utils.random(-80, 80),
-            y: () => gsap.utils.random(-80, 80),
-            opacity: 0,
-            rotation: () => gsap.utils.random(0, 360),
-            scale: () => gsap.utils.random(0.2, 1.5),
-            duration: () => gsap.utils.random(1.5, 3),
-            ease: "power2.out",
-            delay: () => gsap.utils.random(0, 1)
-          });
-        });
-      }
-    }, containerRef);
-    
-    return () => ctx.revert();
-  }, [wish.id, onComplete]);
-
-  return (
-    <div ref={containerRef} className="absolute left-1/2 bottom-[20%] -translate-x-1/2 pointer-events-none flex flex-col items-center z-20">
-      <div className="relative flex justify-center items-center">
-        <div className="drop-shadow-[0_0_15px_rgba(255,179,193,0.6)]">
-          <HeartIcon />
-        </div>
-        {[...Array(7)].map((_, i) => (
-          <div key={i} className="sparkle absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <SparkleIcon />
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-[#fffdf8] font-serif text-lg tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-center max-w-[250px] break-words">
-        {wish.text}
-      </p>
-    </div>
-  );
-};
-
 export const WishSection = () => {
   const [wishText, setWishText] = useState('');
-  const [activeWishes, setActiveWishes] = useState<Wish[]>([]);
   const [wishCount, setWishCount] = useState(0);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Background star canvas animation
+  // Draggable Heart Interactive State
+  const [isHoldingWish, setIsHoldingWish] = useState(false);
+  const [currentWish, setCurrentWish] = useState<Wish | null>(null);
+  const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [flyingHearts, setFlyingHearts] = useState<{ id: string; text: string; startX: number; startY: number }[]>([]);
+
+  const containerRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const heartRef = useRef<HTMLDivElement>(null);
+
+  // Background stars
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let animationFrameId: number;
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
     const resize = () => {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
@@ -107,34 +36,28 @@ export const WishSection = () => {
     window.addEventListener('resize', resize);
     resize();
 
-    const stars = Array.from({ length: 40 }, () => ({
+    const stars = Array.from({ length: 45 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       radius: Math.random() * 1.5 + 0.5,
       alpha: Math.random(),
-      velocity: (Math.random() - 0.5) * 0.02
+      velocity: (Math.random() - 0.5) * 0.015,
     }));
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      stars.forEach(star => {
-        if (!prefersReducedMotion) {
-          star.alpha += star.velocity;
-          if (star.alpha <= 0 || star.alpha >= 1) star.velocity *= -1;
-        }
-
+      stars.forEach((star) => {
+        star.alpha += star.velocity;
+        if (star.alpha <= 0 || star.alpha >= 1) star.velocity *= -1;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 253, 248, ${star.alpha})`;
         ctx.fill();
       });
-
       animationFrameId = requestAnimationFrame(render);
     };
 
     render();
-
     return () => {
       window.removeEventListener('resize', resize);
       cancelAnimationFrame(animationFrameId);
@@ -146,26 +69,55 @@ export const WishSection = () => {
     if (!wishText.trim()) return;
 
     const newWish = { id: Date.now().toString(), text: wishText.trim() };
-    setActiveWishes(prev => [...prev, newWish]);
-    setWishCount(prev => prev + 1);
+    setCurrentWish(newWish);
     setWishText('');
-    
-    setShowConfirmation(true);
-    setTimeout(() => {
-      setShowConfirmation(false);
-    }, 3000);
+
+    // Place initial heart in center of screen
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight * 0.55;
+    setHeartPos({ x: cx, y: cy });
+    setIsHoldingWish(true);
   };
 
-  const handleWishComplete = (id: string) => {
-    setActiveWishes(prev => prev.filter(w => w.id !== id));
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!isHoldingWish) return;
+    setIsDragging(true);
+    setHeartPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (isDragging && isHoldingWish) {
+      setHeartPos({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!isHoldingWish || !currentWish) return;
+    setIsDragging(false);
+    setIsHoldingWish(false);
+
+    // Launch flying heart from released position
+    const flyingItem = {
+      id: currentWish.id,
+      text: currentWish.text,
+      startX: heartPos.x,
+      startY: heartPos.y,
+    };
+    setFlyingHearts((prev) => [...prev, flyingItem]);
+    setWishCount((prev) => prev + 1);
+    setCurrentWish(null);
   };
 
   return (
     <section 
       id="make-a-wish" 
-      className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-[#0d0408] py-20"
+      ref={containerRef}
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0d0408] py-24 select-none"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       aria-label="Make a Wish Section"
     >
+      {/* Background Star Canvas */}
       <canvas 
         ref={canvasRef} 
         className="absolute inset-0 w-full h-full opacity-60 z-0 pointer-events-none"
@@ -174,54 +126,145 @@ export const WishSection = () => {
 
       <div className="relative z-10 w-full max-w-2xl px-6 flex flex-col items-center">
         <header className="text-center mb-10">
-          <h2 className="text-4xl md:text-5xl font-serif text-[#fffdf8] mb-4">Make a Wish</h2>
-          <p className="text-lg md:text-xl text-[#fff8eb]/80 font-serif italic">
-            Close your eyes. Make a wish. Release it to the stars.
+          <span className="text-xs uppercase tracking-[0.35em] text-[#f5baa4] font-sans">
+            Celestial Whispers
+          </span>
+          <h2 className="text-4xl md:text-5xl font-serif text-[#fffdf8] mt-2 mb-3">Make a Wish</h2>
+          <p className="text-base md:text-lg text-[#fff8eb]/80 font-serif italic">
+            Close your eyes. Give words to your deepest desire.
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-6">
-          <div className="w-full relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#ffb3c1] to-[#ffd6a5] rounded-xl opacity-0 group-focus-within:opacity-30 transition-opacity duration-500 blur-sm pointer-events-none"></div>
-            <textarea
-              value={wishText}
-              onChange={(e) => setWishText(e.target.value)}
-              placeholder="Type your wish here..."
-              className="relative w-full h-32 bg-[#220b17]/40 backdrop-blur-md border border-[#ffb3c1]/20 rounded-xl p-4 text-[#fffdf8] font-serif text-lg resize-none focus:outline-none focus:border-[#ffb3c1]/60 transition-colors placeholder:text-[#fff8eb]/40 shadow-inner"
-              aria-label="Wish text input"
-              maxLength={150}
-            />
-          </div>
+        {/* Input Form */}
+        {!isHoldingWish && (
+          <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-6">
+            <div className="w-full relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#ffb3c1] to-[#ffd6a5] rounded-2xl opacity-0 group-focus-within:opacity-40 transition-opacity duration-500 blur-sm pointer-events-none" />
+              <textarea
+                value={wishText}
+                onChange={(e) => setWishText(e.target.value)}
+                placeholder="Type your wish here..."
+                className="relative w-full h-32 bg-[#220b17]/50 backdrop-blur-md border border-[#ffb3c1]/30 rounded-2xl p-5 text-[#fffdf8] font-serif text-lg resize-none focus:outline-none focus:border-[#ffb3c1]/70 transition-colors placeholder:text-[#fff8eb]/40 shadow-inner"
+                aria-label="Wish text input"
+                maxLength={150}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={!wishText.trim()}
-            className="px-8 py-3 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-medium text-lg tracking-wide hover:shadow-[0_0_20px_rgba(245,186,164,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1 active:translate-y-0"
-            aria-label="Release My Wish"
-          >
-            Release My Wish
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={!wishText.trim()}
+              className="px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-lg tracking-wide hover:shadow-[0_0_25px_rgba(245,186,164,0.5)] transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
+              aria-label="Release My Wish"
+            >
+              Release My Wish
+            </button>
+          </form>
+        )}
 
-        <div className="mt-8 h-6 flex flex-col items-center justify-center">
-          <p 
-            className={`text-[#ffb3c1] text-sm font-medium tracking-wider transition-opacity duration-500 ${showConfirmation ? 'opacity-100' : 'opacity-0'}`}
-            aria-live="polite"
-          >
-            Your wish has been released ✨
+        {/* Wish Count */}
+        <div className="mt-12 text-center">
+          <p className="text-[#fff8eb]/40 text-xs font-sans tracking-widest uppercase">
+            Wishes released into the stars: {wishCount}
           </p>
         </div>
       </div>
 
-      <div className="absolute bottom-6 right-8 z-10">
-        <p className="text-[#fff8eb]/50 text-sm font-sans tracking-widest uppercase" aria-live="polite">
-          Wishes released: {wishCount}
-        </p>
-      </div>
+      {/* ================= DRAGGABLE GLOWING HEART ================= */}
+      {isHoldingWish && currentWish && (
+        <div
+          ref={heartRef}
+          onPointerDown={handlePointerDown}
+          className="fixed z-50 flex flex-col items-center cursor-grab active:cursor-grabbing touch-none select-none transition-transform"
+          style={{
+            left: `${heartPos.x}px`,
+            top: `${heartPos.y}px`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Pulsing Light Aura */}
+          <div className="absolute inset-0 w-24 h-24 -translate-x-6 -translate-y-6 bg-[#ff758f] rounded-full blur-xl opacity-60 animate-pulse pointer-events-none" />
 
-      {activeWishes.map(wish => (
-        <FloatingWish key={wish.id} wish={wish} onComplete={handleWishComplete} />
+          {/* Heart Icon */}
+          <div className="relative p-4 rounded-full bg-gradient-to-r from-[#d81b46] to-[#ff758f] shadow-[0_0_35px_rgba(255,117,143,0.8)] border-2 border-[#fffdf8]">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fffdf8" className="w-10 h-10 drop-shadow-md">
+              <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+            </svg>
+          </div>
+
+          {/* User instruction badge */}
+          <div className="mt-4 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-center pointer-events-none shadow-lg">
+            <p className="text-xs font-serif text-[#ffd6a5] italic whitespace-nowrap">
+              Drag to guide your wish, then release to launch ✨
+            </p>
+          </div>
+
+          <p className="mt-2 text-[#fffdf8] font-serif text-sm max-w-[200px] text-center drop-shadow-md truncate">
+            "{currentWish.text}"
+          </p>
+        </div>
+      )}
+
+      {/* ================= SOARING WISHES ================= */}
+      {flyingHearts.map((item) => (
+        <SoaringWishItem
+          key={item.id}
+          item={item}
+          onDone={(id) => setFlyingHearts((prev) => prev.filter((h) => h.id !== id))}
+        />
       ))}
     </section>
   );
 };
+
+const SoaringWishItem = ({
+  item,
+  onDone,
+}: {
+  item: { id: string; text: string; startX: number; startY: number };
+  onDone: (id: string) => void;
+}) => {
+  const elRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+
+    gsap.fromTo(
+      el,
+      {
+        x: item.startX,
+        y: item.startY,
+        scale: 1,
+        opacity: 1,
+      },
+      {
+        y: -150,
+        x: item.startX + (Math.random() - 0.5) * 120,
+        scale: 0.25,
+        opacity: 0,
+        duration: 4.5,
+        ease: 'power2.in',
+        onComplete: () => onDone(item.id),
+      }
+    );
+  }, [item, onDone]);
+
+  return (
+    <div
+      ref={elRef}
+      className="fixed z-40 flex flex-col items-center pointer-events-none -translate-x-1/2 -translate-y-1/2"
+      style={{ left: 0, top: 0 }}
+    >
+      <div className="relative p-3 rounded-full bg-[#d81b46] shadow-[0_0_30px_#f5baa4]">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fffdf8" className="w-8 h-8">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      </div>
+      <p className="mt-2 text-xs font-serif text-[#ffd6a5] italic max-w-[200px] text-center drop-shadow">
+        {item.text}
+      </p>
+    </div>
+  );
+};
+
+export default WishSection;

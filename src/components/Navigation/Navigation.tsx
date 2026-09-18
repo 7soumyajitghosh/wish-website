@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 const navLinks = [
-  { name: 'Journey', href: '#journey' },
-  { name: 'Experience', href: '#experience' },
+  { name: 'Story', href: '#story-experience' },
+  { name: 'Destination', href: '#destination' },
   { name: 'Love Letter', href: '#love-letter' },
   { name: 'Make a Wish', href: '#make-a-wish' },
+  { name: 'Milestones', href: '#journey' },
 ];
 
 export function Navigation() {

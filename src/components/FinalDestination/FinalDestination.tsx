@@ -291,6 +291,19 @@ export const FinalDestination: React.FC = () => {
             <p className="text-[#fff8eb] text-lg sm:text-xl md:text-2xl font-light max-w-2xl drop-shadow-md leading-relaxed opacity-0">
               Every seed of kindness planted with love blossoms into an eternal garden of dreams.
             </p>
+
+            <div className="opacity-0 mt-4 pointer-events-auto">
+              <button
+                onClick={() => {
+                  const el = document.getElementById('love-letter');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-[#ffd6a5]/40 text-[#fffdf8] font-serif text-base tracking-wide transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+                aria-label="Proceed to the Love Letter"
+              >
+                A letter awaits upon the bench →
+              </button>
+            </div>
           </div>
         </div>
 
