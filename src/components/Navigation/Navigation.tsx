@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { useStory } from '../../context/StoryContext';
 
 const navLinks = [
   { name: 'Story', href: '#story-experience' },
@@ -10,6 +11,7 @@ const navLinks = [
 ];
 
 export function Navigation() {
+  const { isExperienceUnlocked } = useStory();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -78,6 +80,9 @@ export function Navigation() {
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
+    if (!isExperienceUnlocked && target !== 'body' && target !== '#hero') {
+      return;
+    }
     const element = document.querySelector(target);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });

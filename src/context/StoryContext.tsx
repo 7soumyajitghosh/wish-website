@@ -3,6 +3,7 @@ import {
   type TreeQuote,
   type WindVector,
   type StoryContextType,
+  type IntroState,
   STAGE_PROGRESS_MAP,
 } from './storyTypes';
 
@@ -11,6 +12,8 @@ export * from './storyTypes';
 const StoryContext = createContext<StoryContextType | null>(null);
 
 export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [introState, setIntroStateInternal] = useState<IntroState>('INTRO');
+  const isExperienceUnlocked = introState === 'EXPERIENCE_UNLOCKED';
   const [isStarted, setIsStarted] = useState(false);
   const [currentStage, setCurrentStage] = useState(1);
   const [targetProgress, setTargetProgressState] = useState(0.02);
@@ -22,6 +25,15 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isFinalUnlocked, setIsFinalUnlocked] = useState(false);
 
   const quoteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setIntroState = useCallback((state: IntroState) => {
+    setIntroStateInternal(state);
+    if (state === 'EXPERIENCE_UNLOCKED') {
+      setIsStarted(true);
+      setTargetProgressState(STAGE_PROGRESS_MAP[2]);
+      setCurrentStage(2);
+    }
+  }, []);
 
   const setTargetProgress = useCallback((p: number) => {
     const clamped = Math.max(0, Math.min(1, p));
@@ -47,9 +59,7 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const startStory = useCallback(() => {
-    setIsStarted(true);
-    setTargetProgressState(STAGE_PROGRESS_MAP[2]);
-    setCurrentStage(2);
+    setIntroStateInternal('SEED_FALLING');
   }, []);
 
   const unlockBloom = useCallback(() => {
@@ -84,6 +94,9 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoryContext.Provider
       value={{
+        introState,
+        setIntroState,
+        isExperienceUnlocked,
         isStarted,
         startStory,
         currentStage,

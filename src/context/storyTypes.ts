@@ -11,8 +11,21 @@ export interface WindVector {
   strength: number;
 }
 
+export type IntroState =
+  | 'INTRO'
+  | 'SEED_FALLING'
+  | 'SEED_LANDED'
+  | 'WATERING'
+  | 'WATERED'
+  | 'ROOT_GROWTH'
+  | 'TREE_GROWTH'
+  | 'EXPERIENCE_UNLOCKED';
+
 export interface StoryContextType {
-  // Opening state
+  // Intro & Opening state
+  introState: IntroState;
+  setIntroState: (state: IntroState) => void;
+  isExperienceUnlocked: boolean;
   isStarted: boolean;
   startStory: () => void;
 
