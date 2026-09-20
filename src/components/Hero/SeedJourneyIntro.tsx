@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import gsap from 'gsap';
-import { useStory, type IntroState } from '../../context/StoryContext';
+import { useStory } from '../../context/StoryContext';
 import { soundManager } from '../../audio/soundManager';
 
 interface Particle {
