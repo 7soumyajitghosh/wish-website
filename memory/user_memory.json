@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "layer": "User Memory",
+  "description": "Maintains long-term personalized user attributes, aesthetic preferences, emotional sentiment, and wish histories.",
+  "users": [
+    {
+      "userId": "default_user",
+      "profile": {
+        "displayName": "Beloved Traveler",
+        "preferredTone": "poetic_romantic",
+        "audioAutoPlayConsent": false,
+        "reducedMotion": false
+      },
+      "sentimentProfile": {
+        "dominantEmotions": ["hopeful", "affectionate", "nostalgic"],
+        "resonanceScore": 0.94,
+        "interactionCount": 18
+      },
+      "persistedWishes": [
+        {
+          "wishId": "wish_001",
+          "text": "May love bloom gently and soar across the twilight sky.",
+          "stageOrigin": 16,
+          "timestamp": "2026-09-20T21:30:00.000Z",
+          "sentimentScore": 0.96,
+          "trajectory": { "startX": 512, "startY": 600, "target": "heart_sun" }
+        },
+        {
+          "wishId": "wish_002",
+          "text": "Quiet moments shared in the warmth of the evening sunset.",
+          "stageOrigin": 16,
+          "timestamp": "2026-09-20T21:35:00.000Z",
+          "sentimentScore": 0.89,
+          "trajectory": { "startX": 480, "startY": 550, "target": "heart_sun" }
+        }
+      ],
+      "loveLetterPreferences": {
+        "handwritingStyle": "Victorian Serif",
+        "paperTint": "#fffdf8",
+        "recipientName": "My Dearest"
+      }
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "version": "1.0.0",
+  "layer": "Codebase Memory",
+  "description": "Machine-readable AST symbol graph and architectural index of repository files, components, functions, hooks, and relationships.",
+  "repository": {
+    "name": "wish-website",
+    "primaryLanguage": "TypeScript",
+    "framework": "React 19 + Vite 8",
+    "styling": "Tailwind CSS v4"
+  },
+  "modules": [
+    {
+      "path": "src/App.tsx",
+      "type": "Component",
+      "exports": ["App", "default"],
+      "dependencies": [
+        "./components/Navigation/Navigation",
+        "./components/Hero/Hero",
+        "./components/CinematicExperience/CinematicExperience",
+        "./components/FinalDestination/FinalDestination",
+        "./components/LoveLetter/LoveLetter",
+        "./components/WishSection/WishSection",
+        "./components/FinalMessage/FinalMessage",
+        "./components/Journey/Journey",
+        "./components/Footer/Footer",
+        "./components/SoundToggle/SoundToggle",
+        "./context/StoryContext"
+      ],
+      "description": "Root layout rendering the 7 progressive story sections wrapped inside StoryProvider."
+    },
+    {
+      "path": "src/context/StoryContext.tsx",
+      "type": "StateContext",
+      "exports": ["StoryProvider", "useStory", "StoryContext"],
+      "dependencies": ["./storyTypes"],
+      "stateVariables": [
+        "isStarted",
+        "currentStage",
+        "targetProgress",
+        "isBloomUnlocked",
+        "isFlightUnlocked",
+        "activeTreeQuote",
+        "windVector",
+        "isLetterOpen",
+        "isFinalUnlocked"
+      ],
+      "description": "React Context managing 16-stage story progression, milestone unlocking, and interactive physics vectors."
+    },
+    {
+      "path": "src/audio/soundManager.ts",
+      "type": "AudioSynthesizer",
+      "exports": ["soundManager", "default"],
+      "classes": [
+        {
+          "name": "SoundManager",
+          "methods": [
+            "startAmbient",
+            "playBloomChime",
+            "playHeartbeatPulse",
+            "playWindSwoosh",
+            "setMuted",
+            "getMuted",
+            "toggleMute"
+          ]
+        }
+      ],
+      "frequencies": [130.81, 196.00, 246.94, 329.63, 392.00],
+      "description": "Zero-dependency procedural Web Audio synthesizer generating Cmaj7/9 ambient drone and chimes."
+    },
+    {
+      "path": "src/components/HeartTreeAnimation/HeartTreeAnimation.tsx",
+      "type": "CanvasComponent",
+      "exports": ["HeartTreeAnimation", "default"],
+      "dependencies": [
+        "./tree/treeGeometry",
+        "./tree/branches",
+        "./tree/roots",
+        "./tree/heartAnchors"
+      ],
+      "description": "High-performance HTML5 Canvas 2D engine executing organic tree growth and wind physics at 60 FPS."
+    },
+    {
+      "path": "src/components/WishSection/WishSection.tsx",
+      "type": "InteractiveComponent",
+      "exports": ["WishSection"],
+      "dependencies": ["gsap"],
+      "stateVariables": [
+        "wishText",
+        "isHoldingWish",
+        "currentWish",
+        "heartPos",
+        "isDragging",
+        "flyingHearts"
+      ],
+      "description": "Interactive draggable wish submission section with starfield canvas and physics heart release toward Heart-Sun."
+    },
+    {
+      "path": "src/components/LoveLetter/LoveLetter.tsx",
+      "type": "InteractiveComponent",
+      "exports": ["LoveLetter"],
+      "description": "Interactive envelope and unfolding love letter component with romantic styling."
+    }
+  ],
+  "recentCommits": [
+    {
+      "hash": "1f6d137",
+      "message": "feat: add interactive wish application components and story context"
+    },
+    {
+      "hash": "c10929e",
+      "message": "fix(FullBloom): clean rewrite with typed static hearts and pure render"
+    },
+    {
+      "hash": "9bf6a09",
+      "message": "Add cinematic experience, UI components, audio"
+    },
+    {
+      "hash": "e63dc78",
+      "message": "feat: add LoveExperience module with interactive scenes and HeartTree animation"
+    }
+  ]
+}

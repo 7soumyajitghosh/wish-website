@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "layer": "Conversation Memory",
+  "description": "Maintains ephemeral multi-turn dialogue history, short-term sliding window buffers, and session turn metadata.",
+  "activeSessions": [
+    {
+      "sessionId": "sess_romantic_twilight_01",
+      "userId": "default_user",
+      "startedAt": "2026-09-20T21:20:00.000Z",
+      "currentStageIndex": 16,
+      "turnBuffer": [
+        {
+          "turnId": 1,
+          "sender": "user",
+          "content": "What is the meaning behind the blooming heart tree?",
+          "timestamp": "2026-09-20T21:21:00.000Z",
+          "tokenCount": 11,
+          "importance": 0.8
+        },
+        {
+          "turnId": 2,
+          "sender": "assistant",
+          "content": "It represents devotion taking physical form—rooted silently in patient earth, reaching upward through every quiet twilight, and blossoming into hundreds of glowing heart leaves.",
+          "timestamp": "2026-09-20T21:21:02.000Z",
+          "tokenCount": 32,
+          "importance": 0.9
+        },
+        {
+          "turnId": 3,
+          "sender": "user",
+          "content": "I want to send a wish for someone special.",
+          "timestamp": "2026-09-20T21:23:15.000Z",
+          "tokenCount": 10,
+          "importance": 0.95
+        },
+        {
+          "turnId": 4,
+          "sender": "assistant",
+          "content": "Hold the glowing heart at the base of the tree, write your thoughts, and release it toward the Heart-Sun.",
+          "timestamp": "2026-09-20T21:23:18.000Z",
+          "tokenCount": 24,
+          "importance": 0.85
+        }
+      ],
+      "sessionSummary": "User explored the philosophical significance of the 16-stage heart tree and initiated a heartfelt wish release in Stage 16.",
+      "slidingWindowLimit": 10,
+      "totalTokensBuffered": 77
+    }
+  ]
+}

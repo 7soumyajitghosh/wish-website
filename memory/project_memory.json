@@ -1,0 +1,115 @@
+{
+  "version": "1.0.0",
+  "layer": "Project Memory",
+  "description": "Maintains persistent project goals, implementation status, architectural decisions, technical constraints, known issues, and roadmaps.",
+  "projectInfo": {
+    "name": "project-wish",
+    "displayName": "A Journey of Love — From a Seed to a New Beginning",
+    "repository": "https://github.com/7soumyajitghosh/wish-website",
+    "liveDemo": "https://7soumyajitghosh.github.io/wish-website/",
+    "currentMilestone": "MemoryOS Architecture Integration",
+    "version": "1.2.0"
+  },
+  "projectGoals": [
+    "Deliver a 60 FPS procedural HTML5 Canvas 16-stage interactive narrative",
+    "Provide zero-dependency Web Audio API sound synthesis",
+    "Prevent agent context rot using MemoryOS 6-layer self-healing memory architecture",
+    "Support personalized wish release physics and interactive love letter composition"
+  ],
+  "implementationStatus": {
+    "canvasGrowthEngine": "COMPLETE",
+    "audioSynthesizer": "COMPLETE",
+    "timelineScrubberHUD": "COMPLETE",
+    "loveLetterExperience": "COMPLETE",
+    "draggableWishRelease": "COMPLETE",
+    "storyContext": "COMPLETE",
+    "memoryOSLayers": "COMPLETE",
+    "aiModelRouter": "DESIGNED",
+    "backendGateway": "DESIGNED"
+  },
+  "architecturalDecisions": [
+    {
+      "id": "ADR-001",
+      "title": "Procedural Web Audio API Synthesis",
+      "decision": "Synthesize all soundscapes procedurally using browser AudioContext without external audio files.",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "ADR-002",
+      "title": "Dual Canvas 2D and React DOM Pipeline",
+      "decision": "Use Canvas 2D for high-density particle physics and tree growth; use React DOM for interactive forms and modals.",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "ADR-003",
+      "title": "MemoryOS Self-Healing Integration",
+      "decision": "Implement mathematical drift detection (drift = 1 - cosine_similarity) with auto-heal trigger at theta = 0.45.",
+      "status": "ACCEPTED"
+    }
+  ],
+  "dependencies": {
+    "production": {
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "gsap": "^3.15.0",
+      "@tailwindcss/vite": "^4.3.3"
+    },
+    "development": {
+      "vite": "^8.3.0",
+      "typescript": "~6.0.2",
+      "oxlint": "^1.81.0",
+      "tailwindcss": "^4.3.3",
+      "postcss": "^8.5.28",
+      "autoprefixer": "^10.6.1"
+    }
+  },
+  "knownProblems": [
+    "Web Audio context requires user interaction before unmuting due to browser autoplay policy.",
+    "Retina canvas scaling requires synchronization with window.devicePixelRatio on resize.",
+    "Long multi-turn AI narrative sessions risk context rot without periodic MemoryOS healing."
+  ],
+  "todos": [
+    "Wire WishSection form to backend LangGraph agent endpoint",
+    "Connect LoveLetter component to streaming model provider SSE stream",
+    "Implement real-time multi-agent sync bus over Redis"
+  ],
+  "roadmap": [
+    {
+      "phase": 1,
+      "title": "Interactive Foundation",
+      "status": "COMPLETED"
+    },
+    {
+      "phase": 2,
+      "title": "MemoryOS Architecture Integration",
+      "status": "COMPLETED"
+    },
+    {
+      "phase": 3,
+      "title": "AI-Powered Emotion & Narrative Generation",
+      "status": "PLANNED"
+    },
+    {
+      "phase": 4,
+      "title": "Collaborative Community Constellation",
+      "status": "PLANNED"
+    }
+  ],
+  "changelog": [
+    {
+      "version": "1.2.0",
+      "date": "2026-09-20",
+      "notes": "Added complete MemoryOS 6-layer memory architecture and documentation suite."
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-09-18",
+      "notes": "Added interactive wish application components and story context (commit 1f6d137)."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-09-15",
+      "notes": "Cinematic experience, HUD controls, navigation, and procedural Web Audio engine."
+    }
+  ]
+}

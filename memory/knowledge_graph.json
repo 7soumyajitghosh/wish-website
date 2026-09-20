@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "layer": "Knowledge / Graph Memory",
+  "description": "Semantic entity-relationship knowledge graph connecting narrative stages, emotional sentiments, audio harmonics, and visual canvas elements.",
+  "nodes": [
+    { "id": "stage_01", "label": "Stage", "properties": { "stageNumber": 1, "title": "Empty Canvas", "description": "Twilight sunset over rolling misty hills" } },
+    { "id": "stage_02", "label": "Stage", "properties": { "stageNumber": 2, "title": "Glowing Seed", "description": "Radiant heart seed on the soil" } },
+    { "id": "stage_12", "label": "Stage", "properties": { "stageNumber": 12, "title": "Full Bloom", "description": "350+ multi-tonal hearts swaying in breeze" } },
+    { "id": "stage_16", "label": "Stage", "properties": { "stageNumber": 16, "title": "Where Love Takes Flight", "description": "Final destination with Heart-Sun and path" } },
+    { "id": "emotion_peaceful", "label": "Emotion", "properties": { "name": "Serenity", "valence": 0.85, "arousal": 0.2 } },
+    { "id": "emotion_devotion", "label": "Emotion", "properties": { "name": "Devotion", "valence": 0.95, "arousal": 0.6 } },
+    { "id": "emotion_wonder", "label": "Emotion", "properties": { "name": "Wonder", "valence": 0.92, "arousal": 0.75 } },
+    { "id": "canvas_sunset", "label": "CanvasVisual", "properties": { "glowColor": "#ffd166", "skyTop": "#0d0408", "skyBottom": "#2c1020" } },
+    { "id": "canvas_canopy", "label": "CanvasVisual", "properties": { "heartCount": 350, "colors": ["#e63946", "#ff758f", "#ffb3c1", "#ffccd5"] } },
+    { "id": "audio_ambient_drone", "label": "AudioHarmonic", "properties": { "chord": "Cmaj7/9", "frequencies": [130.81, 196.00, 246.94, 329.63, 392.00] } },
+    { "id": "audio_bloom_chime", "label": "AudioHarmonic", "properties": { "type": "Bell", "frequency": 880.00, "decay": 1.2 } },
+    { "id": "component_wish_section", "label": "InteractiveComponent", "properties": { "name": "WishSection", "type": "DraggableHeartPhysics" } },
+    { "id": "component_love_letter", "label": "InteractiveComponent", "properties": { "name": "LoveLetter", "type": "UnfoldingLetterModal" } }
+  ],
+  "edges": [
+    { "source": "stage_01", "target": "emotion_peaceful", "relation": "EVOKES" },
+    { "source": "stage_12", "target": "emotion_devotion", "relation": "EVOKES" },
+    { "source": "stage_16", "target": "emotion_wonder", "relation": "EVOKES" },
+    { "source": "stage_01", "target": "canvas_sunset", "relation": "REFLECTED_IN" },
+    { "source": "stage_12", "target": "canvas_canopy", "relation": "REFLECTED_IN" },
+    { "source": "emotion_peaceful", "target": "audio_ambient_drone", "relation": "HARMONIZES_WITH" },
+    { "source": "emotion_devotion", "target": "audio_bloom_chime", "relation": "HARMONIZES_WITH" },
+    { "source": "stage_16", "target": "component_wish_section", "relation": "CONTAINER_FOR" },
+    { "source": "stage_16", "target": "component_love_letter", "relation": "CONTAINER_FOR" },
+    { "source": "component_wish_section", "target": "canvas_sunset", "relation": "LAUNCHES_TOWARD" }
+  ]
+}

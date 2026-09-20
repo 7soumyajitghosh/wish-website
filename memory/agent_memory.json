@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "layer": "Agent Memory",
+  "description": "Maintains autonomous agent internal working state, scratchpads, drift tracking, and MemoryOS auto-heal execution logs.",
+  "activeAgents": [
+    {
+      "agentId": "poetic-muse-01",
+      "role": "Poetic Muse Agent",
+      "status": "ready",
+      "baselineAnchor": "Provide lyrical, emotionally sincere reflections on romantic growth and human aspiration.",
+      "currentDriftScore": 0.12,
+      "driftThreshold": 0.45,
+      "scratchpad": "Stage 16 destination reached. Monitoring for user sentiment triggers.",
+      "lastActiveTimestamp": "2026-09-20T21:35:00.000Z"
+    },
+    {
+      "agentId": "canvas-shaper-01",
+      "role": "Canvas Shaper Agent",
+      "status": "active",
+      "baselineAnchor": "Preserve 60 FPS organic Bézier growth and dynamic radial sunset lighting without rendering artifacts.",
+      "currentDriftScore": 0.08,
+      "driftThreshold": 0.45,
+      "scratchpad": "Canopy fully populated with 350+ hearts. Wind turbulence set to 0.04.",
+      "lastActiveTimestamp": "2026-09-20T21:35:00.000Z"
+    },
+    {
+      "agentId": "harmonic-tuner-01",
+      "role": "Harmonic Tuner Agent",
+      "status": "ready",
+      "baselineAnchor": "Synthesize peaceful Cmaj7/9 ambient drone and crystalline bell chimes.",
+      "currentDriftScore": 0.05,
+      "driftThreshold": 0.45,
+      "scratchpad": "Sound engine muted by default pending user interaction.",
+      "lastActiveTimestamp": "2026-09-20T21:35:00.000Z"
+    }
+  ],
+  "healLog": [
+    {
+      "healId": "heal_rec_001",
+      "timestamp": "2026-09-20T21:00:00.000Z",
+      "agentId": "poetic-muse-01",
+      "preHealDrift": 0.48,
+      "postHealDrift": 0.12,
+      "prunedMemoriesCount": 4,
+      "reInjectedAnchorKeys": [
+        "core_mission_cinematic_love",
+        "stage_16_destination_context",
+        "user_tone_preference"
+      ],
+      "reason": "Agent drift exceeded threshold 0.45 due to divergent philosophical conversational tangents."
+    }
+  ],
+  "syncBusEvents": [
+    {
+      "eventId": "sync_evt_101",
+      "timestamp": "2026-09-20T21:30:00.000Z",
+      "sourceAgent": "poetic-muse-01",
+      "eventType": "SENTIMENT_SYNC",
+      "payload": {
+        "emotion": "affectionate_longing",
+        "suggestedSkyTint": "#ff7b90"
+      }
+    }
+  ]
+}
