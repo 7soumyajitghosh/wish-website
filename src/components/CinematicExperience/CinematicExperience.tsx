@@ -63,10 +63,16 @@ export const CinematicExperience: React.FC = () => {
         if (progressObj.p >= 0.81 && !isBloomUnlocked) {
           unlockBloom();
         }
+
+        // Milestone 2: Unlock flight as the timeline crosses the threshold
+        if (progressObj.p >= 0.90 && !isFlightUnlocked) {
+          unlockFlight();
+        }
       },
       onComplete: () => {
-        setTargetProgress(STAGE_PROGRESS_MAP[12]);
+        setTargetProgress(STAGE_PROGRESS_MAP[16]);
         unlockBloom();
+        unlockFlight();
         setIntroState('EXPERIENCE_UNLOCKED');
 
         // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
@@ -74,7 +80,7 @@ export const CinematicExperience: React.FC = () => {
         if (container) {
           const totalScrollable = container.offsetHeight - window.innerHeight;
           if (totalScrollable > 0) {
-            const rawProgress = (STAGE_PROGRESS_MAP[12] - 0.02) / 0.98;
+            const rawProgress = (STAGE_PROGRESS_MAP[16] - 0.02) / 0.98;
             const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
             window.scrollTo({ top: targetScrollY, behavior: 'instant' });
           }
@@ -153,10 +159,36 @@ export const CinematicExperience: React.FC = () => {
         p: STAGE_PROGRESS_MAP[12],
         duration: 1.8 * speedScale,
         ease: 'power2.out',
+      })
+      // Hold momentarily at Full Bloom
+      .to({}, { duration: 0.4 * speedScale })
+      // 12: 0.82 -> 13: 0.88 (Wind Begins)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[13],
+        duration: 1.6 * speedScale,
+        ease: 'power1.inOut',
+      })
+      // 13: 0.88 -> 14: 0.94 (Hearts Fly Away)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[14],
+        duration: 2.0 * speedScale,
+        ease: 'power2.out',
+      })
+      // 14: 0.94 -> 15: 0.98 (Celestial Stream)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[15],
+        duration: 1.6 * speedScale,
+        ease: 'power1.out',
+      })
+      // 15: 0.98 -> 16: 1.00 (Destination)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[16],
+        duration: 1.4 * speedScale,
+        ease: 'sine.out',
       });
 
     autoGrowthTlRef.current = tl;
-  }, [isBloomUnlocked, setIntroState, setTargetProgress, unlockBloom]);
+  }, [isBloomUnlocked, isFlightUnlocked, setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
 
   // Clean up auto-growth timeline on unmount
   useEffect(() => {
