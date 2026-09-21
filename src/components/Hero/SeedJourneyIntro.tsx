@@ -39,8 +39,17 @@ export const SeedJourneyIntro: React.FC = () => {
 
   // Track if action already completed to prevent duplicate triggers
   const hasWateredRef = useRef(false);
+  const hasTreeCompletedRef = useRef(false);
   const pointerStartRef = useRef({ x: 0, y: 0 });
   const potStartPosRef = useRef({ x: 0, y: 0 });
+
+  // Reset completion flags if restarted
+  useEffect(() => {
+    if (introState === 'INTRO' || introState === 'SEED_FALLING') {
+      hasWateredRef.current = false;
+      hasTreeCompletedRef.current = false;
+    }
+  }, [introState]);
 
   // Floating sparkle embers around the scene
   useEffect(() => {
@@ -347,7 +356,7 @@ export const SeedJourneyIntro: React.FC = () => {
     }
   };
 
-  // STEP 6 & STEP 7: ROOTS FIRST, THEN STEM, BRANCHES & TREE GROWTH
+  // STEP 6 & STEP 7: ROOTS FIRST, THEN STEM, BRANCHES & TREE GROWTH (ONE UNINTERRUPTED TIMELINE)
   useEffect(() => {
     if (introState !== 'ROOT_GROWTH') return;
 
@@ -357,9 +366,12 @@ export const SeedJourneyIntro: React.FC = () => {
       const branchPaths = containerRef.current?.querySelectorAll<SVGPathElement>('.intro-branch-path');
       const heartLeaves = containerRef.current?.querySelectorAll<SVGElement>('.intro-heart-leaf');
       const auraEl = containerRef.current?.querySelector('.intro-tree-aura');
+      const rootsPrompt = containerRef.current?.querySelector('.intro-roots-prompt');
+      const treePrompt = containerRef.current?.querySelector('.intro-tree-prompt');
 
       const tl = gsap.timeline({
         onComplete: () => {
+          hasTreeCompletedRef.current = true;
           setIntroState('EXPERIENCE_UNLOCKED');
           try {
             soundManager.playBloomChime();
@@ -405,6 +417,14 @@ export const SeedJourneyIntro: React.FC = () => {
         });
       }
 
+      // Initial prompt opacities
+      if (rootsPrompt) {
+        gsap.set(rootsPrompt, { opacity: 1 });
+      }
+      if (treePrompt) {
+        gsap.set(treePrompt, { opacity: 0 });
+      }
+
       // SEQUENCE STEP 6: ROOTS GROW FIRST INTO THE SOIL
       // Taproot draws deep into the earth
       if (rootPaths && rootPaths[0]) {
@@ -430,10 +450,11 @@ export const SeedJourneyIntro: React.FC = () => {
         );
       }
 
-      // SEQUENCE STEP 7: ONLY AFTER ROOTS DEVELOP, STEM EMERGES & GROWS
-      tl.call(() => {
-        setIntroState('TREE_GROWTH');
-      });
+      // SEQUENCE STEP 7: SMOOTH TEXT TRANSITION (Roots -> Tree Growth)
+      if (rootsPrompt && treePrompt) {
+        tl.to(rootsPrompt, { opacity: 0, duration: 0.5 }, '-=0.2')
+          .to(treePrompt, { opacity: 1, duration: 0.7 }, '+=0.1');
+      }
 
       // Seed pulses with vitality before sprout
       const seedEl = seedGroupRef.current;
@@ -441,6 +462,7 @@ export const SeedJourneyIntro: React.FC = () => {
         tl.to(
           seedEl,
           {
+            scale: 1.15,
             filter: 'drop-shadow(0 0 24px rgba(255, 180, 200, 1))',
             duration: 0.5,
           },
@@ -515,16 +537,33 @@ export const SeedJourneyIntro: React.FC = () => {
       }
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => {
+      // Do not revert the completed tree animation when transitioning to unlocked state
+      if (!hasTreeCompletedRef.current) {
+        ctx.revert();
+      }
+    };
   }, [introState, setIntroState]);
 
   // Scroll down to existing cinematic experience on unlock
-  const handleScrollToExperience = () => {
+  const handleScrollToExperience = useCallback(() => {
+    document.body.style.overflow = '';
     const experienceEl = document.getElementById('story-experience');
     if (experienceEl) {
       experienceEl.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, []);
+
+  // Automatically scroll to existing experience once unlocked
+  useEffect(() => {
+    if (introState !== 'EXPERIENCE_UNLOCKED') return;
+
+    const timer = setTimeout(() => {
+      handleScrollToExperience();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [introState, handleScrollToExperience]);
 
   return (
     <div
@@ -948,22 +987,21 @@ export const SeedJourneyIntro: React.FC = () => {
 
       {/* STEP 6 & 7: PROGRESSIVE TEXT PROMPTS */}
       {introState === 'ROOT_GROWTH' && (
-        <div className="absolute bottom-12 text-center pointer-events-none transition-all duration-700 animate-pulse">
-          <p className="font-serif text-[#f5baa4] text-lg tracking-wider drop-shadow-md">
-            Roots of devotion take hold in the silent earth...
-          </p>
-        </div>
-      )}
-
-      {introState === 'TREE_GROWTH' && (
-        <div className="absolute bottom-12 text-center pointer-events-none transition-all duration-700">
-          <p className="font-serif text-[#fffdf8] text-xl tracking-wide drop-shadow-md">
-            Reaching toward the twilight warmth...
-          </p>
-          <span className="text-xs font-sans tracking-[0.2em] uppercase text-[#f5baa4]/70 mt-1 block">
-            Love begins to blossom
-          </span>
-        </div>
+        <>
+          <div className="intro-roots-prompt absolute bottom-12 text-center pointer-events-none transition-opacity duration-700 animate-pulse">
+            <p className="font-serif text-[#f5baa4] text-lg tracking-wider drop-shadow-md">
+              Roots of devotion take hold in the silent earth...
+            </p>
+          </div>
+          <div className="intro-tree-prompt absolute bottom-12 text-center pointer-events-none transition-opacity duration-700 opacity-0">
+            <p className="font-serif text-[#fffdf8] text-xl tracking-wide drop-shadow-md">
+              Reaching toward the twilight warmth...
+            </p>
+            <span className="text-xs font-sans tracking-[0.2em] uppercase text-[#f5baa4]/70 mt-1 block">
+              Love begins to blossom
+            </span>
+          </div>
+        </>
       )}
 
       {/* STEP 8: EXPERIENCE UNLOCKED CALL TO ACTION */}
