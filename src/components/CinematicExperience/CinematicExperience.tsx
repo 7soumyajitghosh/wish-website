@@ -1,15 +1,22 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import gsap from 'gsap';
 import HeartTreeAnimation, { type TreeInteractionEvent } from '../HeartTreeAnimation';
+import { Hero } from '../Hero/Hero';
 import {
   useStory,
   STAGE_DESCRIPTIONS,
+  STAGE_PROGRESS_MAP,
 } from '../../context/StoryContext';
 
 export const CinematicExperience: React.FC = () => {
   const containerRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
+  const isAutoGrowingRef = useRef(false);
+  const autoGrowthTlRef = useRef<gsap.core.Timeline | null>(null);
 
   const {
+    introState,
+    setIntroState,
     currentStage,
     targetProgress,
     setTargetProgress,
@@ -24,9 +31,150 @@ export const CinematicExperience: React.FC = () => {
 
   const [userWind, setUserWind] = useState(0);
 
-  // Calculate scroll within the 600vh story container
+  // Single GSAP auto-growth timeline from watering to Full Bloom (Stage 12, 0.82)
+  const startAutoGrowth = useCallback(() => {
+    if (isAutoGrowingRef.current) return;
+    isAutoGrowingRef.current = true;
+
+    // Clean up any existing timeline to ensure strict single-timeline execution
+    if (autoGrowthTlRef.current) {
+      autoGrowthTlRef.current.kill();
+      autoGrowthTlRef.current = null;
+    }
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const speedScale = prefersReducedMotion ? 0.2 : 1;
+    const progressObj = { p: 0.02 };
+    let lastBroadcastTime = 0;
+
+    const tl = gsap.timeline({
+      onUpdate: () => {
+        const now = performance.now();
+        // Throttle updates to avoid unnecessary React re-renders while updating HUD accurately
+        if (now - lastBroadcastTime > 30 || progressObj.p >= 0.819) {
+          lastBroadcastTime = now;
+          setTargetProgress(progressObj.p);
+        }
+
+        // Milestone 1: Unlock bloom as the timeline crosses the threshold
+        if (progressObj.p >= 0.81 && !isBloomUnlocked) {
+          unlockBloom();
+        }
+      },
+      onComplete: () => {
+        setTargetProgress(STAGE_PROGRESS_MAP[12]);
+        unlockBloom();
+        setIntroState('EXPERIENCE_UNLOCKED');
+
+        // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
+        const container = containerRef.current;
+        if (container) {
+          const totalScrollable = container.offsetHeight - window.innerHeight;
+          if (totalScrollable > 0) {
+            const rawProgress = (STAGE_PROGRESS_MAP[12] - 0.02) / 0.98;
+            const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
+            window.scrollTo({ top: targetScrollY, behavior: 'instant' });
+          }
+        }
+        isAutoGrowingRef.current = false;
+      },
+    });
+
+    // Sequential waypoint tweening using official STAGE_PROGRESS_MAP values
+    // 1: 0.02 -> 2: 0.06 (Glowing Seed)
+    tl.to(progressObj, {
+      p: STAGE_PROGRESS_MAP[2],
+      duration: 1.4 * speedScale,
+      ease: 'power1.inOut',
+    })
+      // 2: 0.06 -> 3: 0.15 (Roots Emerge into soil)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[3],
+        duration: 2.2 * speedScale,
+        ease: 'power2.out',
+      })
+      // Dramatic contemplation hold for deep roots
+      .to({}, { duration: 0.35 * speedScale })
+      // 3: 0.15 -> 4: 0.23 (Trunk Begins)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[4],
+        duration: 1.6 * speedScale,
+        ease: 'sine.inOut',
+      })
+      // 4: 0.23 -> 5: 0.29 (Trunk Grows)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[5],
+        duration: 1.4 * speedScale,
+        ease: 'power1.out',
+      })
+      // 5: 0.29 -> 6: 0.38 (Main Branches)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[6],
+        duration: 2.2 * speedScale,
+        ease: 'power2.out',
+      })
+      // Hold for wide bough canopy silhouette
+      .to({}, { duration: 0.3 * speedScale })
+      // 6: 0.38 -> 7: 0.48 (Secondary Branches)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[7],
+        duration: 2.0 * speedScale,
+        ease: 'power1.inOut',
+      })
+      // 7: 0.48 -> 8: 0.58 (Fine Twigs)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[8],
+        duration: 1.8 * speedScale,
+        ease: 'power1.out',
+      })
+      // 8: 0.58 -> 9: 0.65 (Tiny Buds)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[9],
+        duration: 1.6 * speedScale,
+        ease: 'sine.inOut',
+      })
+      // 9: 0.65 -> 10: 0.72 (Hearts Bloom Wave 1)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[10],
+        duration: 2.2 * speedScale,
+        ease: 'power2.out',
+      })
+      // 10: 0.72 -> 11: 0.78 (More Hearts Wave 2)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[11],
+        duration: 1.8 * speedScale,
+        ease: 'power1.inOut',
+      })
+      // 11: 0.78 -> 12: 0.82 (Full Bloom)
+      .to(progressObj, {
+        p: STAGE_PROGRESS_MAP[12],
+        duration: 1.8 * speedScale,
+        ease: 'power2.out',
+      });
+
+    autoGrowthTlRef.current = tl;
+  }, [isBloomUnlocked, setIntroState, setTargetProgress, unlockBloom]);
+
+  // Clean up auto-growth timeline on unmount
+  useEffect(() => {
+    return () => {
+      if (autoGrowthTlRef.current) {
+        autoGrowthTlRef.current.kill();
+        autoGrowthTlRef.current = null;
+      }
+    };
+  }, []);
+
+  // Calculate scroll within the 550vh story container
   useEffect(() => {
     const handleScroll = () => {
+      // Protect auto-growth and intro: ignore scroll events while auto-growing or in intro
+      if (isAutoGrowingRef.current) return;
+      if (introState !== 'EXPERIENCE_UNLOCKED') return;
+
       const container = containerRef.current;
       if (!container) return;
 
@@ -55,7 +203,7 @@ export const CinematicExperience: React.FC = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isBloomUnlocked, isFlightUnlocked, setTargetProgress]);
+  }, [introState, isBloomUnlocked, isFlightUnlocked, setTargetProgress]);
 
   const handleTreeInteract = useCallback((event: TreeInteractionEvent) => {
     setActiveTreeQuote(event);
@@ -87,7 +235,7 @@ export const CinematicExperience: React.FC = () => {
         ref={stickyRef}
         className="sticky top-0 w-full h-screen overflow-hidden flex flex-col justify-between select-none"
       >
-        {/* Heart Tree Canvas */}
+        {/* Heart Tree Canvas - The single authoritative tree instance */}
         <div className="absolute inset-0 z-0">
           <HeartTreeAnimation
             targetProgress={targetProgress}
@@ -99,9 +247,18 @@ export const CinematicExperience: React.FC = () => {
         {/* Ambient Vignette Overlay */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(13,4,8,0.75)_100%)] z-10" />
 
-        {/* ================= STAGE NAVIGATION HUD (Editorial, non-video) ================= */}
+        {/* ================= INTRO PHASE OVERLAY (Owned by CinematicExperience) ================= */}
+        {introState !== 'EXPERIENCE_UNLOCKED' && (
+          <div className="absolute inset-0 z-40 pointer-events-auto">
+            <Hero onWaterComplete={startAutoGrowth} />
+          </div>
+        )}
+
+        {/* ================= STAGE NAVIGATION HUD ================= */}
         <nav
-          className="absolute top-8 left-6 md:left-12 z-30 flex flex-col items-start pointer-events-auto"
+          className={`absolute top-8 left-6 md:left-12 z-30 flex flex-col items-start pointer-events-auto transition-opacity duration-700 ${
+            introState === 'INTRO' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
           aria-label="Story Progress"
         >
           <div className="flex items-center gap-3">
@@ -126,7 +283,9 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Vertical Chapter Indicator Dots (Right Edge) */}
         <aside
-          className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 hidden sm:flex flex-col items-center gap-2.5 py-4 px-2 rounded-full bg-black/25 backdrop-blur-md border border-white/10"
+          className={`absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 hidden sm:flex flex-col items-center gap-2.5 py-4 px-2 rounded-full bg-black/25 backdrop-blur-md border border-white/10 transition-opacity duration-700 ${
+            introState === 'INTRO' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
           aria-label="Stage Navigation Dots"
         >
           {STAGE_DESCRIPTIONS.map((s) => {
@@ -158,11 +317,15 @@ export const CinematicExperience: React.FC = () => {
         </aside>
 
         {/* Interactive Tree Hints (Bottom Left) */}
-        <div className="absolute bottom-8 left-6 md:left-12 z-20 pointer-events-none max-w-sm">
+        <div
+          className={`absolute bottom-8 left-6 md:left-12 z-20 pointer-events-none max-w-sm transition-opacity duration-700 ${
+            introState !== 'EXPERIENCE_UNLOCKED' ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
           <div className="flex flex-col gap-1.5 text-xs text-[#fff8eb]/60 font-sans tracking-wide">
             <span className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#f5baa4]" />
-              Scroll to grow the tree
+              Scroll to explore stages
             </span>
             <span className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#ffb3c1]" />
@@ -215,7 +378,7 @@ export const CinematicExperience: React.FC = () => {
         )}
 
         {/* ================= USER-TRIGGERED TRANSITION ACTIONS ================= */}
-        {/* Milestone 1: Canopy formed -> "Let it bloom →" */}
+        {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
         {currentStage >= 11 && !isBloomUnlocked && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
             <button

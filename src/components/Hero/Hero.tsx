@@ -1,9 +1,14 @@
-import { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { SeedJourneyIntro } from './SeedJourneyIntro';
 
-export const Hero = () => {
+export interface HeroProps {
+  onWaterComplete?: () => void;
+  className?: string;
+}
+
+export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) => {
   const heroRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { introState, startStory } = useStory();
@@ -24,18 +29,35 @@ export const Hero = () => {
     }
   };
 
+  const handleWaterComplete = useCallback(() => {
+    // Cross-fade the intro overlay out so canvas HeartTreeAnimation reveals seamlessly
+    if (heroRef.current) {
+      gsap.to(heroRef.current, {
+        opacity: 0,
+        duration: 1.2,
+        ease: 'power2.inOut',
+        onComplete: () => {
+          onWaterComplete?.();
+        },
+      });
+    } else {
+      onWaterComplete?.();
+    }
+  }, [onWaterComplete]);
+
   return (
     <section 
       id="hero" 
       ref={heroRef}
-      className="relative w-full h-screen min-h-[600px] overflow-hidden flex flex-col justify-center items-center bg-[#0d0408]"
+      className={`relative w-full h-full flex flex-col justify-center items-center select-none ${className}`}
       aria-label="A Journey of Love Opening"
     >
-      {/* Cinematic Deep Dusk Gradient Background */}
+      {/* Cinematic Deep Dusk Gradient Background - matches initial canvas twilight */}
       <div 
-        className="absolute inset-0 w-full h-full pointer-events-none"
+        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
         style={{
           background: 'radial-gradient(ellipse at 50% 60%, #2b0e1e 0%, #170711 50%, #0d0408 100%)',
+          opacity: introState === 'INTRO' ? 1 : 0.85,
         }}
       />
 
@@ -87,8 +109,12 @@ export const Hero = () => {
         </div>
       )}
 
-      {/* STEP 2-8: The Interactive Love Seed -> Water -> Roots -> Tree Sequence */}
-      {introState !== 'INTRO' && <SeedJourneyIntro />}
+      {/* STEP 2-5: The Interactive Love Seed -> Water Sequence */}
+      {introState !== 'INTRO' && (
+        <SeedJourneyIntro onWaterComplete={handleWaterComplete} />
+      )}
     </section>
   );
 };
+
+export default Hero;
