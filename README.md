@@ -42,7 +42,7 @@ A breathtaking, cinematic interactive web experience inspired by the 16-stage jo
 - **Interactive Story HUD:** Timeline scrubber with 16 clickable stage markers, speed controls (0.5x, 1x, 1.5x, 2x), play/pause, and fullscreen mode.
 - **Visual QA Reference Inspector:** Built-in modal allowing side-by-side verification against the full 16-panel reference storyboard.
 - **Responsive & Retina Ready:** Optimized for desktop, tablet, and mobile portrait/landscape screens with `devicePixelRatio` crispness.
-- **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, Lucide React, Canvas Confetti.
+- **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, GSAP (Procedural Canvas art & inline SVG icons, zero bloated icon/confetti dependencies).
 
 ---
 
