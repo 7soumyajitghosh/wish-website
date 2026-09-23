@@ -15,6 +15,7 @@ export const WishScene: React.FC = () => {
   const rafRef = useRef<number | null>(null);
   const wishTlRef = useRef<gsap.core.Timeline | null>(null);
   const mountedRef = useRef(true);
+  const wishedRef = useRef(false);
 
   // Track mounted state + kill handler timeline on unmount
   useEffect(() => {
@@ -41,7 +42,7 @@ export const WishScene: React.FC = () => {
       canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       emitterRef.current.resize(w, h);
     };
 
@@ -70,6 +71,10 @@ export const WishScene: React.FC = () => {
 
   // Entrance animation
   useEffect(() => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
 
@@ -77,27 +82,31 @@ export const WishScene: React.FC = () => {
       tl.fromTo(
         containerRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 1.6, ease: 'power2.out' }
+        { opacity: 1, duration: reduced ? 0 : 1.6, ease: 'power2.out' }
       );
 
-      // Pulse the interactive heart orb
-      gsap.to(orbRef.current, {
-        scale: 1.08,
-        duration: 1.5,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        overwrite: 'auto',
-      });
+      // Pulse the interactive heart orb (skip infinite sway when reduced motion)
+      if (!reduced) {
+        gsap.to(orbRef.current, {
+          scale: 1.08,
+          duration: 1.5,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          overwrite: 'auto',
+        });
+      }
     }, containerRef);
 
     return () => ctx.revert();
   }, []);
 
   // Handle click on heart orb
+  // NOTE: hasWished state is set only after the prompt fade completes so the
+  // prompt node stays mounted for its exit tween (conditional render below).
   const handleWish = useCallback(() => {
-    if (hasWished) return;
-    setHasWished(true);
+    if (wishedRef.current) return;
+    wishedRef.current = true;
 
     const orb = orbRef.current;
     if (!orb) return;
@@ -112,6 +121,11 @@ export const WishScene: React.FC = () => {
     // Trigger rich particle burst
     emitterRef.current.spawnBurst(cx, cy, 90);
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const tl = gsap.timeline();
     wishTlRef.current = tl;
 
@@ -119,21 +133,26 @@ export const WishScene: React.FC = () => {
     tl.to(orb, {
       scale: 1.35,
       filter: 'drop-shadow(0 0 45px rgba(255, 230, 180, 0.9))',
-      duration: 0.5,
+      duration: reduced ? 0 : 0.5,
       ease: 'power2.out',
       overwrite: 'auto',
     });
 
-    // 2. Prompt fades out
+    // 2. Prompt fades out (one-shot; node stays mounted until onComplete)
     tl.to(
       promptRef.current,
       {
         opacity: 0,
         y: -20,
-        duration: 0.8,
+        duration: reduced ? 0 : 0.8,
         ease: 'power2.in',
+        overwrite: 'auto',
+        onComplete: () => {
+          if (!mountedRef.current) return;
+          setHasWished(true);
+        },
       },
-      '-=0.3'
+      reduced ? 0 : '-=0.3'
     );
 
     // 3. Heart orb ascends gracefully into the cosmos
@@ -141,7 +160,7 @@ export const WishScene: React.FC = () => {
       y: -window.innerHeight * 0.7,
       scale: 0.2,
       opacity: 0,
-      duration: 2.2,
+      duration: reduced ? 0 : 2.2,
       ease: 'power2.inOut',
       overwrite: 'auto',
       onComplete: () => {
@@ -158,15 +177,16 @@ export const WishScene: React.FC = () => {
       backdropGlow,
       {
         opacity: 0.85,
-        duration: 3.0,
+        duration: reduced ? 0 : 3.0,
         ease: 'power2.out',
         overwrite: 'auto',
       },
-      '-=1.5'
+      reduced ? 0 : '-=1.5'
     );
     }
 
     // 5. Final message fades in with cinematic elegance
+    // Filter tweens below are one-shot entrance reveals (no per-frame loop).
     const finaleElements = finaleRef.current?.querySelectorAll('.finale-reveal-item');
     if (finaleElements) {
       tl.fromTo(
@@ -176,21 +196,22 @@ export const WishScene: React.FC = () => {
           opacity: 1,
           y: 0,
           filter: 'blur(0px)',
-          duration: 2.2,
-          stagger: 0.45,
+          duration: reduced ? 0 : 2.2,
+          stagger: reduced ? 0 : 0.45,
           ease: 'power2.out',
+          overwrite: 'auto',
         },
-        '-=0.8'
+        reduced ? 0 : '-=0.8'
       );
     }
-  }, [hasWished]);
+  }, []);
 
   const { wish } = EXPERIENCE_CONFIG;
 
   return (
     <div ref={containerRef} className="wish-scene">
       {/* Dynamic starlit background canvas */}
-      <canvas ref={canvasRef} className="wish-canvas" />
+      <canvas ref={canvasRef} className="wish-canvas" aria-hidden="true" />
 
       {/* Atmospheric nebula/twilight glow */}
       <div className="wish-backdrop-glow" />
@@ -234,7 +255,7 @@ export const WishScene: React.FC = () => {
         {/* Initial Prompt */}
         {!hasWished && (
           <div ref={promptRef} className="wish-prompt-container">
-            <h1 className="wish-title">{wish.title}</h1>
+            <h2 className="wish-title">{wish.title}</h2>
             <p className="wish-subtext">{wish.subtext}</p>
             <span className="wish-hint">{wish.actionHint}</span>
           </div>

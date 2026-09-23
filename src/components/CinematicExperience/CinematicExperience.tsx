@@ -27,9 +27,13 @@ export const CinematicExperience: React.FC = () => {
     unlockFlight,
     activeTreeQuote,
     setActiveTreeQuote,
+    pauseTreeQuote,
+    resumeTreeQuote,
   } = useStory();
 
   const [userWind, setUserWind] = useState(0);
+  const [isAutoGrowing, setIsAutoGrowing] = useState(false);
+  const quoteCloseRef = useRef<HTMLButtonElement>(null);
 
   // Refs mirror unlock flags so the long-lived GSAP onUpdate never closes
   // over stale state (30s timeline would otherwise miss unlock transitions).
@@ -46,6 +50,7 @@ export const CinematicExperience: React.FC = () => {
   const startAutoGrowth = useCallback(() => {
     if (isAutoGrowingRef.current) return;
     isAutoGrowingRef.current = true;
+    setIsAutoGrowing(true);
 
     // Clean up any existing timeline to ensure strict single-timeline execution
     if (autoGrowthTlRef.current) {
@@ -99,6 +104,7 @@ export const CinematicExperience: React.FC = () => {
           }
         }
         isAutoGrowingRef.current = false;
+        setIsAutoGrowing(false);
       },
     });
 
@@ -217,6 +223,39 @@ export const CinematicExperience: React.FC = () => {
     };
   }, []);
 
+  // Escape hatch for the ~30s auto-growth: jump straight to the end state.
+  const skipAutoGrowth = useCallback(() => {
+    if (autoGrowthTlRef.current) {
+      autoGrowthTlRef.current.kill();
+      autoGrowthTlRef.current = null;
+    }
+    isAutoGrowingRef.current = false;
+    setIsAutoGrowing(false);
+    setTargetProgress(STAGE_PROGRESS_MAP[16]);
+    unlockBloom();
+    unlockFlight();
+    setIntroState('EXPERIENCE_UNLOCKED');
+  }, [setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+
+  // Background-tab stranding guard: GSAP timers throttle while hidden, so
+  // fast-forward the growth timeline when the tab becomes visible again.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden && autoGrowthTlRef.current) {
+        autoGrowthTlRef.current.progress(1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  // Move focus to the quote's close button when it appears (keyboard/SR users).
+  useEffect(() => {
+    if (activeTreeQuote) {
+      quoteCloseRef.current?.focus();
+    }
+  }, [activeTreeQuote]);
+
   // Calculate scroll within the 550vh story container
   useEffect(() => {
     const handleScroll = () => {
@@ -283,8 +322,12 @@ export const CinematicExperience: React.FC = () => {
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
-        className="sticky top-0 w-full h-screen overflow-hidden flex flex-col justify-between select-none"
+        className="sticky top-0 w-full h-screen max-h-[100dvh] overflow-hidden flex flex-col justify-between select-none"
       >
+        {/* Screen-reader stage announcements */}
+        <div className="sr-only" aria-live="polite">
+          Stage {currentStage} of 16: {currentInfo.title}
+        </div>
         {/* Heart Tree Canvas - The single authoritative tree instance */}
         <div className="absolute inset-0 z-0">
           <HeartTreeAnimation
@@ -304,6 +347,18 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
 
+        {/* Skip the ~30s auto-growth (also escapable when throttled/hidden) */}
+        {isAutoGrowing && (
+          <button
+            type="button"
+            onClick={skipAutoGrowth}
+            aria-label="Skip growth animation"
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-[#ffd6a5]/50 text-[#fffdf8] font-serif text-base md:text-lg tracking-wide transition-all hover:bg-white/20 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+          >
+            Skip growth →
+          </button>
+        )}
+
         {/* ================= STAGE NAVIGATION HUD ================= */}
         <nav
           className={`absolute top-8 left-6 md:left-12 z-30 flex flex-col items-start pointer-events-auto transition-opacity duration-700 ${
@@ -312,7 +367,7 @@ export const CinematicExperience: React.FC = () => {
           aria-label="Story Progress"
         >
           <div className="flex items-center gap-3">
-            <span className="font-sans text-xs uppercase tracking-[0.3em] text-[#f5baa4] opacity-90">
+            <span className="font-sans text-sm uppercase tracking-[0.3em] text-[#f5baa4] opacity-90">
               Journey
             </span>
             <span className="font-serif text-lg text-[#fffdf8] font-medium tracking-widest">
@@ -321,11 +376,11 @@ export const CinematicExperience: React.FC = () => {
           </div>
 
           {/* Current Stage Title & Subtitle */}
-          <div className="mt-2 max-w-xs md:max-w-md">
-            <h2 className="text-2xl md:text-3xl font-serif text-[#fffdf8] tracking-wide drop-shadow-md">
+          <div className="mt-2 max-w-xs md:max-w-md rounded-lg bg-gradient-to-b from-black/50 to-transparent px-3 py-2 -ml-3">
+            <h2 className="text-xl md:text-3xl font-serif text-[#fffdf8] tracking-wide drop-shadow-md">
               {currentInfo.title}
             </h2>
-            <p className="text-xs md:text-sm font-sans text-[#f5baa4]/90 font-light mt-1 italic leading-relaxed">
+            <p className="text-sm font-sans text-[#f5baa4]/90 font-normal mt-1 leading-relaxed">
               {currentInfo.subtitle}
             </p>
           </div>
@@ -345,8 +400,9 @@ export const CinematicExperience: React.FC = () => {
               <button
                 key={s.id}
                 onClick={() => jumpToStage(s.id)}
-                className="group relative flex items-center justify-center p-1 cursor-pointer transition-transform hover:scale-125"
+                className="group relative flex items-center justify-center p-3 min-w-[44px] min-h-[44px] cursor-pointer transition-transform hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] rounded-full"
                 aria-label={`Jump to stage ${s.id}: ${s.title}`}
+                aria-current={isActive ? 'true' : undefined}
               >
                 <span
                   className={`block rounded-full transition-all duration-300 ${
@@ -366,13 +422,13 @@ export const CinematicExperience: React.FC = () => {
           })}
         </aside>
 
-        {/* Interactive Tree Hints (Bottom Left) */}
+        {/* Interactive Tree Hints (Bottom Left) — desktop only, hidden on mobile */}
         <div
-          className={`absolute bottom-8 left-6 md:left-12 z-20 pointer-events-none max-w-sm transition-opacity duration-700 ${
+          className={`absolute bottom-8 left-6 md:left-12 z-20 pointer-events-none max-w-sm transition-opacity duration-700 hidden sm:block ${
             introState !== 'EXPERIENCE_UNLOCKED' ? 'opacity-0' : 'opacity-100'
           }`}
         >
-          <div className="flex flex-col gap-1.5 text-xs text-[#fff8eb]/60 font-sans tracking-wide">
+          <div className="flex flex-col gap-1.5 text-sm text-[#fff8eb]/85 font-sans tracking-wide">
             <span className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#f5baa4]" />
               Scroll to explore stages
@@ -398,7 +454,13 @@ export const CinematicExperience: React.FC = () => {
         {/* ================= FLOATING TREE REFLECTION QUOTE ================= */}
         {activeTreeQuote && (
           <div
-            className="absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter pointer-events-auto"
+            role="status"
+            aria-live="polite"
+            onMouseEnter={pauseTreeQuote}
+            onMouseLeave={resumeTreeQuote}
+            onFocus={pauseTreeQuote}
+            onBlur={resumeTreeQuote}
+            className="absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm max-h-[60vh] overflow-y-auto p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter pointer-events-auto"
             style={{
               left: `clamp(12px, ${Math.min(Math.max(activeTreeQuote.x - 120, 20), typeof window !== 'undefined' ? Math.max(window.innerWidth - 340, 12) : 20)}px, calc(100vw - 17rem))`,
               top: `${Math.max(activeTreeQuote.y - 90, 40)}px`,
@@ -414,8 +476,9 @@ export const CinematicExperience: React.FC = () => {
                 </span>
               </div>
               <button
+                ref={quoteCloseRef}
                 onClick={() => setActiveTreeQuote(null)}
-                className="text-white/50 hover:text-white text-xs cursor-pointer"
+                className="text-white/50 hover:text-white text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
                 aria-label="Dismiss message"
               >
                 ✕
@@ -430,15 +493,15 @@ export const CinematicExperience: React.FC = () => {
         {/* ================= USER-TRIGGERED TRANSITION ACTIONS ================= */}
         {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
         {currentStage >= 11 && !isBloomUnlocked && (
-          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <button
               onClick={unlockBloom}
-              className="px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-lg shadow-[0_0_25px_rgba(216,27,70,0.6)] border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="btn-primary font-serif shadow-[0_0_25px_rgba(216,27,70,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2"
               aria-label="Let it bloom"
             >
               Let it bloom →
             </button>
-            <span className="text-xs font-sans tracking-widest uppercase text-[#f5baa4]/80">
+            <span className="text-sm font-sans tracking-widest uppercase text-[#f5baa4]/85">
               Click to awaken the blossoms
             </span>
           </div>
@@ -446,13 +509,13 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Milestone 2: Bloom complete & wind rising -> "Release the hearts →" */}
         {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && (
-          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
-            <p className="font-serif italic text-sm text-[#fff8eb]/90 drop-shadow">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
+            <p className="font-serif text-sm text-[#fff8eb]/90 drop-shadow">
               "Some things are meant to take flight."
             </p>
             <button
               onClick={unlockFlight}
-              className="px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d81b46] to-[#a81438] text-[#fffdf8] font-serif text-lg shadow-[0_0_30px_rgba(216,27,70,0.7)] border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="btn-primary font-serif shadow-[0_0_30px_rgba(216,27,70,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2"
               aria-label="Release the hearts"
             >
               Release the hearts →
@@ -462,13 +525,13 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Milestone 3: Flight initiated -> Proceed to Destination */}
         {isFlightUnlocked && currentStage >= 14 && (
-          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
-            <p className="font-serif italic text-sm text-[#ffd6a5] drop-shadow">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
+            <p className="font-serif text-sm text-[#ffd6a5] drop-shadow">
               Hearts are sailing across the twilight sky...
             </p>
             <button
               onClick={handleDestinationClick}
-              className="group px-8 py-3.5 rounded-full bg-white/10 backdrop-blur-md border border-[#ffd6a5]/50 text-[#fffdf8] font-serif text-lg shadow-[0_0_20px_rgba(255,214,165,0.4)] transition-all hover:bg-white/20 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+              className="btn-ghost font-serif shadow-[0_0_20px_rgba(255,214,165,0.4)] flex items-center gap-2"
               aria-label="Follow the hearts to the destination"
             >
               <span>Follow the hearts</span>

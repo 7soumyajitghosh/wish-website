@@ -25,6 +25,14 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isFinalUnlocked, setIsFinalUnlocked] = useState(false);
 
   const quoteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastQuoteRef = useRef<TreeQuote | null>(null);
+
+  const clearQuoteTimeout = () => {
+    if (quoteTimeoutRef.current) {
+      clearTimeout(quoteTimeoutRef.current);
+      quoteTimeoutRef.current = null;
+    }
+  };
 
   const setIntroState = useCallback((state: IntroState) => {
     setIntroStateInternal(state);
@@ -75,15 +83,29 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const setTreeQuote = useCallback((quote: TreeQuote | null) => {
-    if (quoteTimeoutRef.current) {
-      clearTimeout(quoteTimeoutRef.current);
-      quoteTimeoutRef.current = null;
-    }
+    clearQuoteTimeout();
+    lastQuoteRef.current = quote;
     setActiveTreeQuote(quote);
     if (quote) {
       quoteTimeoutRef.current = setTimeout(() => {
         setActiveTreeQuote(null);
-      }, 4500);
+        lastQuoteRef.current = null;
+      }, 8000);
+    }
+  }, []);
+
+  // Pause auto-dismiss while hovered/focused; resume restarts the 8s timer.
+  const pauseTreeQuote = useCallback(() => {
+    clearQuoteTimeout();
+  }, []);
+
+  const resumeTreeQuote = useCallback(() => {
+    clearQuoteTimeout();
+    if (lastQuoteRef.current) {
+      quoteTimeoutRef.current = setTimeout(() => {
+        setActiveTreeQuote(null);
+        lastQuoteRef.current = null;
+      }, 8000);
     }
   }, []);
 
@@ -109,6 +131,8 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         unlockFlight,
         activeTreeQuote,
         setActiveTreeQuote: setTreeQuote,
+        pauseTreeQuote,
+        resumeTreeQuote,
         windVector,
         setWindVector,
         isLetterOpen,

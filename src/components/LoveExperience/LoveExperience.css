@@ -86,8 +86,8 @@
   top: 25%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
+  width: min(90vw, 600px);
+  height: min(90vw, 600px);
   background: radial-gradient(circle, rgba(168, 20, 56, 0.18) 0%, rgba(13, 4, 8, 0) 70%);
   filter: blur(40px);
   pointer-events: none;
@@ -173,8 +173,8 @@
 
 .envelope-wrapper {
   position: relative;
-  width: min(90vw, 440px);
-  height: 280px;
+  width: min(90vw, 420px);
+  aspect-ratio: 4 / 3;
   transform-style: preserve-3d;
   display: flex;
   align-items: center;
@@ -367,8 +367,8 @@
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 500px;
-  height: 500px;
+  width: min(90vw, 600px);
+  height: min(90vw, 600px);
   background: radial-gradient(circle, rgba(216, 27, 70, 0.15) 0%, rgba(9, 3, 6, 0) 70%);
   filter: blur(50px);
   pointer-events: none;
@@ -458,6 +458,12 @@
   filter: drop-shadow(0 0 40px rgba(255, 117, 143, 0.8));
 }
 
+/* Never a bare outline:none — keyboard users get a warm gold ring. */
+.wish-heart-orb:focus-visible {
+  outline: 2px solid #ffd6a5;
+  outline-offset: 4px;
+}
+
 .wish-heart-orb:disabled {
   cursor: default;
 }
@@ -477,7 +483,7 @@
   font-family: var(--font-serif);
   font-size: clamp(2rem, 4.5vw, 3.2rem);
   font-weight: 500;
-  color: #fff9f0;
+  color: var(--color-star-white);
   margin: 0;
   letter-spacing: 0.06em;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
@@ -496,7 +502,8 @@
   display: inline-block;
   margin-top: 20px;
   font-size: 0.85rem;
-  color: rgba(255, 230, 215, 0.6);
+  font-weight: 400;
+  color: rgba(255, 230, 215, 0.8);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -516,7 +523,7 @@
   font-family: var(--font-serif);
   font-size: clamp(1.8rem, 3.8vw, 2.8rem);
   font-weight: 600;
-  color: #fff8ea;
+  color: var(--color-star-white);
   margin: 0 0 24px;
   letter-spacing: 0.08em;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);

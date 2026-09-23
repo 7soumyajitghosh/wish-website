@@ -44,11 +44,13 @@ export const FinalDestination: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   
-  const [scrollY, setScrollY] = useState(0);
+  const [parallax, setParallax] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const heartsWrapRef = useRef<HTMLDivElement>(null);
+  const fairyWrapRef = useRef<HTMLDivElement>(null);
   const scrollRaf = useRef<number>(0);
 
+  // Section-relative parallax (clamped; disabled on small screens + reduced motion)
   useEffect(() => {
     const reduced =
       typeof window !== 'undefined' &&
@@ -57,31 +59,49 @@ export const FinalDestination: React.FC = () => {
     if (reduced) return;
     const update = () => {
       scrollRaf.current = 0;
-      setScrollY(window.scrollY);
+      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+          setParallax(0);
+          return;
+        }
+      }
+      const section = sectionRef.current;
+      if (!section) return;
+      const rect = section.getBoundingClientRect();
+      // Distance of section center from viewport center; clamp to [-100, 200]px.
+      const raw = (window.innerHeight / 2 - (rect.top + rect.height / 2)) * 0.2;
+      const clamped = Math.max(-100, Math.min(200, raw));
+      setParallax(clamped);
     };
     const handleScroll = () => {
       if (scrollRaf.current) return;
       scrollRaf.current = requestAnimationFrame(update);
     };
 
+    update();
     window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
       if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
     };
   }, []);
 
-  // Pause infinite CSS hearts when off-screen
+  // Pause infinite CSS hearts + fairy lights when off-screen
   useEffect(() => {
     const section = sectionRef.current;
     const wrap = heartsWrapRef.current;
-    if (!section || !wrap) return;
+    const fairy = fairyWrapRef.current;
+    if (!section) return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        wrap.querySelectorAll('[data-float-heart]').forEach((el) => {
-          (el as HTMLElement).style.animationPlayState = entry.isIntersecting
-            ? 'running'
-            : 'paused';
+        const playState = entry.isIntersecting ? 'running' : 'paused';
+        wrap?.querySelectorAll('[data-float-heart]').forEach((el) => {
+          (el as HTMLElement).style.animationPlayState = playState;
+        });
+        fairy?.querySelectorAll('[data-fairy-light]').forEach((el) => {
+          (el as HTMLElement).style.animationPlayState = playState;
         });
       },
       { threshold: 0 }
@@ -118,7 +138,7 @@ export const FinalDestination: React.FC = () => {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const ctx = gsap.context(() => {
-      const elements = gsap.utils.toArray<HTMLElement>('.reveal-element');
+      const elements = containerRef.current?.querySelectorAll('.reveal-element') ?? [];
       gsap.fromTo(
         elements,
         { opacity: 0, y: 50, xPercent: 0 },
@@ -145,6 +165,7 @@ export const FinalDestination: React.FC = () => {
             stagger: 0.3,
             ease: 'expo.out',
             delay: reduced ? 0 : 0.5,
+            overwrite: 'auto',
           }
         );
       }
@@ -153,7 +174,7 @@ export const FinalDestination: React.FC = () => {
     return () => ctx.revert();
   }, [isVisible]);
 
-  const offset = scrollY * 0.1; // Reduced multiplier for smoother parallax
+  const offset = parallax;
 
   return (
     <section
@@ -166,7 +187,7 @@ export const FinalDestination: React.FC = () => {
         {/* Glowing heart-shaped sun — parallax on outer, GSAP reveal on inner */}
         <div
           className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none will-change-transform"
-          style={{ transform: `translateX(-50%) translateY(${offset * 1.5}px)`, willChange: 'transform' }}
+          style={{ transform: `translateX(-50%) translateY(${offset * 0.5}px)`, willChange: 'transform' }}
         >
           <div className="reveal-element w-full h-full">
           <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[100px] opacity-40 mix-blend-screen" />
@@ -179,7 +200,7 @@ export const FinalDestination: React.FC = () => {
         {/* Cherry blossom branches - Top Left */}
         <div
           className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none will-change-transform"
-          style={{ transform: `translateY(${offset * -0.5}px)`, willChange: 'transform' }}
+          style={{ transform: `translateY(${offset * -0.2}px)`, willChange: 'transform' }}
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
@@ -197,7 +218,7 @@ export const FinalDestination: React.FC = () => {
         {/* Cherry blossom branches - Top Right (single mirror via inline transform) */}
         <div
           className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none will-change-transform"
-          style={{ transform: `scaleX(-1) translateY(${offset * -0.6}px)`, willChange: 'transform' }}
+          style={{ transform: `scaleX(-1) translateY(${offset * -0.25}px)`, willChange: 'transform' }}
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
@@ -243,12 +264,12 @@ export const FinalDestination: React.FC = () => {
             {/* Glass panels */}
             <path d="M40 60 L60 60 L55 20 L45 20 Z" fill="#ffd6a5" opacity="0.9" />
             {/* Inner glow representation */}
-            <circle cx="50" cy="40" r="10" fill="#fffdf8" className="animate-pulse" style={{ animationDuration: '3s' }} />
+            <circle cx="50" cy="40" r="10" fill="#fffdf8" className="motion-safe:animate-pulse" style={{ animationDuration: '3s' }} />
             {/* Lamp top */}
             <path d="M30 20 L70 20 L50 0 Z" fill="#070204" />
             {/* Glow effect */}
-            <circle cx="50" cy="40" r="60" fill="#ffd6a5" opacity="0.15" className="animate-pulse" style={{ mixBlendMode: 'screen' }} />
-            <circle cx="50" cy="40" r="30" fill="#ffd6a5" opacity="0.25" className="animate-pulse" style={{ mixBlendMode: 'screen' }} />
+            <circle cx="50" cy="40" r="60" fill="#ffd6a5" opacity="0.15" className="motion-safe:animate-pulse" style={{ mixBlendMode: 'screen' }} />
+            <circle cx="50" cy="40" r="30" fill="#ffd6a5" opacity="0.15" className="motion-safe:animate-pulse" style={{ mixBlendMode: 'screen' }} />
           </svg>
           </div>
         </div>
@@ -286,6 +307,7 @@ export const FinalDestination: React.FC = () => {
         {/* Ambient floating hearts (CSS driven) */}
         <div
           ref={heartsWrapRef}
+          aria-hidden="true"
           className="absolute inset-0 pointer-events-none overflow-hidden z-20"
           style={{ contentVisibility: 'auto' }}
         >
@@ -312,12 +334,13 @@ export const FinalDestination: React.FC = () => {
           ))}
         </div>
 
-        {/* Fairy lights (twinkling dots) */}
-        <div className="absolute top-0 left-0 w-full h-1/3 pointer-events-none z-10">
+        {/* Fairy lights (twinkling dots, paused off-screen via IO) */}
+        <div ref={fairyWrapRef} aria-hidden="true" className="absolute top-0 left-0 w-full h-1/3 pointer-events-none z-10">
           {FAIRY_LIGHTS.map((l, i) => (
             <div
               key={`light-${i}`}
-              className="absolute bg-[#ffd6a5] rounded-full animate-pulse"
+              data-fairy-light
+              className="absolute bg-[#ffd6a5] rounded-full motion-safe:animate-pulse"
               style={{
                 left: `${l.left}%`,
                 top: `${l.top}%`,
@@ -334,18 +357,18 @@ export const FinalDestination: React.FC = () => {
         {/* Text Overlay — opacity-0 only pre-reveal so no-JS/GSAP-fail stays visible */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-8 pointer-events-none">
           <div ref={textRef} className="max-w-4xl flex flex-col items-center gap-6">
-            <span className={`text-[#f5baa4] uppercase tracking-[0.3em] text-xs sm:text-sm font-semibold ${isVisible ? '' : 'opacity-0'}`}>
+            <span className={`text-[#f5baa4] uppercase tracking-[0.3em] text-sm font-semibold ${isVisible ? '' : 'opacity-0'}`}>
               The Destination
             </span>
 
             <h2
-              className={`text-4xl sm:text-6xl md:text-7xl font-serif text-[#fffdf8] italic drop-shadow-lg ${isVisible ? '' : 'opacity-0'}`}
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              className={`font-serif text-[#fffdf8] drop-shadow-lg ${isVisible ? '' : 'opacity-0'}`}
+              style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', lineHeight: 'var(--leading-tight,1.05)', fontFamily: '"Playfair Display", Georgia, serif' }}
             >
               Where Love Takes Flight
             </h2>
 
-            <p className={`text-[#fff8eb] text-lg sm:text-xl md:text-2xl font-light max-w-2xl drop-shadow-md leading-relaxed ${isVisible ? '' : 'opacity-0'}`}>
+            <p className={`text-[#fff8eb] text-lg sm:text-xl md:text-2xl font-normal max-w-2xl drop-shadow-md leading-relaxed ${isVisible ? '' : 'opacity-0'}`}>
               Every seed of kindness planted with love blossoms into an eternal garden of dreams.
             </p>
 
@@ -355,7 +378,7 @@ export const FinalDestination: React.FC = () => {
                   const el = document.getElementById('love-letter');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-[#ffd6a5]/40 text-[#fffdf8] font-serif text-base tracking-wide transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+                className="btn-ghost font-serif text-base tracking-wide shadow-lg cursor-pointer"
                 aria-label="Proceed to the Love Letter"
               >
                 A letter awaits upon the bench →

@@ -9,7 +9,7 @@
   height: 100%;
   overflow: hidden;
   user-select: none;
-  background-color: #12090b;
+  background-color: var(--color-bg-deep);
 }
 
 .heart-tree-canvas {
@@ -19,4 +19,10 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/* Keyboard focus ring for the application wrapper (never a bare outline:none). */
+.heart-tree-wrapper:focus-visible {
+  outline: 2px solid #ffd6a5;
+  outline-offset: 2px;
 }

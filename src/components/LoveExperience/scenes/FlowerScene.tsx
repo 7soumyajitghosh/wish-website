@@ -18,9 +18,75 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
   const mountedRef = useRef(true);
   const fadeTweenRef = useRef<gsap.core.Tween | null>(null);
   const holdCallRef = useRef<ReturnType<typeof gsap.delayedCall> | null>(null);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const finishScene = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onCompleteRef.current?.();
+  };
+
+  // 15s fallback: never strand the visitor if GSAP fails or timers throttle.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (mountedRef.current) finishScene();
+    }, 15000);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
+
+    // Reduced motion: set end state, skip infinite sway, short hold then fade.
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      gsap.set(containerRef.current, { opacity: 1 });
+      const stem = stemPathRef.current;
+      if (stem) {
+        try {
+          const len = stem.getTotalLength();
+          gsap.set(stem, { strokeDasharray: len, strokeDashoffset: 0 });
+        } catch {
+          /* noop */
+        }
+      }
+      gsap.set(
+        [leafLeftRef.current, leafRightRef.current, budGroupRef.current],
+        { scale: 1, opacity: 1, rotation: 0 }
+      );
+      if (petalsOuterRef.current) gsap.set(petalsOuterRef.current.children, { scale: 1, opacity: 0.95 });
+      if (petalsMidRef.current) gsap.set(petalsMidRef.current.children, { scale: 1, opacity: 1 });
+      if (petalsCoreRef.current) gsap.set(petalsCoreRef.current.children, { scale: 1, opacity: 1 });
+      if (firefliesRef.current) gsap.set(firefliesRef.current.children, { scale: 1, opacity: 0.85 });
+      const spark = containerRef.current?.querySelector('.flower-light-spark');
+      if (spark) gsap.set(spark, { scale: 1.4, opacity: 0.6, y: 80 });
+      holdCallRef.current = gsap.delayedCall(0.5, () => {
+        if (!mountedRef.current) return;
+        fadeTweenRef.current = gsap.to(containerRef.current, {
+          opacity: 0,
+          duration: 0,
+          overwrite: 'auto',
+          onComplete: () => {
+            if (!mountedRef.current) return;
+            onComplete();
+          },
+        });
+      });
+      return () => {
+        mountedRef.current = false;
+        holdCallRef.current?.kill();
+        fadeTweenRef.current?.kill();
+      };
+    }
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         onComplete: () => {
@@ -37,7 +103,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
               overwrite: 'auto',
               onComplete: () => {
                 if (!mountedRef.current) return;
-                onComplete();
+                finishScene();
               },
             });
           });
@@ -206,6 +272,16 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
   return (
     <div ref={containerRef} className="flower-scene">
       <div className="flower-ambient-glow" />
+
+      {/* Always-available escape hatch: never depend solely on auto-advance */}
+      <button
+        type="button"
+        onClick={finishScene}
+        aria-label="Skip flower scene"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#fffdf8] font-sans text-sm tracking-widest uppercase transition-all hover:bg-white/20 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+      >
+        Skip →
+      </button>
 
       {/* Originating spark of light */}
       <div className="flower-light-spark" />

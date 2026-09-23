@@ -14,8 +14,17 @@ export type ExperienceScene =
   | 'flower'
   | 'wish';
 
+const SCENE_LABELS: Record<ExperienceScene, string> = {
+  heartTree: 'Heart tree',
+  constellation: 'Constellation',
+  loveLetter: 'Love letter',
+  flower: 'Flower bloom',
+  wish: 'Make a wish',
+};
+
 export const LoveExperience: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<ExperienceScene>('heartTree');
+  const [announcement, setAnnouncement] = useState('Heart tree');
   const overlayRef = useRef<HTMLDivElement>(null);
   const isTransitioningRef = useRef(false);
 
@@ -32,6 +41,7 @@ export const LoveExperience: React.FC = () => {
     const overlay = overlayRef.current;
     if (!overlay) {
       setCurrentScene(nextScene);
+      setAnnouncement(SCENE_LABELS[nextScene]);
       return;
     }
     if (isTransitioningRef.current) return;
@@ -52,6 +62,7 @@ export const LoveExperience: React.FC = () => {
       overwrite: 'auto',
       onComplete: () => {
         setCurrentScene(nextScene);
+        setAnnouncement(SCENE_LABELS[nextScene]);
         // Fade overlay out
         gsap.to(overlay, {
           opacity: 0,
@@ -69,6 +80,10 @@ export const LoveExperience: React.FC = () => {
 
   return (
     <div className="love-experience-root">
+      {/* Screen-reader announcements for cinematic scene changes */}
+      <div className="sr-only" aria-live="polite">
+        Now showing: {announcement}
+      </div>
       {/* Active Scene */}
       <div className="love-experience-stage">
         {currentScene === 'heartTree' && (

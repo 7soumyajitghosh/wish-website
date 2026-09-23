@@ -113,6 +113,11 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   );
 
   useEffect(() => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
     const interval = setInterval(() => {
       setSparkles((prev) =>
         prev.map((p) => {
@@ -123,7 +128,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           return { ...p, x: nextX, y: nextY };
         })
       );
-    }, 50);
+    }, 200);
 
     return () => clearInterval(interval);
   }, []);
@@ -137,6 +142,11 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     const seedEl = seedGroupRef.current;
     if (!seedEl) return;
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     try {
       soundManager.startAmbient();
     } catch {
@@ -144,12 +154,25 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     }
 
     gsap.set(seedEl, {
-      y: -dims.h * 0.6,
+      y: reduced ? 0 : -dims.h * 0.6,
       x: 0,
-      scale: 0.6,
-      opacity: 0,
-      rotation: -12,
+      scale: 1,
+      opacity: 1,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
     });
+
+    if (reduced) {
+      if (soilRef.current) gsap.set(soilRef.current, { fill: '#240b19' });
+      setIntroState('SEED_LANDED');
+      if (seedTimeoutRef.current !== null) window.clearTimeout(seedTimeoutRef.current);
+      seedTimeoutRef.current = window.setTimeout(() => {
+        if (!mountedRef.current) return;
+        setIntroState('WATERING');
+      }, 250);
+      return;
+    }
 
     seedTlRef.current?.kill();
     const tl = gsap.timeline({
@@ -256,11 +279,16 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     const potEl = potRef.current;
     if (!potEl) return;
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     potTlRef.current?.kill();
     const tween = gsap.fromTo(
       potEl,
       { opacity: 0, scale: 0.6, rotation: 15 },
-      { opacity: 1, scale: 1, rotation: 0, duration: 1.0, ease: 'back.out(1.4)', overwrite: 'auto' }
+      { opacity: 1, scale: 1, rotation: 0, duration: reduced ? 0 : 1.0, ease: 'back.out(1.4)', overwrite: 'auto' }
     );
     potTlRef.current = tween;
 
@@ -292,10 +320,15 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
     waterTlRef.current = tl;
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // Tilt inner pot
     tl.to(potEl, {
       rotation: -38,
-      duration: 0.6,
+      duration: reduced ? 0 : 0.6,
       ease: 'power2.out',
       overwrite: 'auto',
     });
@@ -320,28 +353,37 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     });
 
     // Pulse seed as it drinks water + glow the aura circle (no filter tween)
+    // Reduced motion: skip yoyo pulse, jump to end state.
     const seedEl = seedGroupRef.current;
     if (seedEl) {
-      tl.to(
-        seedEl,
-        {
-          scale: 1.25,
-          duration: 0.9,
-          ease: 'sine.inOut',
-          repeat: 1,
-          yoyo: true,
-          overwrite: 'auto',
-        },
-        '+=0.3'
-      );
+      if (reduced) {
+        tl.set(seedEl, { scale: 1 });
+      } else {
+        tl.to(
+          seedEl,
+          {
+            scale: 1.25,
+            duration: 0.9,
+            ease: 'sine.inOut',
+            repeat: 1,
+            yoyo: true,
+            overwrite: 'auto',
+          },
+          '+=0.3'
+        );
+      }
     }
     if (auraRef.current) {
-      tl.fromTo(
-        auraRef.current,
-        { opacity: 0.25 },
-        { opacity: 0.9, duration: 0.9, ease: 'sine.inOut', repeat: 1, yoyo: true, overwrite: 'auto' },
-        '<'
-      );
+      if (reduced) {
+        tl.set(auraRef.current, { opacity: 0.9 });
+      } else {
+        tl.fromTo(
+          auraRef.current,
+          { opacity: 0.25 },
+          { opacity: 0.9, duration: 0.9, ease: 'sine.inOut', repeat: 1, yoyo: true, overwrite: 'auto' },
+          '<'
+        );
+      }
     }
 
     // Soil reacts subtly: darkens with moisture
@@ -350,10 +392,10 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
         soilRef.current,
         {
           fill: '#2e0f21',
-          duration: 1.2,
+          duration: reduced ? 0 : 1.2,
           overwrite: 'auto',
         },
-        '+=0.1'
+        reduced ? 0 : '+=0.1'
       );
     }
 
@@ -362,17 +404,17 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       potEl,
       {
         rotation: 0,
-        duration: 0.5,
+        duration: reduced ? 0 : 0.5,
         ease: 'power1.out',
         overwrite: 'auto',
       },
-      '+=1.0'
+      reduced ? 0 : '+=1.0'
     );
 
     tl.to(potEl, {
       opacity: 0,
       scale: 0.7,
-      duration: 0.6,
+      duration: reduced ? 0 : 0.6,
       ease: 'power2.in',
       overwrite: 'auto',
       onComplete: () => {
@@ -485,7 +527,6 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             ref={soilRef}
             d={`M 0 ${groundY + 12} C ${dims.w * 0.28} ${groundY - 14}, ${dims.w * 0.65} ${groundY - 10}, ${dims.w * 1.05} ${groundY + 18} L ${dims.w} ${dims.h} L 0 ${dims.h} Z`}
             fill="#1c0814"
-            className="transition-colors duration-1000"
           />
 
           {/* Warm Golden Soil Rim Line */}

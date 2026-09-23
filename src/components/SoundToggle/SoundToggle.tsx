@@ -12,7 +12,7 @@ export const SoundToggle: React.FC = () => {
   return (
     <button
       onClick={handleToggle}
-      className="fixed bottom-6 right-6 z-50 p-3 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+      className="fixed bottom-24 md:bottom-6 right-6 z-50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
       style={{
         background: 'rgba(13, 4, 8, 0.6)',
         backdropFilter: 'blur(12px)',
@@ -21,6 +21,7 @@ export const SoundToggle: React.FC = () => {
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
       }}
       aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
+      aria-pressed={!isMuted}
       title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
     >
       {isMuted ? (

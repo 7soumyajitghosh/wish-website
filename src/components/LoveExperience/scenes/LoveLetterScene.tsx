@@ -24,7 +24,36 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
     };
   }, []);
 
+  // Fallback: allow proceeding even if the GSAP reveal chain fails.
   useEffect(() => {
+    const t = window.setTimeout(() => {
+      setCanProceed(true);
+    }, 15000);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Reduced motion: jump to end state, no staged choreography.
+    if (reduced) {
+      gsap.set(containerRef.current, { opacity: 1 });
+      gsap.set(envelopeRef.current, { y: 0, scale: 0.92, opacity: 0.15 });
+      gsap.set(sealRef.current, { scale: 1.3, opacity: 0 });
+      gsap.set(flapRef.current, { rotateX: 180 });
+      gsap.set(letterRef.current, { y: 0, scale: 1.05 });
+      if (letterRef.current) {
+        letterRef.current.style.boxShadow = '0 24px 60px rgba(0, 0, 0, 0.65)';
+      }
+      const items = contentRef.current?.querySelectorAll('.letter-text-item');
+      if (items) gsap.set(items, { opacity: 1, y: 0, filter: 'blur(0px)' });
+      setCanProceed(true);
+      return;
+    }
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
 
@@ -143,11 +172,15 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   const handleContinue = () => {
     if (hasContinuedRef.current) return;
     hasContinuedRef.current = true;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     continueTlRef.current?.kill();
     continueTlRef.current = gsap.to(containerRef.current, {
       opacity: 0,
       scale: 0.98,
-      duration: 1.2,
+      duration: reduced ? 0 : 1.2,
       ease: 'power2.inOut',
       overwrite: 'auto',
       onComplete,

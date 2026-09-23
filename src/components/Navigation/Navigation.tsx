@@ -16,16 +16,28 @@ export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const linksRef = useRef<(HTMLAnchorElement | null)[]>([]);
   const menuTlRef = useRef<gsap.core.Timeline | null>(null);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    const handleScroll = () => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
       setIsScrolled(window.scrollY > 50);
     };
+    const handleScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    };
 
+    handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   // Intro + initial menu position (layout effect avoids flash).
@@ -97,6 +109,28 @@ export function Navigation() {
     };
   }, []);
 
+  // Mobile menu a11y: focus first link on open, return focus on close,
+  // Esc closes, and body scroll locks while open.
+  useEffect(() => {
+    if (isOpen) {
+      prevOpenRef.current = true;
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      linksRef.current[0]?.focus();
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setIsOpen(false);
+      };
+      window.addEventListener('keydown', onKey);
+      return () => {
+        window.removeEventListener('keydown', onKey);
+        document.body.style.overflow = prevOverflow;
+      };
+    } else if (prevOpenRef.current) {
+      prevOpenRef.current = false;
+      toggleRef.current?.focus();
+    }
+  }, [isOpen]);
+
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
@@ -112,10 +146,10 @@ export function Navigation() {
   return (
     <nav
       ref={navRef}
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out py-4 ${
         isScrolled 
-          ? 'bg-[#0d0408]/80 backdrop-blur-md py-4 shadow-lg' 
-          : 'bg-transparent py-6'
+          ? 'bg-[#0d0408]/80 backdrop-blur-md shadow-lg' 
+          : 'bg-transparent'
       }`}
       aria-label="Main Navigation"
     >
@@ -123,7 +157,7 @@ export function Navigation() {
         {/* Logo */}
         <a 
           href="#" 
-          className="text-[#fffdf8] font-serif text-2xl tracking-wide hover:text-[#f5baa4] transition-colors"
+          className="text-[#fffdf8] font-serif text-2xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
           onClick={(e) => handleSmoothScroll(e, 'body')}
         >
           A Journey of Love
@@ -135,7 +169,7 @@ export function Navigation() {
             <a
               key={link.name}
               href={link.href}
-              className="text-[#fff8eb] font-sans text-sm tracking-widest uppercase relative group overflow-hidden"
+              className="text-[#fff8eb] font-sans text-sm tracking-widest uppercase relative group overflow-hidden focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
               {link.name}
@@ -146,9 +180,11 @@ export function Navigation() {
 
         {/* Mobile Toggle Button */}
         <button
-          className="md:hidden text-[#fffdf8] z-50 relative p-2 focus:outline-none"
+          ref={toggleRef}
+          className="md:hidden text-[#fffdf8] z-50 relative p-2 min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-md"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
+          aria-controls="mobile-menu"
           aria-label="Toggle navigation menu"
         >
           {isOpen ? (
@@ -166,8 +202,10 @@ export function Navigation() {
       {/* Mobile Menu Panel */}
       <div
         ref={menuRef}
+        id="mobile-menu"
         className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden transform"
         aria-hidden={!isOpen}
+        inert={!isOpen}
       >
         <div className="flex flex-col items-center space-y-8">
           {navLinks.map((link, index) => (
@@ -175,7 +213,8 @@ export function Navigation() {
               key={link.name}
               ref={(el) => { linksRef.current[index] = el; }}
               href={link.href}
-              className="text-[#fffdf8] font-serif text-3xl tracking-wide hover:text-[#f5baa4] transition-colors"
+              tabIndex={isOpen ? 0 : -1}
+              className="text-[#fffdf8] font-serif text-3xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
               {link.name}

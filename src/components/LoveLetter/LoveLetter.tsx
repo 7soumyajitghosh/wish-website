@@ -41,32 +41,40 @@ export const LoveLetter: React.FC = () => {
     if (isOpen) return;
     setIsLetterOpen(true);
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lines = containerRef.current?.querySelectorAll('.letter-line');
+
     killEnvelopeTweens();
     const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
     tlRef.current = tl;
 
-    tl.to(sealRef.current, { scale: 1.4, opacity: 0, duration: 0.35, ease: 'power2.inOut', overwrite: 'auto' })
-      .to(flapRef.current, { rotateX: 180, transformOrigin: 'top', duration: 0.55, ease: 'power2.inOut', overwrite: 'auto' }, '-=0.15')
-      .to(letterRef.current, { y: -160, duration: 0.7, ease: 'power3.out', overwrite: 'auto' })
+    tl.to(sealRef.current, { scale: 1.4, opacity: 0, duration: reduced ? 0 : 0.35, ease: 'power2.inOut', overwrite: 'auto' })
+      .to(flapRef.current, { rotateX: 180, transformOrigin: 'top', duration: reduced ? 0 : 0.55, ease: 'power2.inOut', overwrite: 'auto' }, reduced ? 0 : '-=0.15')
+      .to(letterRef.current, { y: -160, duration: reduced ? 0 : 0.7, ease: 'power3.out', overwrite: 'auto' })
       .call(() => {
         if (letterRef.current) gsap.set(letterRef.current, { zIndex: 30 });
       })
       .to(letterRef.current, {
         scale: 1.15,
         y: -70,
-        duration: 0.5,
+        duration: reduced ? 0 : 0.5,
         ease: 'power2.out',
         overwrite: 'auto',
       })
       .call(() => {
         // Single end-state shadow set (avoids interpolating box-shadow every frame).
         if (letterRef.current) letterRef.current.style.boxShadow = '0 30px 60px -12px rgba(0, 0, 0, 0.7)';
-      })
-      .fromTo('.letter-line',
+      });
+    if (lines && lines.length > 0) {
+      tl.fromTo(lines,
         { opacity: 0, y: 15 },
-        { opacity: 1, y: 0, stagger: 0.15, duration: 0.5, ease: 'power2.out', overwrite: 'auto' },
-        '-=0.3'
+        { opacity: 1, y: 0, stagger: reduced ? 0 : 0.15, duration: reduced ? 0 : 0.5, ease: 'power2.out', overwrite: 'auto' },
+        reduced ? 0 : '-=0.3'
       );
+    }
   };
 
   const closeLetter = (e?: React.MouseEvent) => {
@@ -74,23 +82,31 @@ export const LoveLetter: React.FC = () => {
     if (!isOpen) return;
     setIsLetterOpen(false);
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lines = containerRef.current?.querySelectorAll('.letter-line');
+
     killEnvelopeTweens();
     const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
     tlRef.current = tl;
 
-    tl.to('.letter-line', { opacity: 0, y: 10, duration: 0.25, stagger: -0.05, ease: 'power2.in', overwrite: 'auto' })
-      .to(letterRef.current, { scale: 1, y: 0, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' })
+    if (lines && lines.length > 0) {
+      tl.to(lines, { opacity: 0, y: 10, duration: reduced ? 0 : 0.25, stagger: reduced ? 0 : -0.05, ease: 'power2.in', overwrite: 'auto' });
+    }
+    tl.to(letterRef.current, { scale: 1, y: 0, duration: reduced ? 0 : 0.5, ease: 'power2.inOut', overwrite: 'auto' })
       .call(() => {
         if (letterRef.current) gsap.set(letterRef.current, { zIndex: 10 });
       })
-      .to(flapRef.current, { rotateX: 0, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' }, '-=0.1')
-      .to(sealRef.current, { scale: 1, opacity: 1, duration: 0.35, ease: 'power2.inOut', overwrite: 'auto' });
+      .to(flapRef.current, { rotateX: 0, duration: reduced ? 0 : 0.5, ease: 'power2.inOut', overwrite: 'auto' }, reduced ? 0 : '-=0.1')
+      .to(sealRef.current, { scale: 1, opacity: 1, duration: reduced ? 0 : 0.35, ease: 'power2.inOut', overwrite: 'auto' });
   };
 
   return (
     <section 
       id="love-letter" 
-      className="relative min-h-screen flex flex-col items-center justify-center py-28 bg-[#0d0408] overflow-hidden select-none"
+      className="section relative min-h-screen flex flex-col items-center justify-center py-24 md:py-32 bg-[#0d0408] overflow-hidden select-none"
       ref={containerRef}
       aria-label="Love Letter Section"
     >
@@ -98,13 +114,13 @@ export const LoveLetter: React.FC = () => {
       
       <div className="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center">
         <header className="text-center mb-12">
-          <span className="text-xs uppercase tracking-[0.35em] text-[#f5baa4] font-sans">
+          <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
             A Keepsake of Affection
           </span>
-          <h2 className="text-4xl md:text-5xl font-serif text-[#fffdf8] mt-2 mb-3">
+          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             The Love Letter
           </h2>
-          <p className="text-sm font-sans text-[#fff8eb]/70 italic">
+          <p className="text-base font-sans text-[#fff8eb]/85">
             Written in the stillness between heartbeats
           </p>
         </header>
@@ -112,13 +128,20 @@ export const LoveLetter: React.FC = () => {
         {/* Envelope Interactive Unit */}
         <div className="relative flex flex-col items-center mb-10">
           <div 
-            className="relative w-[320px] sm:w-[420px] h-[240px] sm:h-[280px] cursor-pointer"
+            className="relative cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
             onClick={isOpen ? undefined : openLetter}
+            onKeyDown={(e) => {
+              if (isOpen) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openLetter();
+              }
+            }}
             role="button"
             tabIndex={0}
             aria-expanded={isOpen}
             aria-label={isOpen ? "Love letter is open" : "Click to open the love letter"}
-            style={{ perspective: '1000px' }}
+            style={{ perspective: '1000px', width: 'min(90vw,420px)', aspectRatio: '4 / 3' }}
           >
             {/* Envelope Back */}
             <div className="absolute inset-0 bg-[#220b17] rounded-xl shadow-2xl overflow-hidden border border-[#d81b46]/30" />
@@ -128,7 +151,7 @@ export const LoveLetter: React.FC = () => {
               ref={letterRef}
               className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-6 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5]"
             >
-              <div className="w-full h-full font-serif text-slate-800 flex flex-col text-sm sm:text-[15px] leading-relaxed">
+              <div className="w-full h-full font-serif text-slate-800 flex flex-col text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
                 <div className="letter-line flex justify-between mb-3 italic text-slate-600 border-b border-slate-200 pb-2">
                   <span className="font-semibold text-slate-800">{content.recipient}</span>
                   <span className="text-xs">{content.date}</span>
@@ -145,7 +168,7 @@ export const LoveLetter: React.FC = () => {
                 <div className="letter-line mt-auto pt-2 border-t border-slate-200 flex justify-between items-end">
                   <button
                     onClick={(e) => closeLetter(e)}
-                    className="text-xs font-sans uppercase tracking-widest text-[#a81438] hover:text-[#d81b46] font-semibold py-1 px-2 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="text-xs font-sans uppercase tracking-widest text-[#a81438] hover:text-[#d81b46] font-semibold py-1 px-2 min-h-[44px] rounded hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#a81438]"
                   >
                     Close letter
                   </button>
@@ -158,7 +181,7 @@ export const LoveLetter: React.FC = () => {
                 {isOpen && (
                   <button
                     onClick={(e) => closeLetter(e)}
-                    className="letter-line absolute -top-3 -right-3 w-8 h-8 bg-[#d81b46] text-[#fffdf8] rounded-full flex items-center justify-center shadow-lg hover:bg-[#a81438] transition-all hover:scale-110 cursor-pointer"
+                    className="letter-line absolute -top-3 -right-3 w-11 h-11 min-w-[44px] min-h-[44px] bg-[#d81b46] text-[#fffdf8] rounded-full flex items-center justify-center shadow-lg hover:bg-[#a81438] transition-colors hover:scale-110 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
                     aria-label="Close Letter"
                   >
                     ✕
@@ -201,7 +224,7 @@ export const LoveLetter: React.FC = () => {
             {!isOpen ? (
               <button
                 onClick={openLetter}
-                className="px-8 py-3 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-base tracking-wide hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(216,27,70,0.4)] transition-all cursor-pointer"
+                className="btn-primary font-serif tracking-wide shadow-[0_0_20px_rgba(216,27,70,0.4)] cursor-pointer"
                 aria-label="Open the letter"
               >
                 Open the letter
@@ -209,7 +232,7 @@ export const LoveLetter: React.FC = () => {
             ) : (
               <button
                 onClick={(e) => closeLetter(e)}
-                className="px-8 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-[#fffdf8] font-serif text-base tracking-wide transition-all cursor-pointer"
+                className="btn-ghost font-serif tracking-wide cursor-pointer"
                 aria-label="Close letter"
               >
                 Close letter

@@ -25,12 +25,16 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   }, []);
 
   const handleBegin = () => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (contentRef.current) {
       tweenRef.current?.kill();
       tweenRef.current = gsap.to(contentRef.current, {
         opacity: 0,
         y: -30,
-        duration: 0.6,
+        duration: reduced ? 0 : 0.6,
         ease: 'power2.in',
         overwrite: 'auto',
         onComplete: () => {
@@ -44,12 +48,16 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   };
 
   const handleWaterComplete = useCallback(() => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Cross-fade the intro overlay out so canvas HeartTreeAnimation reveals seamlessly
     if (heroRef.current) {
       tweenRef.current?.kill();
       tweenRef.current = gsap.to(heroRef.current, {
         opacity: 0,
-        duration: 1.2,
+        duration: reduced ? 0 : 1.2,
         ease: 'power2.inOut',
         overwrite: 'auto',
         onComplete: () => {
@@ -87,11 +95,11 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
           ref={contentRef}
           className="relative z-20 flex flex-col items-center text-center px-6 max-w-4xl mx-auto w-full select-none"
         >
-          <p className="text-sm md:text-base font-sans uppercase tracking-[0.35em] text-[#f5baa4] mb-6 drop-shadow-md">
+          <p className="text-sm font-sans font-medium uppercase tracking-[0.35em] text-[#f5baa4] mb-6 drop-shadow-md">
             A Journey of Love
           </p>
 
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif text-[#fffdf8] tracking-wide leading-tight mb-10 drop-shadow-2xl">
+          <h1 className="font-serif text-[#fffdf8] tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             Where Love<br />Takes Flight
           </h1>
 
@@ -101,7 +109,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
           <div className="flex flex-col items-center gap-4">
             <button 
               onClick={handleBegin}
-              className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-[#d81b46] to-[#a81438] text-[#fffdf8] font-serif text-xl tracking-wider overflow-hidden transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(216,27,70,0.5)] border border-[#ffb3c1]/30 cursor-pointer"
+              className="btn-primary group relative overflow-hidden font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer"
               aria-label="Begin"
             >
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
@@ -119,7 +127,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
               </span>
             </button>
 
-            <p className="text-xs font-sans tracking-widest text-[#f5baa4]/60 uppercase mt-4 animate-pulse">
+            <p className="text-sm font-sans tracking-widest text-[#f5baa4]/85 uppercase mt-4">
               Press Begin to start the journey
             </p>
           </div>

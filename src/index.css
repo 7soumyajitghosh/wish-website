@@ -28,6 +28,13 @@
   --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", sans-serif;
+
+  /* Fluid type rhythm */
+  --leading-tight: 1.05;
+  --leading-relaxed: 1.7;
+  --section-py: clamp(4rem, 8vw, 8rem);
+  --container-prose: 42rem;
+  --container-md: 64rem;
 }
 
 /* ============================================================
@@ -61,7 +68,7 @@ body {
 
 /* Custom scrollbar (subtle, elegant) */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg-deep);
@@ -78,6 +85,90 @@ body {
   scrollbar-color: rgba(168, 20, 56, 0.3) var(--color-bg-deep);
 }
 
+/* Global focus + selection */
+:focus-visible {
+  outline: 2px solid var(--color-gold-warm);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--color-crimson);
+  color: #fff;
+}
+
+/* ============================================================
+   SECTION RHYTHM + CONTAINERS + BUTTON SYSTEM
+   ============================================================ */
+.section {
+  padding-block: var(--section-py);
+}
+
+.container-prose {
+  max-width: var(--container-prose);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.container-md {
+  max-width: var(--container-md);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.btn-primary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 44px;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(to right, var(--color-crimson), var(--color-ruby));
+  color: var(--color-star-white);
+  border: 1px solid rgba(255, 179, 193, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(216, 27, 70, 0.5);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-star-white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.btn-ghost:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--color-gold-warm);
+  outline-offset: 3px;
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ============================================================
    TYPOGRAPHY UTILITIES
    ============================================================ */
@@ -86,6 +177,21 @@ body {
 }
 .font-sans {
   font-family: var(--font-sans);
+}
+
+/* ============================================================
+   SCREEN-READER ONLY UTILITY (visually hidden, AT-visible)
+   ============================================================ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ============================================================

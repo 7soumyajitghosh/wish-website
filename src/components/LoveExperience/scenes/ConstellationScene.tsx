@@ -44,6 +44,26 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
   const starsGroupRef = useRef<SVGGElement>(null);
   const mountedRef = useRef(true);
   const holdCallRef = useRef<ReturnType<typeof gsap.delayedCall> | null>(null);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const finishScene = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onCompleteRef.current?.();
+  };
+
+  // 15s fallback: never strand the visitor if GSAP fails or timers throttle.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (mountedRef.current) finishScene();
+    }, 15000);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -54,7 +74,7 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
       gsap.set(starsGroupRef.current?.children ?? [], { scale: 1, opacity: 1, transformBox: 'fill-box' });
       gsap.set(text1Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
       gsap.set(text2Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
-      onComplete?.();
+      finishScene();
       return () => {
         mountedRef.current = false;
       };
@@ -67,7 +87,7 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
           // Allow contemplative reading pause before transitioning to love letter
           holdCallRef.current = gsap.delayedCall(1.6, () => {
             if (!mountedRef.current) return;
-            onComplete();
+            finishScene();
           });
         },
       });
@@ -190,6 +210,16 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
   return (
     <div ref={containerRef} className="constellation-scene">
       <div className="constellation-sky-glow" />
+
+      {/* Always-available escape hatch: never depend solely on auto-advance */}
+      <button
+        type="button"
+        onClick={finishScene}
+        aria-label="Skip constellation scene"
+        className="absolute top-6 right-6 z-20 px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#fffdf8] font-sans text-sm tracking-widest uppercase transition-all hover:bg-white/20 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+      >
+        Skip →
+      </button>
 
       {/* SVG Constellation */}
       <svg

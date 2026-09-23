@@ -5,7 +5,7 @@ import { useStory, STAGE_DESCRIPTIONS } from '../../context/StoryContext';
 export const Journey: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLElement | null)[]>([]);
-  const { currentStage, jumpToStage } = useStory();
+  const { currentStage, jumpToStage, isExperienceUnlocked, setIntroState } = useStory();
 
   useEffect(() => {
     const cards = cardsRef.current.filter(Boolean) as HTMLElement[];
@@ -53,6 +53,10 @@ export const Journey: React.FC = () => {
   }, []);
 
   const handleCardClick = (stageId: number) => {
+    // Unlock first when the experience is still gated, then jump.
+    if (!isExperienceUnlocked) {
+      setIntroState('EXPERIENCE_UNLOCKED');
+    }
     jumpToStage(stageId);
     const storyEl = document.getElementById('story-experience');
     if (storyEl) {
@@ -64,21 +68,21 @@ export const Journey: React.FC = () => {
     <section 
       id="journey" 
       ref={containerRef}
-      className="py-24 px-6 md:px-12 w-full relative overflow-hidden bg-gradient-to-b from-[#0d0408] via-[#1a0812] to-[#0d0408] text-[#fffdf8]"
+      className="section py-24 md:py-32 px-6 md:px-12 w-full relative overflow-hidden bg-gradient-to-b from-[#0d0408] via-[#1a0812] to-[#0d0408] text-[#fffdf8]"
     >
       <div className="max-w-5xl mx-auto relative z-10">
         <header className="text-center mb-16">
-          <span className="text-xs uppercase tracking-[0.35em] text-[#f5baa4] font-sans">
+          <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
             Chronicles of Growth
           </span>
-          <h2 className="text-4xl md:text-5xl font-serif mt-2 mb-4 tracking-wide text-[#fffdf8]">
+          <h2 className="font-serif mt-2 mb-4 tracking-wide text-[#fffdf8]" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             The Sixteen Milestones
           </h2>
           <div 
             className="w-20 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent mx-auto mb-4" 
             aria-hidden="true" 
           />
-          <p className="text-sm md:text-base italic text-[#fff8eb]/80 font-serif">
+          <p className="text-base text-[#fff8eb]/85 font-serif">
             Select any stage to jump into that chapter of the tree
           </p>
         </header>
@@ -91,7 +95,12 @@ export const Journey: React.FC = () => {
                 key={stage.id}
                 ref={(el) => { cardsRef.current[index] = el; }}
                 onClick={() => handleCardClick(stage.id)}
-                className={`p-5 rounded-2xl cursor-pointer transition-colors duration-300 border ${
+                role="button"
+                tabIndex={0}
+                aria-label={`Jump to stage ${stage.id}: ${stage.title}`}
+                aria-current={isCurrent ? 'true' : undefined}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(stage.id); } }}
+                className={`p-5 rounded-2xl cursor-pointer transition-colors duration-300 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] ${
                   isCurrent
                     ? 'bg-[#3b1224]/80 border-[#f5baa4] shadow-[0_0_20px_rgba(245,186,164,0.3)] scale-[1.02]'
                     : 'bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-1'
@@ -102,13 +111,13 @@ export const Journey: React.FC = () => {
                     {String(stage.id).padStart(2, '0')}
                   </span>
                   {isCurrent && (
-                    <span className="w-2 h-2 rounded-full bg-[#f5baa4] animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-[#f5baa4] motion-safe:animate-ping" />
                   )}
                 </div>
                 <h3 className="text-lg font-serif text-[#fffdf8] font-medium mb-1">
                   {stage.title}
                 </h3>
-                <p className="text-xs font-sans text-[#fff8eb]/70 leading-relaxed">
+                <p className="text-sm font-sans text-[#fff8eb]/85 leading-relaxed">
                   {stage.subtitle}
                 </p>
               </article>

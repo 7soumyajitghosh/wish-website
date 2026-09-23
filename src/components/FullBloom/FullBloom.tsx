@@ -84,10 +84,6 @@ export const FullBloom: React.FC = () => {
     if (!section || !hearts) return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        hearts.style.setProperty(
-          '--hearts-play-state',
-          entry.isIntersecting ? 'running' : 'paused'
-        );
         hearts.querySelectorAll('svg').forEach((el) => {
           (el as unknown as HTMLElement).style.animationPlayState = entry.isIntersecting
             ? 'running'
@@ -136,7 +132,7 @@ export const FullBloom: React.FC = () => {
                 tl.fromTo(
                   treeSvgRef.current,
                   { scale: 0.8, opacity: 0 },
-                  { scale: 1, opacity: 1, duration: reduced ? 0 : 1.5, ease: 'power2.out' },
+                  { scale: 1, opacity: 1, duration: reduced ? 0 : 1.5, ease: 'power2.out', overwrite: 'auto' },
                   '-=0.8'
                 );
               }
@@ -160,7 +156,7 @@ export const FullBloom: React.FC = () => {
     <section
       id="full-bloom"
       ref={sectionRef}
-      className="relative min-h-screen w-full bg-[#0d0408] overflow-hidden flex items-center justify-center py-20"
+      className="section relative min-h-screen w-full bg-[#0d0408] overflow-hidden flex items-center justify-center py-24 md:py-32"
     >
       {/* Embedded CSS for floating animation */}
       <style>{`
@@ -182,17 +178,18 @@ export const FullBloom: React.FC = () => {
         }
       `}</style>
 
-      {/* Radial Gradient Glow behind tree */}
+      {/* Radial Gradient Glow behind tree (single, subtle) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full bg-[radial-gradient(circle_at_center,rgba(168,20,56,0.2)_0%,rgba(34,11,23,0.4)_50%,transparent_100%)] blur-[80px]" />
+        <div className="w-[min(90vw,24rem)] h-[min(90vw,24rem)] rounded-full bg-[radial-gradient(circle_at_center,rgba(168,20,56,0.15)_0%,rgba(34,11,23,0.4)_50%,transparent_100%)] blur-[80px] opacity-15" />
       </div>
 
       {/* Vignette effect */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,#0d0408_100%)] z-20" />
 
-      {/* Drifting Heart Particles */}
+      {/* Drifting Heart Particles (decorative) */}
       <div
         ref={heartsRef}
+        aria-hidden="true"
         className="absolute inset-0 pointer-events-none z-10"
         style={{ contentVisibility: 'auto', willChange: 'transform' }}
       >
@@ -225,9 +222,12 @@ export const FullBloom: React.FC = () => {
               viewBox="0 0 200 250"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="Heart tree in full bloom"
               className="w-full max-w-[400px] h-auto drop-shadow-2xl"
-              style={{ filter: 'drop-shadow(0 0 20px rgba(216,27,70,0.6))' }}
+              style={{ filter: 'drop-shadow(0 0 20px rgba(216,27,70,0.6))', aspectRatio: '200 / 250' }}
             >
+              <title>Heart tree in full bloom</title>
               {/* Trunk */}
               <path
                 d="M95 240 Q100 200 90 150 Q95 100 100 80 Q105 100 110 150 Q100 200 105 240 Z"
@@ -260,13 +260,13 @@ export const FullBloom: React.FC = () => {
 
           {/* Emotional Text Block */}
           <div ref={textRef} className="w-full md:w-1/2 text-center md:text-left">
-            <span className="text-amber-200/80 uppercase tracking-widest text-sm font-semibold mb-3 block">
+            <span className="text-[#ffd6a5] uppercase tracking-widest text-sm font-semibold mb-3 block">
               Stage Twelve
             </span>
-            <h2 className="text-[#fffdf8] text-5xl md:text-7xl font-serif mb-8 leading-tight drop-shadow-lg">
+            <h2 className="text-[#fffdf8] font-serif mb-8 drop-shadow-lg" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
               Full Bloom
             </h2>
-            <p className="text-[#fff8eb] text-lg md:text-xl font-light italic leading-relaxed opacity-90">
+            <p className="text-[#fff8eb] text-lg md:text-xl font-normal leading-relaxed opacity-90">
               &ldquo;In the garden of life, love is the tree that never stops growing.&rdquo;
             </p>
           </div>

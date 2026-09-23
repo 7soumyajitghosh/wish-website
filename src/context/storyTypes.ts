@@ -44,6 +44,8 @@ export interface StoryContextType {
   // Interactive Tree Popups & Physics
   activeTreeQuote: TreeQuote | null;
   setActiveTreeQuote: (quote: TreeQuote | null) => void;
+  pauseTreeQuote: () => void;
+  resumeTreeQuote: () => void;
   windVector: WindVector;
   setWindVector: (v: WindVector) => void;
 

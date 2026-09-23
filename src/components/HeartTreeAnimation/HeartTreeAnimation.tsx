@@ -325,8 +325,23 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     }
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
+  // Keyboard alternative to wind-drag: arrows adjust wind, 0/Escape calms it.
+  const handleWrapperKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = 4;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const delta = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : step;
+      const next = Math.max(-25, Math.min(35, pointerRef.current.dragWindX + delta));
+      pointerRef.current.dragWindX = next;
+      onWindChangeRef.current?.(next);
+    } else if (e.key === '0' || e.key === 'Escape') {
+      e.preventDefault();
+      pointerRef.current.dragWindX = 0;
+      onWindChangeRef.current?.(0);
+    }
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {    const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
@@ -789,9 +804,15 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       ref={containerRef}
       className={`heart-tree-wrapper select-none ${className}`}
       style={style}
-      role="img"
-      aria-label="Interactive Heart Tree Canvas"
+      role="application"
+      aria-label="Interactive Heart Tree. Drag across the sky to move the wind, or use the arrow keys."
+      aria-describedby="heart-tree-wind-help"
+      tabIndex={0}
+      onKeyDown={handleWrapperKeyDown}
     >
+      <p id="heart-tree-wind-help" className="sr-only">
+        Use the left and right arrow keys to move the wind. Press 0 or Escape to calm the wind.
+      </p>
       <canvas
         ref={canvasRef}
         className="heart-tree-canvas cursor-pointer touch-none"

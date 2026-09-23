@@ -20,7 +20,7 @@ export const Footer = () => {
           A Journey of Love
         </h3>
         
-        <p className="flex items-center space-x-2 text-sm text-[#fff8eb] opacity-70">
+        <p className="flex items-center space-x-2 text-sm text-[#fff8eb]/85">
           <span>Made with</span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -34,7 +34,7 @@ export const Footer = () => {
           <span>Love</span>
         </p>
 
-        <p className="text-xs text-[#fff8eb] opacity-50 mt-8">
+        <p className="text-sm text-[#fff8eb]/85 mt-8">
           &copy; 2026 A Journey of Love. All rights reserved.
         </p>
       </div>

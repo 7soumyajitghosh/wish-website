@@ -23,6 +23,10 @@ export const FinalMessage = () => {
     if (!unlocked) return;
     const card = messageCardRef.current;
     if (!card) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const items = sectionRef.current?.querySelectorAll('.final-fade-item');
     tlRef.current?.kill();
     const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
@@ -30,14 +34,14 @@ export const FinalMessage = () => {
     tl.fromTo(
       card,
       { opacity: 0, y: 30, scale: 0.95 },
-      { opacity: 1, y: 0, scale: 1, duration: 1.6, ease: 'power3.out' }
+      { opacity: 1, y: 0, scale: 1, duration: reduced ? 0 : 1.6, ease: 'power3.out' }
     );
     if (items && items.length > 0) {
       tl.fromTo(
         items,
         { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, stagger: 0.3, duration: 1.2, ease: 'power2.out' },
-        0.3
+        { opacity: 1, y: 0, stagger: reduced ? 0 : 0.3, duration: reduced ? 0 : 1.2, ease: 'power2.out' },
+        reduced ? 0 : 0.3
       );
     }
     return () => {
@@ -56,31 +60,30 @@ export const FinalMessage = () => {
     <section
       id="final-message"
       ref={sectionRef}
-      className="relative flex flex-col items-center justify-center min-h-[85vh] bg-[#0d0408] px-6 py-28 overflow-hidden select-none"
+      className="section relative flex flex-col items-center justify-center min-h-[85vh] bg-[#0d0408] px-6 py-24 md:py-32 overflow-hidden select-none"
       aria-label="Final Message"
     >
-      {/* Subtle Vignette & Warm Glow */}
+      {/* Subtle Vignette (single primary glow) */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(13,4,8,0.85)_100%)]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#f5baa4]/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto text-center">
         {!unlocked ? (
           /* The 'One last thing...' Gated Prompt */
           <div className="flex flex-col items-center gap-6 animate-fade-in">
-            <span className="text-xs uppercase tracking-[0.4em] text-[#f5baa4] font-sans">
+            <span className="text-sm uppercase tracking-[0.4em] text-[#f5baa4] font-sans font-medium">
               The Journey's Crest
             </span>
-            <h2 className="text-4xl md:text-5xl font-serif text-[#fffdf8] font-normal tracking-wide">
+            <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
               One last thing...
             </h2>
             <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent my-2" />
-            <p className="text-sm md:text-base font-serif italic text-[#fff8eb]/80 max-w-md">
+            <p className="text-base font-serif text-[#fff8eb]/85 max-w-md">
               Before you step away, there is a quiet truth waiting to be unveiled.
             </p>
 
             <button
               onClick={handleTakeFinalStep}
-              className="mt-4 px-10 py-4 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-lg tracking-wider hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(216,27,70,0.5)] border border-white/20 transition-all cursor-pointer"
+              className="btn-primary mt-4 font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer"
               aria-label="Take the final step"
             >
               Take the final step
@@ -89,11 +92,11 @@ export const FinalMessage = () => {
         ) : (
           /* The Grand Revealed Message */
           <div ref={messageCardRef} className="flex flex-col items-center">
-            <span className="final-fade-item text-xs uppercase tracking-[0.4em] text-[#f5baa4] font-sans mb-8">
+            <span className="final-fade-item text-sm uppercase tracking-[0.4em] text-[#f5baa4] font-sans font-medium mb-8">
               Forever Remembered
             </span>
 
-            <h2 className="final-fade-item text-4xl md:text-6xl lg:text-7xl font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl">
+            <h2 className="final-fade-item font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
               Somewhere between a beginning and a forever,
               <br className="hidden md:block" /> love takes flight.
             </h2>
@@ -114,7 +117,7 @@ export const FinalMessage = () => {
               </div>
             </div>
 
-            <p className="final-fade-item text-xl md:text-2xl font-serif text-[#ffd6a5] italic tracking-wider opacity-95 max-w-2xl">
+            <p className="final-fade-item text-xl md:text-2xl font-serif text-[#ffd6a5] font-normal tracking-wider opacity-95 max-w-2xl">
               And in that space, everything beautiful begins.
             </p>
           </div>
