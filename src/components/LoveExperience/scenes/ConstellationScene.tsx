@@ -42,13 +42,33 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
   const text2Ref = useRef<HTMLParagraphElement>(null);
   const linesGroupRef = useRef<SVGGElement>(null);
   const starsGroupRef = useRef<SVGGElement>(null);
+  const mountedRef = useRef(true);
+  const holdCallRef = useRef<ReturnType<typeof gsap.delayedCall> | null>(null);
 
   useEffect(() => {
+    mountedRef.current = true;
+
+    // Reduced-motion: jump straight to the end state, no perpetual twinkle
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.set(containerRef.current, { opacity: 1 });
+      gsap.set(starsGroupRef.current?.children ?? [], { scale: 1, opacity: 1, transformBox: 'fill-box' });
+      gsap.set(text1Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
+      gsap.set(text2Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
+      onComplete?.();
+      return () => {
+        mountedRef.current = false;
+      };
+    }
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         onComplete: () => {
+          if (!mountedRef.current) return;
           // Allow contemplative reading pause before transitioning to love letter
-          gsap.delayedCall(1.6, onComplete);
+          holdCallRef.current = gsap.delayedCall(1.6, () => {
+            if (!mountedRef.current) return;
+            onComplete();
+          });
         },
       });
 
@@ -71,6 +91,8 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
             duration: 0.8,
             stagger: 0.08,
             ease: 'back.out(2.0)',
+            transformBox: 'fill-box',
+            overwrite: 'auto',
           },
           '-=0.8'
         );
@@ -111,6 +133,7 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
           filter: 'blur(0px)',
           duration: 2.0,
           ease: 'power2.out',
+          overwrite: 'auto',
         },
         '-=1.0'
       );
@@ -125,23 +148,39 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
           filter: 'blur(0px)',
           duration: 2.0,
           ease: 'power2.out',
+          overwrite: 'auto',
         },
         '+=0.8'
       );
 
-      // 6. Gentle collective twinkle loop
-      gsap.to('.constellation-star-core', {
-        scale: 1.25,
-        opacity: 0.85,
-        duration: 1.8,
-        repeat: -1,
-        yoyo: true,
-        stagger: 0.15,
-        ease: 'sine.inOut',
-      });
+      // 6. Gentle collective twinkle loop — sequenced AFTER entrance so it
+      // never fights the scale-in; scoped to this container only.
+      const starCores = containerRef.current?.querySelectorAll('.constellation-star-core');
+      if (starCores && starCores.length > 0) {
+        tl.to(
+          starCores,
+          {
+            scale: 1.25,
+            opacity: 0.85,
+            duration: 1.8,
+            repeat: -1,
+            yoyo: true,
+            stagger: 0.15,
+            ease: 'sine.inOut',
+            transformBox: 'fill-box',
+            transformOrigin: 'center center',
+            overwrite: 'auto',
+          },
+          '+=0.2'
+        );
+      }
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => {
+      mountedRef.current = false;
+      holdCallRef.current?.kill();
+      ctx.revert();
+    };
   }, [onComplete]);
 
   // Constellation contour path string

@@ -14,10 +14,19 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   const letterRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [canProceed, setCanProceed] = useState(false);
+  const hasContinuedRef = useRef(false);
+  const continueTlRef = useRef<gsap.core.Tween | null>(null);
+
+  useEffect(() => {
+    return () => {
+      continueTlRef.current?.kill();
+      continueTlRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
+      const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
 
       // 1. Scene fade-in
       tl.fromTo(
@@ -58,8 +67,10 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
         flapRef.current,
         {
           rotateX: 180,
+          transformPerspective: 800,
           duration: 1.0,
           ease: 'power2.inOut',
+          overwrite: 'auto',
         },
         '-=0.2'
       );
@@ -80,12 +91,17 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
         {
           y: 0,
           scale: 1.05,
-          zIndex: 30,
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.65)',
           duration: 1.4,
           ease: 'power3.inOut',
+          overwrite: 'auto',
         }
-      );
+      ).call(() => {
+        // Discrete end-state sets (no per-frame zIndex/boxShadow interpolation).
+        if (letterRef.current) {
+          gsap.set(letterRef.current, { zIndex: 30 });
+          letterRef.current.style.boxShadow = '0 24px 60px rgba(0, 0, 0, 0.65)';
+        }
+      });
 
       // 7. Envelope dims and gently drops back
       tl.to(
@@ -125,11 +141,15 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   }, []);
 
   const handleContinue = () => {
-    gsap.to(containerRef.current, {
+    if (hasContinuedRef.current) return;
+    hasContinuedRef.current = true;
+    continueTlRef.current?.kill();
+    continueTlRef.current = gsap.to(containerRef.current, {
       opacity: 0,
       scale: 0.98,
       duration: 1.2,
       ease: 'power2.inOut',
+      overwrite: 'auto',
       onComplete,
     });
   };

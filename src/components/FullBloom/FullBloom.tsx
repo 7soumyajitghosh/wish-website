@@ -42,10 +42,18 @@ export const FullBloom: React.FC = () => {
   const textRef = useRef<HTMLDivElement>(null);
   const treeContainerRef = useRef<HTMLDivElement>(null);
   const treeSvgRef = useRef<SVGSVGElement>(null);
+  const heartsRef = useRef<HTMLDivElement>(null);
+  const rafId = useRef<number>(0);
 
-  // Parallax effect
+  // Parallax effect (rAF-throttled; skipped when reduced motion is preferred)
   useEffect(() => {
-    const handleScroll = () => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    const update = () => {
+      rafId.current = 0;
       if (!sectionRef.current || !treeContainerRef.current) return;
 
       const rect = sectionRef.current.getBoundingClientRect();
@@ -55,17 +63,56 @@ export const FullBloom: React.FC = () => {
         treeContainerRef.current.style.transform = `translateY(${yOffset}px)`;
       }
     };
+    const handleScroll = () => {
+      if (rafId.current) return;
+      rafId.current = requestAnimationFrame(update);
+    };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+    };
+  }, []);
+
+  // Pause infinite hearts when off-screen
+  useEffect(() => {
+    const section = sectionRef.current;
+    const hearts = heartsRef.current;
+    if (!section || !hearts) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        hearts.style.setProperty(
+          '--hearts-play-state',
+          entry.isIntersecting ? 'running' : 'paused'
+        );
+        hearts.querySelectorAll('svg').forEach((el) => {
+          (el as unknown as HTMLElement).style.animationPlayState = entry.isIntersecting
+            ? 'running'
+            : 'paused';
+        });
+      },
+      { threshold: 0 }
+    );
+    io.observe(section);
+    return () => io.disconnect();
   }, []);
 
   // Intersection Observer for GSAP reveals
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Set initial hidden state via JS only (no-JS fallback stays visible),
+    // with null guards to avoid flash / crashes.
+    if (textRef.current) gsap.set(textRef.current, { y: 50, opacity: 0 });
+    if (treeSvgRef.current) gsap.set(treeSvgRef.current, { scale: 0.8, opacity: 0 });
 
     const ctx = gsap.context(() => {}, sectionRef);
 
@@ -75,18 +122,21 @@ export const FullBloom: React.FC = () => {
           if (entry.isIntersecting) {
             ctx.add(() => {
               const tl = gsap.timeline();
+              if (!textRef.current && !treeSvgRef.current) return;
 
-              tl.fromTo(
-                textRef.current,
-                { y: 50, opacity: 0 },
-                { y: 0, opacity: 1, duration: 1.2, ease: 'power3.out' }
-              );
+              if (textRef.current) {
+                tl.fromTo(
+                  textRef.current,
+                  { y: 50, opacity: 0 },
+                  { y: 0, opacity: 1, duration: reduced ? 0 : 1.2, ease: 'power3.out', overwrite: 'auto' }
+                );
+              }
 
               if (treeSvgRef.current) {
                 tl.fromTo(
                   treeSvgRef.current,
                   { scale: 0.8, opacity: 0 },
-                  { scale: 1, opacity: 1, duration: 1.5, ease: 'power2.out' },
+                  { scale: 1, opacity: 1, duration: reduced ? 0 : 1.5, ease: 'power2.out' },
                   '-=0.8'
                 );
               }
@@ -114,7 +164,7 @@ export const FullBloom: React.FC = () => {
     >
       {/* Embedded CSS for floating animation */}
       <style>{`
-        @keyframes floatUp {
+        @keyframes floatUpBloom {
           0% {
             transform: translateY(0) scale(1) rotate(0deg);
             opacity: 0;
@@ -141,7 +191,11 @@ export const FullBloom: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,#0d0408_100%)] z-20" />
 
       {/* Drifting Heart Particles */}
-      <div className="absolute inset-0 pointer-events-none z-10">
+      <div
+        ref={heartsRef}
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{ contentVisibility: 'auto', willChange: 'transform' }}
+      >
         {STATIC_HEARTS.map((h, i) => (
           <FloatingHeart
             key={i}
@@ -150,7 +204,8 @@ export const FullBloom: React.FC = () => {
               height: `${h.size}px`,
               left: `${h.left}%`,
               bottom: '-10%',
-              animation: `floatUp ${h.duration}s linear ${h.delay}s infinite`,
+              animation: `floatUpBloom ${h.duration}s linear ${h.delay}s infinite`,
+              animationFillMode: 'backwards',
               opacity: 0,
             }}
           />
@@ -160,7 +215,11 @@ export const FullBloom: React.FC = () => {
       <div className="container mx-auto px-6 relative z-30">
         <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-24">
           {/* Tree Display */}
-          <div ref={treeContainerRef} className="w-full md:w-1/2 flex justify-center">
+          <div
+            ref={treeContainerRef}
+            className="w-full md:w-1/2 flex justify-center will-change-transform"
+            style={{ willChange: 'transform' }}
+          >
             <svg
               ref={treeSvgRef}
               viewBox="0 0 200 250"

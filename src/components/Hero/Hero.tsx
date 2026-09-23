@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { SeedJourneyIntro } from './SeedJourneyIntro';
@@ -11,16 +11,30 @@ export interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) => {
   const heroRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const tweenRef = useRef<gsap.core.Tween | null>(null);
+  const mountedRef = useRef(true);
   const { introState, startStory } = useStory();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      tweenRef.current?.kill();
+      tweenRef.current = null;
+    };
+  }, []);
 
   const handleBegin = () => {
     if (contentRef.current) {
-      gsap.to(contentRef.current, {
+      tweenRef.current?.kill();
+      tweenRef.current = gsap.to(contentRef.current, {
         opacity: 0,
         y: -30,
         duration: 0.6,
         ease: 'power2.in',
+        overwrite: 'auto',
         onComplete: () => {
+          if (!mountedRef.current) return;
           startStory();
         },
       });
@@ -32,11 +46,14 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   const handleWaterComplete = useCallback(() => {
     // Cross-fade the intro overlay out so canvas HeartTreeAnimation reveals seamlessly
     if (heroRef.current) {
-      gsap.to(heroRef.current, {
+      tweenRef.current?.kill();
+      tweenRef.current = gsap.to(heroRef.current, {
         opacity: 0,
         duration: 1.2,
         ease: 'power2.inOut',
+        overwrite: 'auto',
         onComplete: () => {
+          if (!mountedRef.current) return;
           onWaterComplete?.();
         },
       });
@@ -68,7 +85,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
       {introState === 'INTRO' && (
         <div
           ref={contentRef}
-          className="relative z-20 flex flex-col items-center text-center px-6 max-w-4xl mx-auto w-full select-none transition-all"
+          className="relative z-20 flex flex-col items-center text-center px-6 max-w-4xl mx-auto w-full select-none"
         >
           <p className="text-sm md:text-base font-sans uppercase tracking-[0.35em] text-[#f5baa4] mb-6 drop-shadow-md">
             A Journey of Love

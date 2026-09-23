@@ -31,6 +31,13 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   const seedGroupRef = useRef<SVGGElement>(null);
   const potRef = useRef<HTMLDivElement>(null);
   const soilRef = useRef<SVGPathElement>(null);
+  const auraRef = useRef<SVGCircleElement>(null);
+  const seedTlRef = useRef<gsap.core.Timeline | null>(null);
+  const potTlRef = useRef<gsap.core.Tween | gsap.core.Timeline | null>(null);
+  const waterTlRef = useRef<gsap.core.Timeline | null>(null);
+  const seedTimeoutRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+  const seedStartedRef = useRef(false);
 
   // Viewport tracking for seamless alignment with HeartTreeAnimation
   const [dims, setDims] = useState(() => ({
@@ -76,6 +83,22 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     onWaterCompleteRef.current = onWaterComplete;
   }, [onWaterComplete]);
 
+  // Global unmount cleanup: kill timelines/tweens + pending timeout.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      seedTlRef.current?.kill();
+      potTlRef.current?.kill();
+      waterTlRef.current?.kill();
+      seedTlRef.current = potTlRef.current = waterTlRef.current = null;
+      if (seedTimeoutRef.current !== null) {
+        window.clearTimeout(seedTimeoutRef.current);
+        seedTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   // Floating sparkle embers initialized directly in state
   const [sparkles, setSparkles] = useState<Particle[]>(() =>
     Array.from({ length: 20 }, (_, i) => ({
@@ -105,36 +128,43 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     return () => clearInterval(interval);
   }, []);
 
-  // SEED FALLING ANIMATION
+  // SEED FALLING ANIMATION (runs once per introState; resize must not restart it)
   useEffect(() => {
     if (introState !== 'SEED_FALLING') return;
+    if (seedStartedRef.current) return;
+    seedStartedRef.current = true;
 
-    const ctx = gsap.context(() => {
-      const seedEl = seedGroupRef.current;
-      if (!seedEl) return;
+    const seedEl = seedGroupRef.current;
+    if (!seedEl) return;
 
-      try {
-        soundManager.startAmbient();
-      } catch {
-        /* noop */
-      }
+    try {
+      soundManager.startAmbient();
+    } catch {
+      /* noop */
+    }
 
-      gsap.set(seedEl, {
-        y: -dims.h * 0.6,
-        x: 0,
-        scale: 0.6,
-        opacity: 0,
-        rotation: -12,
-      });
+    gsap.set(seedEl, {
+      y: -dims.h * 0.6,
+      x: 0,
+      scale: 0.6,
+      opacity: 0,
+      rotation: -12,
+    });
 
-      const tl = gsap.timeline({
-        onComplete: () => {
-          setIntroState('SEED_LANDED');
-          setTimeout(() => {
-            setIntroState('WATERING');
-          }, 250);
-        },
-      });
+    seedTlRef.current?.kill();
+    const tl = gsap.timeline({
+      defaults: { overwrite: 'auto' },
+      onComplete: () => {
+        if (!mountedRef.current) return;
+        setIntroState('SEED_LANDED');
+        if (seedTimeoutRef.current !== null) window.clearTimeout(seedTimeoutRef.current);
+        seedTimeoutRef.current = window.setTimeout(() => {
+          if (!mountedRef.current) return;
+          setIntroState('WATERING');
+        }, 250);
+      },
+    });
+    seedTlRef.current = tl;
 
       // Gentle floating descent with subtle organic sway
       tl.to(seedEl, {
@@ -205,48 +235,43 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             duration: 0.3,
             yoyo: true,
             repeat: 1,
+            overwrite: 'auto',
           },
           1.8
         );
       }
-    }, containerRef);
 
-    return () => ctx.revert();
-  }, [introState, dims.h, setIntroState]);
+    // NOTE: intentionally no ctx.revert() here — revert would wipe the
+    // landed end-state. Timeline is killed on unmount via seedTlRef.
+    // dims.h excluded from deps (via seedStartedRef guard) so resize doesn't restart the fall.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [introState, setIntroState]);
 
   // WATERING POT ENTRANCE
+  // Ownership split: React style positions the OUTER wrapper; GSAP only
+  // animates opacity/scale/rotation on the INNER (potRef) element.
   useEffect(() => {
     if (introState !== 'WATERING') return;
 
-    const ctx = gsap.context(() => {
-      const potEl = potRef.current;
-      if (!potEl) return;
+    const potEl = potRef.current;
+    if (!potEl) return;
 
-      gsap.fromTo(
-        potEl,
-        {
-          opacity: 0,
-          scale: 0.6,
-          x: baseX + 180,
-          y: seedLandingY - 180,
-          rotation: 15,
-        },
-        {
-          opacity: 1,
-          scale: 1,
-          x: baseX + 130,
-          y: seedLandingY - 150,
-          rotation: 0,
-          duration: 1.0,
-          ease: 'back.out(1.4)',
-        }
-      );
-    }, containerRef);
+    potTlRef.current?.kill();
+    const tween = gsap.fromTo(
+      potEl,
+      { opacity: 0, scale: 0.6, rotation: 15 },
+      { opacity: 1, scale: 1, rotation: 0, duration: 1.0, ease: 'back.out(1.4)', overwrite: 'auto' }
+    );
+    potTlRef.current = tween;
 
-    return () => ctx.revert();
-  }, [introState, baseX, seedLandingY]);
+    return () => {
+      tween.kill();
+      if (potTlRef.current === tween) potTlRef.current = null;
+    };
+  }, [introState]);
 
   // WATERING EXECUTION TRIGGER
+  // React owns pot position (outer wrapper); GSAP only tweens inner rotation/opacity/scale.
   const triggerWatering = useCallback(() => {
     if (hasWateredRef.current || isWatering) return;
     hasWateredRef.current = true;
@@ -257,93 +282,109 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     const potEl = potRef.current;
     if (!potEl) return;
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
+    // Snap the OUTER wrapper above the seed via state (no GSAP x/y fight).
+    setDragOffset({
+      x: baseX + 35 - restingPotPos.x,
+      y: seedLandingY - 110 - restingPotPos.y,
+    });
 
-      // Smoothly snap pot above seed and tilt
-      tl.to(potEl, {
-        x: baseX + 35,
-        y: seedLandingY - 110,
-        rotation: -38,
-        duration: 0.6,
-        ease: 'power2.out',
-      });
+    waterTlRef.current?.kill();
+    const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
+    waterTlRef.current = tl;
 
-      // Spurt water droplets
-      tl.call(() => {
-        const drops: WaterDrop[] = Array.from({ length: 18 }, (_, i) => ({
-          id: i,
-          x: (Math.random() - 0.5) * 14,
-          y: Math.random() * 22,
-          length: Math.random() * 10 + 6,
-          speed: Math.random() * 2 + 3,
-        }));
-        setWaterDrops(drops);
+    // Tilt inner pot
+    tl.to(potEl, {
+      rotation: -38,
+      duration: 0.6,
+      ease: 'power2.out',
+      overwrite: 'auto',
+    });
 
-        try {
-          soundManager.playBloomChime();
-        } catch {
-          /* noop */
-        }
-      });
+    // Spurt water droplets
+    tl.call(() => {
+      if (!mountedRef.current) return;
+      const drops: WaterDrop[] = Array.from({ length: 18 }, (_, i) => ({
+        id: i,
+        x: (Math.random() - 0.5) * 14,
+        y: Math.random() * 22,
+        length: Math.random() * 10 + 6,
+        speed: Math.random() * 2 + 3,
+      }));
+      setWaterDrops(drops);
 
-      // Pulse seed as it drinks water
-      const seedEl = seedGroupRef.current;
-      if (seedEl) {
-        tl.to(
-          seedEl,
-          {
-            scale: 1.25,
-            filter: 'drop-shadow(0 0 20px rgba(255, 105, 180, 0.95))',
-            duration: 0.9,
-            ease: 'sine.inOut',
-            repeat: 1,
-            yoyo: true,
-          },
-          '+=0.3'
-        );
+      try {
+        soundManager.playBloomChime();
+      } catch {
+        /* noop */
       }
+    });
 
-      // Soil reacts subtly: darkens with moisture
-      if (soilRef.current) {
-        tl.to(
-          soilRef.current,
-          {
-            fill: '#2e0f21',
-            duration: 1.2,
-          },
-          '+=0.1'
-        );
-      }
-
-      // Restore pot rotation and gently fade away
+    // Pulse seed as it drinks water + glow the aura circle (no filter tween)
+    const seedEl = seedGroupRef.current;
+    if (seedEl) {
       tl.to(
-        potEl,
+        seedEl,
         {
-          rotation: 0,
-          y: seedLandingY - 140,
-          duration: 0.5,
-          ease: 'power1.out',
+          scale: 1.25,
+          duration: 0.9,
+          ease: 'sine.inOut',
+          repeat: 1,
+          yoyo: true,
+          overwrite: 'auto',
         },
-        '+=1.0'
+        '+=0.3'
       );
+    }
+    if (auraRef.current) {
+      tl.fromTo(
+        auraRef.current,
+        { opacity: 0.25 },
+        { opacity: 0.9, duration: 0.9, ease: 'sine.inOut', repeat: 1, yoyo: true, overwrite: 'auto' },
+        '<'
+      );
+    }
 
-      tl.to(potEl, {
-        opacity: 0,
-        scale: 0.7,
-        duration: 0.6,
-        ease: 'power2.in',
-        onComplete: () => {
-          setWaterDrops([]);
-          setIntroState('WATERED');
-          // Notify parent of watering completion to launch auto-growth
-          onWaterCompleteRef.current?.();
+    // Soil reacts subtly: darkens with moisture
+    if (soilRef.current) {
+      tl.to(
+        soilRef.current,
+        {
+          fill: '#2e0f21',
+          duration: 1.2,
+          overwrite: 'auto',
         },
-      });
-    }, containerRef);
+        '+=0.1'
+      );
+    }
 
-    return () => ctx.revert();
-  }, [isWatering, baseX, seedLandingY, setIntroState]);
+    // Restore pot rotation and gently fade away
+    tl.to(
+      potEl,
+      {
+        rotation: 0,
+        duration: 0.5,
+        ease: 'power1.out',
+        overwrite: 'auto',
+      },
+      '+=1.0'
+    );
+
+    tl.to(potEl, {
+      opacity: 0,
+      scale: 0.7,
+      duration: 0.6,
+      ease: 'power2.in',
+      overwrite: 'auto',
+      onComplete: () => {
+        if (!mountedRef.current) return;
+        setWaterDrops([]);
+        setIntroState('WATERED');
+        // Notify parent of watering completion to launch auto-growth
+        onWaterCompleteRef.current?.();
+      },
+    });
+    // NOTE: timeline persists (no ctx.revert); killed on unmount via waterTlRef.
+  }, [isWatering, baseX, seedLandingY, restingPotPos.x, restingPotPos.y, setIntroState]);
 
   // Pointer drag event handlers for watering pot (mouse + touch)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -463,8 +504,8 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           transform={`translate(${baseX}, ${seedLandingY})`}
           style={{ filter: 'drop-shadow(0 0 14px rgba(255, 77, 109, 0.85))' }}
         >
-          {/* Pulsing Aura */}
-          <circle cx="0" cy="0" r="16" fill="rgba(255, 77, 109, 0.2)" />
+          {/* Pulsing Aura (GSAP animates opacity — no filter tween) */}
+          <circle ref={auraRef} cx="0" cy="0" r="16" fill="rgba(255, 77, 109, 0.2)" />
 
           {/* Stylized Heart Seed Pod */}
           <path
@@ -499,8 +540,15 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
         )}
       </svg>
 
-      {/* INTERACTIVE WATERING POT (🫖) */}
+      {/* INTERACTIVE WATERING POT (🫖) — outer wrapper owned by React, inner owned by GSAP */}
       {(introState === 'WATERING' || introState === 'SEED_LANDED') && (
+        <div
+          className="absolute left-0 top-0 pointer-events-auto"
+          style={{
+            transform: `translate(${potPos.x}px, ${potPos.y}px)`,
+            touchAction: 'none',
+          }}
+        >
         <div
           ref={potRef}
           onPointerDown={handlePointerDown}
@@ -512,13 +560,8 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           tabIndex={0}
           role="button"
           aria-label="Interactive Watering Pot. Drag or click to water the seed."
-          className={`absolute left-0 top-0 cursor-grab active:cursor-grabbing transition-transform pointer-events-auto ${
-            isDragging ? 'scale-105' : ''
-          }`}
-          style={{
-            transform: `translate(${potPos.x}px, ${potPos.y}px)`,
-            touchAction: 'none',
-          }}
+          className="cursor-grab active:cursor-grabbing"
+          style={{ scale: isDragging ? '1.05' : '1' }}
         >
           {/* Watering Pot Visual */}
           <div className="relative group flex flex-col items-center">
@@ -577,6 +620,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
                 />
               </svg>
             </div>
+          </div>
           </div>
         </div>
       )}

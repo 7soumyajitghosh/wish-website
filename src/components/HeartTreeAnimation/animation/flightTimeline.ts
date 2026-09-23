@@ -10,9 +10,9 @@
 
 export const FLIGHT_T = {
   // Stage 14: Hearts Fly Away
-  DETACH_START: 0.85,
-  STREAM_PEAK: 1.05,
-  FADE_LOOP_START: 0.95,
+  DETACH_START: 0.75,
+  STREAM_PEAK: 0.98,
+  FADE_LOOP_START: 0.97,
   CYCLE_END: 1.0,
 } as const;
 

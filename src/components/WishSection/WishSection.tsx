@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import gsap from 'gsap';
 
 type Wish = {
@@ -29,25 +29,35 @@ export const WishSection = () => {
     if (!ctx) return;
 
     let animationFrameId: number;
+    const seedStars = (w: number, h: number) =>
+      Array.from({ length: 45 }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        radius: Math.random() * 1.5 + 0.5,
+        alpha: Math.random(),
+        velocity: (Math.random() - 0.5) * 0.015,
+      }));
+    let stars = seedStars(canvas.offsetWidth, canvas.offsetHeight);
     const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Re-seed stars proportionally so they cover the new size (keep 45 stars)
+      stars = seedStars(Math.max(1, w), Math.max(1, h));
     };
     window.addEventListener('resize', resize);
     resize();
 
-    const stars = Array.from({ length: 45 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      radius: Math.random() * 1.5 + 0.5,
-      alpha: Math.random(),
-      velocity: (Math.random() - 0.5) * 0.015,
-    }));
-
-    const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let last = performance.now();
+    const render = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
       stars.forEach((star) => {
-        star.alpha += star.velocity;
+        star.alpha += star.velocity * dt * 60;
         if (star.alpha <= 0 || star.alpha >= 1) star.velocity *= -1;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -57,7 +67,7 @@ export const WishSection = () => {
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
     return () => {
       window.removeEventListener('resize', resize);
       cancelAnimationFrame(animationFrameId);
@@ -90,6 +100,10 @@ export const WishSection = () => {
       setHeartPos({ x: e.clientX, y: e.clientY });
     }
   };
+
+  const handleSoaringDone = useCallback((id: string) => {
+    setFlyingHearts((prev) => prev.filter((h) => h.id !== id));
+  }, []);
 
   const handlePointerUp = () => {
     if (!isHoldingWish || !currentWish) return;
@@ -174,11 +188,10 @@ export const WishSection = () => {
         <div
           ref={heartRef}
           onPointerDown={handlePointerDown}
-          className="fixed z-50 flex flex-col items-center cursor-grab active:cursor-grabbing touch-none select-none transition-transform"
+          className={`fixed left-0 top-0 z-50 flex flex-col items-center cursor-grab active:cursor-grabbing touch-none select-none ${isDragging ? '' : 'transition-transform duration-150'}`}
           style={{
-            left: `${heartPos.x}px`,
-            top: `${heartPos.y}px`,
-            transform: 'translate(-50%, -50%)',
+            transform: `translate(${heartPos.x}px, ${heartPos.y}px) translate(-50%, -50%)`,
+            willChange: 'transform',
           }}
         >
           {/* Pulsing Light Aura */}
@@ -209,7 +222,7 @@ export const WishSection = () => {
         <SoaringWishItem
           key={item.id}
           item={item}
-          onDone={(id) => setFlyingHearts((prev) => prev.filter((h) => h.id !== id))}
+          onDone={handleSoaringDone}
         />
       ))}
     </section>
@@ -224,6 +237,12 @@ const SoaringWishItem = ({
   onDone: (id: string) => void;
 }) => {
   const elRef = useRef<HTMLDivElement>(null);
+  const onDoneRef = useRef(onDone);
+  const { id: itemId, startX, startY } = item;
+
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     const el = elRef.current;
@@ -232,27 +251,35 @@ const SoaringWishItem = ({
     gsap.fromTo(
       el,
       {
-        x: item.startX,
-        y: item.startY,
+        x: startX,
+        y: startY,
+        xPercent: -50,
+        yPercent: -50,
         scale: 1,
         opacity: 1,
       },
       {
         y: -150,
-        x: item.startX + (Math.random() - 0.5) * 120,
+        x: startX + (Math.random() - 0.5) * 120,
+        xPercent: -50,
+        yPercent: -50,
         scale: 0.25,
         opacity: 0,
         duration: 4.5,
         ease: 'power2.in',
-        onComplete: () => onDone(item.id),
+        overwrite: 'auto',
+        onComplete: () => onDoneRef.current(itemId),
       }
     );
-  }, [item, onDone]);
+    return () => {
+      gsap.killTweensOf(el);
+    };
+  }, [itemId, startX, startY]);
 
   return (
     <div
       ref={elRef}
-      className="fixed z-40 flex flex-col items-center pointer-events-none -translate-x-1/2 -translate-y-1/2"
+      className="fixed z-40 flex flex-col items-center pointer-events-none"
       style={{ left: 0, top: 0 }}
     >
       <div className="relative p-3 rounded-full bg-[#d81b46] shadow-[0_0_30px_#f5baa4]">

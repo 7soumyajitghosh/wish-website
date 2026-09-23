@@ -8,37 +8,48 @@ export const Journey: React.FC = () => {
   const { currentStage, jumpToStage } = useStory();
 
   useEffect(() => {
+    const cards = cardsRef.current.filter(Boolean) as HTMLElement[];
+    // Cards stay visible by default (no-JS / GSAP-fail fallback); hidden
+    // via gsap.set only when JS runs, then revealed on intersection.
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof IntersectionObserver === 'undefined') {
+      // Fallback: no observer support — show all cards immediately.
+      gsap.set(cards, { y: 0, opacity: 1 });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            gsap.to(entry.target, {
+              y: 0,
+              opacity: 1,
+              duration: reduced ? 0 : 0.8,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            });
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+    );
+
     const ctx = gsap.context(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              gsap.to(entry.target, {
-                y: 0,
-                opacity: 1,
-                duration: 0.8,
-                ease: 'power3.out',
-              });
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
-      );
-
-      cardsRef.current.forEach((card) => {
-        if (card) {
-          gsap.set(card, { y: 30, opacity: 0 });
-          observer.observe(card);
-        }
+      cards.forEach((card) => {
+        gsap.set(card, { y: 30, opacity: 0 });
+        observer.observe(card);
       });
-
-      return () => {
-        observer.disconnect();
-      };
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => {
+      ctx.revert();
+      observer.disconnect();
+    };
   }, []);
 
   const handleCardClick = (stageId: number) => {
@@ -80,9 +91,9 @@ export const Journey: React.FC = () => {
                 key={stage.id}
                 ref={(el) => { cardsRef.current[index] = el; }}
                 onClick={() => handleCardClick(stage.id)}
-                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border ${
+                className={`p-5 rounded-2xl cursor-pointer transition-colors duration-300 border ${
                   isCurrent
-                    ? 'bg-[#3b1224]/80 border-[#f5baa4] shadow-[0_0_20px_rgba(245,186,164,0.3)] scale-102'
+                    ? 'bg-[#3b1224]/80 border-[#f5baa4] shadow-[0_0_20px_rgba(245,186,164,0.3)] scale-[1.02]'
                     : 'bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-1'
                 }`}
               >

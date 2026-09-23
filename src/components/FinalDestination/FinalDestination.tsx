@@ -46,14 +46,48 @@ export const FinalDestination: React.FC = () => {
   
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const heartsWrapRef = useRef<HTMLDivElement>(null);
+  const scrollRaf = useRef<number>(0);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    const update = () => {
+      scrollRaf.current = 0;
       setScrollY(window.scrollY);
+    };
+    const handleScroll = () => {
+      if (scrollRaf.current) return;
+      scrollRaf.current = requestAnimationFrame(update);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
+    };
+  }, []);
+
+  // Pause infinite CSS hearts when off-screen
+  useEffect(() => {
+    const section = sectionRef.current;
+    const wrap = heartsWrapRef.current;
+    if (!section || !wrap) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        wrap.querySelectorAll('[data-float-heart]').forEach((el) => {
+          (el as HTMLElement).style.animationPlayState = entry.isIntersecting
+            ? 'running'
+            : 'paused';
+        });
+      },
+      { threshold: 0 }
+    );
+    io.observe(section);
+    return () => io.disconnect();
   }, []);
 
   useEffect(() => {
@@ -78,18 +112,24 @@ export const FinalDestination: React.FC = () => {
 
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const ctx = gsap.context(() => {
-      const elements = gsap.utils.toArray('.reveal-element');
+      const elements = gsap.utils.toArray<HTMLElement>('.reveal-element');
       gsap.fromTo(
         elements,
-        { opacity: 0, y: 50 },
+        { opacity: 0, y: 50, xPercent: 0 },
         {
           opacity: 1,
           y: 0,
-          duration: 1.5,
+          xPercent: 0,
+          duration: reduced ? 0 : 1.5,
           stagger: 0.2,
           ease: 'power3.out',
+          overwrite: 'auto',
         }
       );
 
@@ -101,10 +141,10 @@ export const FinalDestination: React.FC = () => {
             opacity: 1,
             scale: 1,
             y: 0,
-            duration: 1.5,
+            duration: reduced ? 0 : 1.5,
             stagger: 0.3,
             ease: 'expo.out',
-            delay: 0.5,
+            delay: reduced ? 0 : 0.5,
           }
         );
       }
@@ -123,22 +163,25 @@ export const FinalDestination: React.FC = () => {
       aria-label="The Final Destination: Where Love Takes Flight"
     >
       <div ref={containerRef} className="absolute inset-0 w-full h-full">
-        {/* Glowing heart-shaped sun */}
-        <div 
-          className="absolute left-1/2 -translate-x-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 reveal-element z-0 pointer-events-none"
-          style={{ transform: `translate(-50%, ${offset * 1.5}px)` }}
+        {/* Glowing heart-shaped sun — parallax on outer, GSAP reveal on inner */}
+        <div
+          className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none will-change-transform"
+          style={{ transform: `translateX(-50%) translateY(${offset * 1.5}px)`, willChange: 'transform' }}
         >
+          <div className="reveal-element w-full h-full">
           <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[100px] opacity-40 mix-blend-screen" />
           <svg viewBox="0 0 100 100" className="w-full h-full text-[#ffb3c1] drop-shadow-[0_0_30px_rgba(255,179,193,0.9)] opacity-90">
             <path d="M50 85 C 0 50, 0 10, 50 35 C 100 10, 100 50, 50 85 Z" fill="currentColor" />
           </svg>
+          </div>
         </div>
 
         {/* Cherry blossom branches - Top Left */}
-        <div 
-          className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left reveal-element z-10 pointer-events-none"
-          style={{ transform: `translateY(${offset * -0.5}px)` }}
+        <div
+          className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none will-change-transform"
+          style={{ transform: `translateY(${offset * -0.5}px)`, willChange: 'transform' }}
         >
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
             <path d="M-10 10 Q 50 20, 80 50 T 150 70 M 30 30 Q 70 80, 100 120" fill="none" stroke="#0a0306" strokeWidth="6" strokeLinecap="round" />
             <circle cx="50" cy="20" r="4" fill="#f5baa4" opacity="0.9" />
@@ -148,13 +191,15 @@ export const FinalDestination: React.FC = () => {
             <circle cx="60" cy="60" r="4" fill="#f5baa4" opacity="0.9" />
             <circle cx="100" cy="120" r="5" fill="#ffb3c1" opacity="0.9" />
           </svg>
+          </div>
         </div>
 
-        {/* Cherry blossom branches - Top Right */}
-        <div 
-          className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right reveal-element z-10 pointer-events-none scale-x-[-1]"
-          style={{ transform: `scaleX(-1) translateY(${offset * -0.6}px)` }}
+        {/* Cherry blossom branches - Top Right (single mirror via inline transform) */}
+        <div
+          className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none will-change-transform"
+          style={{ transform: `scaleX(-1) translateY(${offset * -0.6}px)`, willChange: 'transform' }}
         >
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
             <path d="M-10 20 Q 60 10, 90 60 T 160 80 M 40 40 Q 80 90, 110 130" fill="none" stroke="#0a0306" strokeWidth="6" strokeLinecap="round" />
             <circle cx="60" cy="10" r="4" fill="#f5baa4" opacity="0.9" />
@@ -164,6 +209,7 @@ export const FinalDestination: React.FC = () => {
             <circle cx="70" cy="70" r="4" fill="#f5baa4" opacity="0.9" />
             <circle cx="110" cy="130" r="5" fill="#ffb3c1" opacity="0.9" />
           </svg>
+          </div>
         </div>
 
         {/* Winding stone pathway */}
@@ -178,10 +224,11 @@ export const FinalDestination: React.FC = () => {
         </div>
 
         {/* Victorian Street Lamp */}
-        <div 
-          className="absolute bottom-0 left-[10%] sm:left-[20%] w-32 h-64 sm:w-48 sm:h-96 reveal-element z-20 pointer-events-none"
-          style={{ transform: `translateY(${offset * -0.2}px)` }}
+        <div
+          className="absolute bottom-0 left-[10%] sm:left-[20%] w-32 h-64 sm:w-48 sm:h-96 z-20 pointer-events-none will-change-transform"
+          style={{ transform: `translateY(${offset * -0.2}px)`, willChange: 'transform' }}
         >
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 100 300" className="w-full h-full">
             {/* Base */}
             <path d="M30 300 L70 300 L65 260 L35 260 Z" fill="#070204" />
@@ -203,13 +250,15 @@ export const FinalDestination: React.FC = () => {
             <circle cx="50" cy="40" r="60" fill="#ffd6a5" opacity="0.15" className="animate-pulse" style={{ mixBlendMode: 'screen' }} />
             <circle cx="50" cy="40" r="30" fill="#ffd6a5" opacity="0.25" className="animate-pulse" style={{ mixBlendMode: 'screen' }} />
           </svg>
+          </div>
         </div>
 
         {/* Garden Bench */}
-        <div 
-          className="absolute bottom-10 right-[10%] sm:right-[20%] w-48 h-32 sm:w-64 sm:h-48 reveal-element z-20 pointer-events-none"
-          style={{ transform: `translateY(${offset * -0.15}px)` }}
+        <div
+          className="absolute bottom-10 right-[10%] sm:right-[20%] w-48 h-32 sm:w-64 sm:h-48 z-20 pointer-events-none will-change-transform"
+          style={{ transform: `translateY(${offset * -0.15}px)`, willChange: 'transform' }}
         >
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl">
             {/* Backrest */}
             <rect x="25" y="40" width="150" height="8" rx="2" fill="#070204" />
@@ -231,19 +280,27 @@ export const FinalDestination: React.FC = () => {
             <rect x="40" y="100" width="6" height="25" rx="1" fill="#040102" />
             <rect x="154" y="100" width="6" height="25" rx="1" fill="#040102" />
           </svg>
+          </div>
         </div>
 
         {/* Ambient floating hearts (CSS driven) */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+        <div
+          ref={heartsWrapRef}
+          className="absolute inset-0 pointer-events-none overflow-hidden z-20"
+          style={{ contentVisibility: 'auto' }}
+        >
           {DESTINATION_HEARTS.map((h, i) => (
             <div
               key={`heart-${i}`}
-              className="absolute text-[#ffb3c1] opacity-30 animate-pulse"
+              data-float-heart
+              className="absolute text-[#ffb3c1]"
               style={{
                 left: `${h.left}%`,
                 top: `${h.top}%`,
-                animation: `floatUp ${h.duration}s linear infinite`,
+                opacity: 0,
+                animation: `floatUpDestination ${h.duration}s linear infinite`,
                 animationDelay: `${h.delay}s`,
+                animationFillMode: 'backwards',
                 width: `${h.size}px`,
                 height: `${h.size}px`
               }}
@@ -274,25 +331,25 @@ export const FinalDestination: React.FC = () => {
           ))}
         </div>
 
-        {/* Text Overlay */}
+        {/* Text Overlay — opacity-0 only pre-reveal so no-JS/GSAP-fail stays visible */}
         <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-8 pointer-events-none">
           <div ref={textRef} className="max-w-4xl flex flex-col items-center gap-6">
-            <span className="text-[#f5baa4] uppercase tracking-[0.3em] text-xs sm:text-sm font-semibold opacity-0">
+            <span className={`text-[#f5baa4] uppercase tracking-[0.3em] text-xs sm:text-sm font-semibold ${isVisible ? '' : 'opacity-0'}`}>
               The Destination
             </span>
-            
-            <h2 
-              className="text-4xl sm:text-6xl md:text-7xl font-serif text-[#fffdf8] italic drop-shadow-lg opacity-0"
+
+            <h2
+              className={`text-4xl sm:text-6xl md:text-7xl font-serif text-[#fffdf8] italic drop-shadow-lg ${isVisible ? '' : 'opacity-0'}`}
               style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
             >
               Where Love Takes Flight
             </h2>
-            
-            <p className="text-[#fff8eb] text-lg sm:text-xl md:text-2xl font-light max-w-2xl drop-shadow-md leading-relaxed opacity-0">
+
+            <p className={`text-[#fff8eb] text-lg sm:text-xl md:text-2xl font-light max-w-2xl drop-shadow-md leading-relaxed ${isVisible ? '' : 'opacity-0'}`}>
               Every seed of kindness planted with love blossoms into an eternal garden of dreams.
             </p>
 
-            <div className="opacity-0 mt-4 pointer-events-auto">
+            <div className={`mt-4 pointer-events-auto ${isVisible ? '' : 'opacity-0'}`}>
               <button
                 onClick={() => {
                   const el = document.getElementById('love-letter');
@@ -310,7 +367,7 @@ export const FinalDestination: React.FC = () => {
       </div>
       
       <style>{`
-        @keyframes floatUp {
+        @keyframes floatUpDestination {
           0% { transform: translateY(0) scale(0.5); opacity: 0; }
           10% { opacity: 0.5; }
           90% { opacity: 0.5; }

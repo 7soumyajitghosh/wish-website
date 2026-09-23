@@ -1,32 +1,55 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 
 export const FinalMessage = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const messageCardRef = useRef<HTMLDivElement>(null);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   const { isFinalUnlocked, unlockFinal } = useStory();
   const [unlocked, setUnlocked] = useState(isFinalUnlocked);
 
+  // Kill any running reveal timeline on unmount.
+  useEffect(() => {
+    return () => {
+      tlRef.current?.kill();
+      tlRef.current = null;
+    };
+  }, []);
+
+  // Animate after React has committed the unlocked card (avoids null-ref).
+  useEffect(() => {
+    if (!unlocked) return;
+    const card = messageCardRef.current;
+    if (!card) return;
+    const items = sectionRef.current?.querySelectorAll('.final-fade-item');
+    tlRef.current?.kill();
+    const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
+    tlRef.current = tl;
+    tl.fromTo(
+      card,
+      { opacity: 0, y: 30, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 1.6, ease: 'power3.out' }
+    );
+    if (items && items.length > 0) {
+      tl.fromTo(
+        items,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, stagger: 0.3, duration: 1.2, ease: 'power2.out' },
+        0.3
+      );
+    }
+    return () => {
+      tl.kill();
+      if (tlRef.current === tl) tlRef.current = null;
+    };
+  }, [unlocked]);
+
   const handleTakeFinalStep = () => {
+    if (unlocked) return;
     setUnlocked(true);
     unlockFinal();
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        messageCardRef.current,
-        { opacity: 0, y: 30, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 1.6, ease: 'power3.out' }
-      );
-      gsap.fromTo(
-        '.final-fade-item',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, stagger: 0.3, duration: 1.2, ease: 'power2.out', delay: 0.3 }
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
   };
 
   return (
@@ -43,7 +66,7 @@ export const FinalMessage = () => {
       <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto text-center">
         {!unlocked ? (
           /* The 'One last thing...' Gated Prompt */
-          <div className="flex flex-col items-center gap-6 animate-in fade-in duration-700">
+          <div className="flex flex-col items-center gap-6 animate-fade-in">
             <span className="text-xs uppercase tracking-[0.4em] text-[#f5baa4] font-sans">
               The Journey's Crest
             </span>

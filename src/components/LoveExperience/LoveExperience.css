@@ -38,7 +38,8 @@
   overflow: hidden;
 }
 
-/* Transition Overlay */
+/* Transition Overlay — JS toggles .is-active during crossfades so the
+   overlay blocks pointer events only while fading (CSS default: none). */
 .cinematic-transition-overlay {
   position: absolute;
   inset: 0;
@@ -48,6 +49,10 @@
   opacity: 0;
   pointer-events: none;
   z-index: 100;
+}
+
+.cinematic-transition-overlay.is-active {
+  pointer-events: auto;
 }
 
 /* ==========================================================================
@@ -123,6 +128,8 @@
   margin: 0;
   letter-spacing: 0.08em;
   line-height: 1.6;
+  /* Only 2 filter-blur reveal nodes; hint the compositor to keep it cheap */
+  will-change: opacity, filter;
 }
 
 .constellation-quote-line.line-1 {
@@ -327,7 +334,8 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    transform 0.3s ease, box-shadow 0.3s ease;
   z-index: 40;
   backdrop-filter: blur(8px);
 }
@@ -439,12 +447,14 @@
   height: clamp(90px, 14vw, 130px);
   cursor: pointer;
   outline: none;
-  transition: transform 0.3s ease;
+  /* No `transition: transform` — GSAP owns transform; hover uses the
+     independent `scale` property so it composes instead of fighting. */
+  transition: filter 0.3s ease, scale 0.3s ease;
   filter: drop-shadow(0 0 30px rgba(220, 27, 76, 0.55));
 }
 
 .wish-heart-orb:hover:not(:disabled) {
-  transform: scale(1.1);
+  scale: 1.1;
   filter: drop-shadow(0 0 40px rgba(255, 117, 143, 0.8));
 }
 
@@ -553,6 +563,9 @@
 
 /* ==========================================================================
    RESPONSIVE ADJUSTMENTS (Mobile Viewport)
+   At 360px widths / short viewports the letter rise (y:-140), spark
+   scale (1.4) and firefly drift would hard-clip against the scene edges,
+   so inner wrappers stay overflow:visible and travel sizes shrink.
    ========================================================================== */
 @media (max-width: 768px) {
   .constellation-text-container {
@@ -562,6 +575,13 @@
   .envelope-wrapper {
     width: 92vw;
     height: 240px;
+    overflow: visible;
+  }
+
+  .love-letter-scene,
+  .flower-scene,
+  .wish-scene {
+    overflow: visible;
   }
 
   .letter-paper {
@@ -589,7 +609,32 @@
   }
 }
 
-/* Reduced motion preference */
+/* Short viewports (e.g. 360x640): shrink travel-heavy pieces so the
+   letter rise, spark pop and firefly drift stay on stage. */
+@media (max-height: 700px) {
+  .envelope-wrapper {
+    height: 200px;
+    overflow: visible;
+  }
+
+  .letter-paper {
+    max-height: 70vh;
+  }
+
+  .flower-svg {
+    height: 62vh;
+  }
+
+  .flower-light-spark {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* Reduced motion preference.
+   CSS zeroes durations below; GSAP-driven scenes add JS guards via
+   matchMedia('(prefers-reduced-motion: reduce)') (see LoveExperience
+   transitionTo, FlowerScene/WishScene timelines skip or shorten tweens). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

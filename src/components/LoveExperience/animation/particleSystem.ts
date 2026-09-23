@@ -23,14 +23,19 @@ export class ParticleEmitter {
   private w = 0;
   private h = 0;
 
+  /** Max live particles; oldest non-ambient particles are dropped when exceeded. */
+  static readonly MAX_PARTICLES = 500;
+
   resize(w: number, h: number) {
     this.w = w;
     this.h = h;
   }
 
   spawnAmbientStars(count = 60) {
-    this.particles = [];
-    for (let i = 0; i < count; i++) {
+    // Additive: keep existing particles (e.g. burst embers) and top up ambient stars up to cap.
+    const room = Math.max(0, ParticleEmitter.MAX_PARTICLES - this.particles.length);
+    const toSpawn = Math.min(count, room);
+    for (let i = 0; i < toSpawn; i++) {
       this.particles.push({
         x: Math.random() * this.w,
         y: Math.random() * this.h,
@@ -51,6 +56,22 @@ export class ParticleEmitter {
 
   spawnBurst(cx: number, cy: number, count = 75) {
     const colors = ['#fff5dc', '#ffd6a5', '#ff9bb2', '#ff758f', '#ffffff'];
+    // Cap total particles: drop oldest burst (non-ambient) particles first.
+    const overflow = this.particles.length + count - ParticleEmitter.MAX_PARTICLES;
+    if (overflow > 0) {
+      let removed = 0;
+      this.particles = this.particles.filter((p) => {
+        if (removed < overflow && !(p.isStar && p.maxLife > 5000)) {
+          removed++;
+          return false;
+        }
+        return true;
+      });
+      // If still over cap (all ambient), drop oldest regardless.
+      if (this.particles.length + count > ParticleEmitter.MAX_PARTICLES) {
+        this.particles.splice(0, this.particles.length + count - ParticleEmitter.MAX_PARTICLES);
+      }
+    }
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 1.5 + Math.random() * 7;

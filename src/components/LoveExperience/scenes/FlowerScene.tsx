@@ -15,17 +15,30 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
   const petalsMidRef = useRef<SVGGElement>(null);
   const petalsCoreRef = useRef<SVGGElement>(null);
   const firefliesRef = useRef<SVGGElement>(null);
+  const mountedRef = useRef(true);
+  const fadeTweenRef = useRef<gsap.core.Tween | null>(null);
+  const holdCallRef = useRef<ReturnType<typeof gsap.delayedCall> | null>(null);
 
   useEffect(() => {
+    mountedRef.current = true;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         onComplete: () => {
-          gsap.delayedCall(2.2, () => {
-            gsap.to(containerRef.current, {
+          if (!mountedRef.current) return;
+          holdCallRef.current = gsap.delayedCall(2.2, () => {
+            if (!mountedRef.current) return;
+            // Stop infinite firefly sway before fading out
+            const flies = firefliesRef.current?.children;
+            if (flies) gsap.killTweensOf(Array.from(flies));
+            fadeTweenRef.current = gsap.to(containerRef.current, {
               opacity: 0,
               duration: 1.4,
               ease: 'power2.inOut',
-              onComplete,
+              overwrite: 'auto',
+              onComplete: () => {
+                if (!mountedRef.current) return;
+                onComplete();
+              },
             });
           });
         },
@@ -73,14 +86,14 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       tl.fromTo(
         leafLeftRef.current,
         { scale: 0, rotation: 30, transformOrigin: '0% 100%' },
-        { scale: 1, rotation: 0, duration: 1.2, ease: 'back.out(1.7)' },
+        { scale: 1, rotation: 0, duration: 1.2, ease: 'back.out(1.7)', transformBox: 'fill-box', overwrite: 'auto' },
         '-=1.4'
       );
 
       tl.fromTo(
         leafRightRef.current,
         { scale: 0, rotation: -30, transformOrigin: '100% 100%' },
-        { scale: 1, rotation: 0, duration: 1.2, ease: 'back.out(1.7)' },
+        { scale: 1, rotation: 0, duration: 1.2, ease: 'back.out(1.7)', transformBox: 'fill-box', overwrite: 'auto' },
         '-=1.0'
       );
 
@@ -88,7 +101,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       tl.fromTo(
         budGroupRef.current,
         { scale: 0, opacity: 0, transformOrigin: 'center center' },
-        { scale: 1, opacity: 1, duration: 1.0, ease: 'power2.out' },
+        { scale: 1, opacity: 1, duration: 1.0, ease: 'power2.out', transformBox: 'fill-box', overwrite: 'auto' },
         '-=0.8'
       );
 
@@ -104,6 +117,8 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
             duration: 1.8,
             stagger: 0.12,
             ease: 'power3.out',
+            transformBox: 'fill-box',
+            overwrite: 'auto',
           },
           '-=0.2'
         );
@@ -121,6 +136,8 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
             duration: 1.6,
             stagger: 0.1,
             ease: 'power3.out',
+            transformBox: 'fill-box',
+            overwrite: 'auto',
           },
           '-=1.4'
         );
@@ -138,6 +155,8 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
             duration: 1.4,
             stagger: 0.08,
             ease: 'back.out(1.5)',
+            transformBox: 'fill-box',
+            overwrite: 'auto',
           },
           '-=1.2'
         );
@@ -159,21 +178,29 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
           '-=0.8'
         );
 
-        // Gentle firefly floating sway
-        Array.from(fireflies).forEach((ff, i) => {
-          gsap.to(ff, {
-            x: `+=${(i % 2 === 0 ? 1 : -1) * (15 + i * 4)}`,
-            y: `+=${(i % 3 === 0 ? -1 : 1) * (12 + i * 3)}`,
-            duration: 2.5 + i * 0.4,
-            repeat: -1,
-            yoyo: true,
-            ease: 'sine.inOut',
+        // Gentle firefly floating sway (tracked in ctx so revert kills them)
+        ctx.add(() => {
+          Array.from(fireflies).forEach((ff, i) => {
+            gsap.to(ff, {
+              x: `+=${(i % 2 === 0 ? 1 : -1) * (15 + i * 4)}`,
+              y: `+=${(i % 3 === 0 ? -1 : 1) * (12 + i * 3)}`,
+              duration: 2.5 + i * 0.4,
+              repeat: -1,
+              yoyo: true,
+              ease: 'sine.inOut',
+              overwrite: 'auto',
+            });
           });
         });
       }
     }, containerRef);
 
-    return () => ctx.revert();
+    return () => {
+      mountedRef.current = false;
+      holdCallRef.current?.kill();
+      fadeTweenRef.current?.kill();
+      ctx.revert();
+    };
   }, [onComplete]);
 
   return (

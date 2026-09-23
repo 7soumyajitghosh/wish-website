@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { HeartTreeScene } from './scenes/HeartTreeScene';
 import { ConstellationScene } from './scenes/ConstellationScene';
@@ -17,6 +17,15 @@ export type ExperienceScene =
 export const LoveExperience: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<ExperienceScene>('heartTree');
   const overlayRef = useRef<HTMLDivElement>(null);
+  const isTransitioningRef = useRef(false);
+
+  // Kill any in-flight overlay tween on unmount.
+  useEffect(() => {
+    return () => {
+      if (overlayRef.current) gsap.killTweensOf(overlayRef.current);
+      isTransitioningRef.current = false;
+    };
+  }, []);
 
   // Smooth cinematic crossfade between scenes
   const transitionTo = useCallback((nextScene: ExperienceScene) => {
@@ -25,19 +34,34 @@ export const LoveExperience: React.FC = () => {
       setCurrentScene(nextScene);
       return;
     }
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    gsap.killTweensOf(overlay);
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Block clicks during the fade; overlay has pointer-events:none by default.
+    overlay.classList.add('is-active');
     // Fade to black/deep plum overlay
     gsap.to(overlay, {
       opacity: 1,
-      duration: 0.9,
+      duration: reduced ? 0 : 0.9,
       ease: 'power2.inOut',
+      overwrite: 'auto',
       onComplete: () => {
         setCurrentScene(nextScene);
         // Fade overlay out
         gsap.to(overlay, {
           opacity: 0,
-          duration: 1.1,
+          duration: reduced ? 0 : 1.1,
           ease: 'power2.inOut',
+          overwrite: 'auto',
+          onComplete: () => {
+            overlay.classList.remove('is-active');
+            isTransitioningRef.current = false;
+          },
         });
       },
     });

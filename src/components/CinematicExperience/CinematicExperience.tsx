@@ -31,6 +31,17 @@ export const CinematicExperience: React.FC = () => {
 
   const [userWind, setUserWind] = useState(0);
 
+  // Refs mirror unlock flags so the long-lived GSAP onUpdate never closes
+  // over stale state (30s timeline would otherwise miss unlock transitions).
+  const unlockBloomRef = useRef(isBloomUnlocked);
+  const unlockFlightRef = useRef(isFlightUnlocked);
+  useEffect(() => {
+    unlockBloomRef.current = isBloomUnlocked;
+  }, [isBloomUnlocked]);
+  useEffect(() => {
+    unlockFlightRef.current = isFlightUnlocked;
+  }, [isFlightUnlocked]);
+
   // Single GSAP auto-growth timeline from watering to Full Bloom (Stage 12, 0.82)
   const startAutoGrowth = useCallback(() => {
     if (isAutoGrowingRef.current) return;
@@ -46,7 +57,9 @@ export const CinematicExperience: React.FC = () => {
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const speedScale = prefersReducedMotion ? 0.2 : 1;
+    // Skip faster for reduced motion: keep authored durations normal and
+    // run the whole timeline at 3x via timeScale (durations * 0.2 would
+    // read as "faster" too but scatters magic numbers through every tween).
     const progressObj = { p: 0.02 };
     let lastBroadcastTime = 0;
 
@@ -60,12 +73,12 @@ export const CinematicExperience: React.FC = () => {
         }
 
         // Milestone 1: Unlock bloom as the timeline crosses the threshold
-        if (progressObj.p >= 0.81 && !isBloomUnlocked) {
+        if (progressObj.p >= 0.81 && !unlockBloomRef.current) {
           unlockBloom();
         }
 
         // Milestone 2: Unlock flight as the timeline crosses the threshold
-        if (progressObj.p >= 0.90 && !isFlightUnlocked) {
+        if (progressObj.p >= 0.90 && !unlockFlightRef.current) {
           unlockFlight();
         }
       },
@@ -93,102 +106,106 @@ export const CinematicExperience: React.FC = () => {
     // 1: 0.02 -> 2: 0.06 (Glowing Seed)
     tl.to(progressObj, {
       p: STAGE_PROGRESS_MAP[2],
-      duration: 1.4 * speedScale,
+      duration: 1.4,
       ease: 'power1.inOut',
     })
       // 2: 0.06 -> 3: 0.15 (Roots Emerge into soil)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[3],
-        duration: 2.2 * speedScale,
+        duration: 2.2,
         ease: 'power2.out',
       })
       // Dramatic contemplation hold for deep roots
-      .to({}, { duration: 0.35 * speedScale })
+      .to({}, { duration: 0.35 })
       // 3: 0.15 -> 4: 0.23 (Trunk Begins)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[4],
-        duration: 1.6 * speedScale,
+        duration: 1.6,
         ease: 'sine.inOut',
       })
       // 4: 0.23 -> 5: 0.29 (Trunk Grows)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[5],
-        duration: 1.4 * speedScale,
+        duration: 1.4,
         ease: 'power1.out',
       })
       // 5: 0.29 -> 6: 0.38 (Main Branches)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[6],
-        duration: 2.2 * speedScale,
+        duration: 2.2,
         ease: 'power2.out',
       })
       // Hold for wide bough canopy silhouette
-      .to({}, { duration: 0.3 * speedScale })
+      .to({}, { duration: 0.3 })
       // 6: 0.38 -> 7: 0.48 (Secondary Branches)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[7],
-        duration: 2.0 * speedScale,
+        duration: 2.0,
         ease: 'power1.inOut',
       })
       // 7: 0.48 -> 8: 0.58 (Fine Twigs)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[8],
-        duration: 1.8 * speedScale,
+        duration: 1.8,
         ease: 'power1.out',
       })
       // 8: 0.58 -> 9: 0.65 (Tiny Buds)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[9],
-        duration: 1.6 * speedScale,
+        duration: 1.6,
         ease: 'sine.inOut',
       })
       // 9: 0.65 -> 10: 0.72 (Hearts Bloom Wave 1)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[10],
-        duration: 2.2 * speedScale,
+        duration: 2.2,
         ease: 'power2.out',
       })
       // 10: 0.72 -> 11: 0.78 (More Hearts Wave 2)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[11],
-        duration: 1.8 * speedScale,
+        duration: 1.8,
         ease: 'power1.inOut',
       })
       // 11: 0.78 -> 12: 0.82 (Full Bloom)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[12],
-        duration: 1.8 * speedScale,
+        duration: 1.8,
         ease: 'power2.out',
       })
       // Hold momentarily at Full Bloom
-      .to({}, { duration: 0.4 * speedScale })
+      .to({}, { duration: 0.4 })
       // 12: 0.82 -> 13: 0.88 (Wind Begins)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[13],
-        duration: 1.6 * speedScale,
+        duration: 1.6,
         ease: 'power1.inOut',
       })
       // 13: 0.88 -> 14: 0.94 (Hearts Fly Away)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[14],
-        duration: 2.0 * speedScale,
+        duration: 2.0,
         ease: 'power2.out',
       })
       // 14: 0.94 -> 15: 0.98 (Celestial Stream)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[15],
-        duration: 1.6 * speedScale,
+        duration: 1.6,
         ease: 'power1.out',
       })
       // 15: 0.98 -> 16: 1.00 (Destination)
       .to(progressObj, {
         p: STAGE_PROGRESS_MAP[16],
-        duration: 1.4 * speedScale,
+        duration: 1.4,
         ease: 'sine.out',
       });
 
+    // Reduced-motion skip: play the authored timeline faster instead of
+    // stretching/shrinking individual durations.
+    tl.timeScale(prefersReducedMotion ? 3 : 1);
+
     autoGrowthTlRef.current = tl;
-  }, [isBloomUnlocked, isFlightUnlocked, setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+  }, [setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
 
   // Clean up auto-growth timeline on unmount
   useEffect(() => {
@@ -262,6 +279,7 @@ export const CinematicExperience: React.FC = () => {
       style={{ height: '550vh' }}
       aria-label="Interactive Story Experience"
     >
+      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
@@ -380,9 +398,9 @@ export const CinematicExperience: React.FC = () => {
         {/* ================= FLOATING TREE REFLECTION QUOTE ================= */}
         {activeTreeQuote && (
           <div
-            className="absolute z-40 max-w-xs md:max-w-sm p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-300 pointer-events-auto"
+            className="absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter pointer-events-auto"
             style={{
-              left: `${Math.min(Math.max(activeTreeQuote.x - 120, 20), window.innerWidth - 280)}px`,
+              left: `clamp(12px, ${Math.min(Math.max(activeTreeQuote.x - 120, 20), typeof window !== 'undefined' ? Math.max(window.innerWidth - 340, 12) : 20)}px, calc(100vw - 17rem))`,
               top: `${Math.max(activeTreeQuote.y - 90, 40)}px`,
             }}
           >
@@ -412,7 +430,7 @@ export const CinematicExperience: React.FC = () => {
         {/* ================= USER-TRIGGERED TRANSITION ACTIONS ================= */}
         {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
         {currentStage >= 11 && !isBloomUnlocked && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
+          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
             <button
               onClick={unlockBloom}
               className="px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-lg shadow-[0_0_25px_rgba(216,27,70,0.6)] border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
@@ -428,7 +446,7 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Milestone 2: Bloom complete & wind rising -> "Release the hearts →" */}
         {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
+          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 animate-bounce">
             <p className="font-serif italic text-sm text-[#fff8eb]/90 drop-shadow">
               "Some things are meant to take flight."
             </p>
@@ -444,7 +462,7 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Milestone 3: Flight initiated -> Proceed to Destination */}
         {isFlightUnlocked && currentStage >= 14 && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
+          <div className="absolute bottom-24 md:bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <p className="font-serif italic text-sm text-[#ffd6a5] drop-shadow">
               Hearts are sailing across the twilight sky...
             </p>

@@ -4,7 +4,7 @@ import {
   clamp01,
   SeededRandom,
 } from '../../animation/bezierUtils';
-import { GROWTH_T } from './animation/growthTimeline';
+import { GROWTH_T, getTimelineSpeed } from './animation/growthTimeline';
 import { BLOOM_T } from './animation/bloomTimeline';
 import { WIND_T, getWindStrength } from './animation/windTimeline';
 import {
@@ -99,6 +99,12 @@ const HEART_QUOTES = [
   'Rooted in grace, reaching forever toward you.',
 ];
 
+/** Max in-flight heart particles; oldest are dropped when exceeded. */
+const MAX_PARTICLES = 400;
+
+/** Shared RNG for ambient embers (avoids per-frame allocation). */
+const emberRng = new SeededRandom(1234567);
+
 /** Map progress [0,1] to stage number [1..16] */
 function getStageFromProgress(p: number): number {
   if (p < GROWTH_T.SEED_START) return 1;
@@ -122,6 +128,9 @@ function getStageFromProgress(p: number): number {
 export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimationProps>(({
   targetProgress = 0.02,
   initialProgress = 0.02,
+  autoPlay = false,
+  loop = false,
+  onComplete,
   className = '',
   style,
   onProgressUpdate,
@@ -150,6 +159,14 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   const particlesRef = useRef<FlyingHeartParticle[]>([]);
   const embersRef = useRef<Ember[]>([]);
   const detachedRef = useRef<Set<number>>(new Set());
+  const mountedRef = useRef(true);
+  const rafRef = useRef<number>(0);
+  const decayRafRef = useRef<number>(0);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  const autoPlayRef = useRef(autoPlay);
+  const loopRef = useRef(loop);
+  const lastProgressCbRef = useRef({ time: 0, progress: -1 });
 
   // Mouse & Touch interaction state
   const pointerRef = useRef({
@@ -179,6 +196,27 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   useEffect(() => {
     onWindChangeRef.current = onWindChange;
   }, [onWindChange]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    autoPlayRef.current = autoPlay;
+  }, [autoPlay]);
+
+  useEffect(() => {
+    loopRef.current = loop;
+  }, [loop]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(decayRafRef.current);
+    };
+  }, []);
 
   // Imperative handle
   useImperativeHandle(ref, () => ({
@@ -298,15 +336,17 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     pointerRef.current.isDown = false;
 
     // Smoothly decay drag wind
+    cancelAnimationFrame(decayRafRef.current);
     const decayWind = () => {
+      if (!mountedRef.current) return;
       pointerRef.current.dragWindX *= 0.92;
       if (Math.abs(pointerRef.current.dragWindX) > 0.1) {
-        requestAnimationFrame(decayWind);
+        decayRafRef.current = requestAnimationFrame(decayWind);
       } else {
         pointerRef.current.dragWindX = 0;
       }
     };
-    decayWind();
+    decayRafRef.current = requestAnimationFrame(decayWind);
 
     // If it's a tap/click (not a long drag), perform hit testing
     if (dragDist < 12) {
@@ -376,16 +416,43 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.warn('[HeartTreeAnimation] 2D canvas context unavailable; skipping render loop.');
+      const fallback = document.createElement('div');
+      fallback.textContent = 'Your browser does not support canvas rendering.';
+      fallback.className = 'heart-tree-fallback';
+      canvas.parentElement?.appendChild(fallback);
+      return;
+    }
 
     let running = true;
     let lastTime = performance.now();
 
+    const emitProgressThrottled = (progress: number) => {
+      const cb = onProgressUpdateRef.current;
+      if (!cb) return;
+      const now = performance.now();
+      const last = lastProgressCbRef.current;
+      const dt = now - last.time;
+      const dp = Math.abs(progress - last.progress);
+      if (dt > 100 || dp > 0.01) {
+        last.time = now;
+        last.progress = progress;
+        cb(progress, getStageFromProgress(progress));
+      }
+    };
+
     const loop = (now: number) => {
-      if (!running) return;
+      if (!running || !mountedRef.current) return;
 
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
+
+      // Legacy autoplay: advance target toward 1 over time
+      if (autoPlayRef.current && targetProgressRef.current < 1) {
+        const speed = getTimelineSpeed(progressRef.current);
+        targetProgressRef.current = Math.min(1, targetProgressRef.current + dt * speed * 0.05);
+      }
 
       // Smooth inertia interpolation toward user target progress
       const targetP = targetProgressRef.current;
@@ -393,8 +460,27 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       const diff = targetP - currentP;
 
       if (Math.abs(diff) > 0.0005) {
-        progressRef.current += diff * 0.09; // Silky smooth easing
-        onProgressUpdateRef.current?.(progressRef.current, getStageFromProgress(progressRef.current));
+        const speed = getTimelineSpeed(currentP);
+        progressRef.current += diff * 0.09 * speed; // Silky smooth easing scaled by timeline speed
+        emitProgressThrottled(progressRef.current);
+      }
+
+      // Completion / loop handling (guarded so onComplete fires once per run)
+      if (progressRef.current >= 1) {
+        if (loopRef.current) {
+          progressRef.current = 0;
+          targetProgressRef.current = autoPlayRef.current ? 0.02 : targetProgressRef.current;
+          completedRef.current = false;
+          detachedRef.current.clear();
+          particlesRef.current = [];
+        } else if (!completedRef.current) {
+          completedRef.current = true;
+          emitProgressThrottled(1);
+          onCompleteRef.current?.();
+        }
+      } else if (progressRef.current < 0.99) {
+        // Allow re-completion if progress is driven back and forward again
+        completedRef.current = false;
       }
 
       // If user scrolls back before detachment, re-attach detached hearts
@@ -409,7 +495,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       const layout = layoutRef.current;
 
       if (!tree || layout.w === 0) {
-        requestAnimationFrame(loop);
+        rafRef.current = requestAnimationFrame(loop);
         return;
       }
 
@@ -439,6 +525,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
               rotSpeed: (heart.detachOrder - 0.5) * 0.06,
               alpha: 1,
             });
+            if (particlesRef.current.length > MAX_PARTICLES) {
+              particlesRef.current.splice(0, particlesRef.current.length - MAX_PARTICLES);
+            }
           }
         });
       }
@@ -446,8 +535,8 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // Update in-flight particles
       updateFlyingHearts(particlesRef.current, dt, time, w, groundY);
 
-      // Background embers
-      const rng = new SeededRandom(Math.floor(time * 100));
+      // Background embers (shared RNG instance, no per-frame allocation)
+      const rng = emberRng;
       if (embersRef.current.length < 24 && rng.next() < 0.3) {
         embersRef.current.push({
           x: rng.range(0, w),
@@ -685,12 +774,13 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       }
 
       ctx.restore();
-      requestAnimationFrame(loop);
+      rafRef.current = requestAnimationFrame(loop);
     };
 
-    requestAnimationFrame(loop);
+    rafRef.current = requestAnimationFrame(loop);
     return () => {
       running = false;
+      cancelAnimationFrame(rafRef.current);
     };
   }, []);
 

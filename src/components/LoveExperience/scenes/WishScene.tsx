@@ -13,6 +13,18 @@ export const WishScene: React.FC = () => {
   const [hasWished, setHasWished] = useState(false);
   const emitterRef = useRef<ParticleEmitter>(new ParticleEmitter());
   const rafRef = useRef<number | null>(null);
+  const wishTlRef = useRef<gsap.core.Timeline | null>(null);
+  const mountedRef = useRef(true);
+
+  // Track mounted state + kill handler timeline on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      wishTlRef.current?.kill();
+      wishTlRef.current = null;
+    };
+  }, []);
 
   // Setup canvas and particle animation loop
   useEffect(() => {
@@ -75,6 +87,7 @@ export const WishScene: React.FC = () => {
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut',
+        overwrite: 'auto',
       });
     }, containerRef);
 
@@ -89,6 +102,9 @@ export const WishScene: React.FC = () => {
     const orb = orbRef.current;
     if (!orb) return;
 
+    // Kill the infinite entrance pulse so it doesn't fight the wish timeline
+    gsap.killTweensOf(orb);
+
     const rect = orb.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -97,6 +113,7 @@ export const WishScene: React.FC = () => {
     emitterRef.current.spawnBurst(cx, cy, 90);
 
     const tl = gsap.timeline();
+    wishTlRef.current = tl;
 
     // 1. Orb scales up slightly with luminous flash
     tl.to(orb, {
@@ -104,6 +121,7 @@ export const WishScene: React.FC = () => {
       filter: 'drop-shadow(0 0 45px rgba(255, 230, 180, 0.9))',
       duration: 0.5,
       ease: 'power2.out',
+      overwrite: 'auto',
     });
 
     // 2. Prompt fades out
@@ -125,22 +143,28 @@ export const WishScene: React.FC = () => {
       opacity: 0,
       duration: 2.2,
       ease: 'power2.inOut',
+      overwrite: 'auto',
       onComplete: () => {
+        if (!mountedRef.current) return;
         // Ignite full celestial starry sky
         emitterRef.current.spawnAmbientStars(80);
       },
     });
 
-    // 4. Background shifts into rich deep starry night sky
+    // 4. Background shifts into rich deep starry night sky (scoped to container)
+    const backdropGlow = containerRef.current?.querySelectorAll('.wish-backdrop-glow');
+    if (backdropGlow && backdropGlow.length > 0) {
     tl.to(
-      '.wish-backdrop-glow',
+      backdropGlow,
       {
         opacity: 0.85,
         duration: 3.0,
         ease: 'power2.out',
+        overwrite: 'auto',
       },
       '-=1.5'
     );
+    }
 
     // 5. Final message fades in with cinematic elegance
     const finaleElements = finaleRef.current?.querySelectorAll('.finale-reveal-item');

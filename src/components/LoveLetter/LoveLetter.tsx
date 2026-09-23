@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 
@@ -21,32 +21,52 @@ export const LoveLetter: React.FC = () => {
   const sealRef = useRef<HTMLDivElement>(null);
   
   const { isLetterOpen: isOpen, setIsLetterOpen } = useStory();
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
+
+  // Kill any running envelope timeline on unmount.
+  useEffect(() => {
+    return () => {
+      tlRef.current?.kill();
+      tlRef.current = null;
+    };
+  }, []);
+
+  const killEnvelopeTweens = () => {
+    tlRef.current?.kill();
+    tlRef.current = null;
+    gsap.killTweensOf([sealRef.current, flapRef.current, letterRef.current]);
+  };
 
   const openLetter = () => {
     if (isOpen) return;
     setIsLetterOpen(true);
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
-      
-      tl.to(sealRef.current, { scale: 1.4, opacity: 0, duration: 0.35, ease: 'power2.inOut' })
-        .to(flapRef.current, { rotateX: 180, transformOrigin: 'top', duration: 0.55, ease: 'power2.inOut' }, '-=0.15')
-        .to(letterRef.current, { y: -160, zIndex: 30, duration: 0.7, ease: 'power3.out' })
-        .to(letterRef.current, { 
-          scale: 1.15, 
-          y: -70, 
-          duration: 0.5, 
-          ease: 'power2.out',
-          boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.7)'
-        })
-        .fromTo('.letter-line', 
-          { opacity: 0, y: 15 }, 
-          { opacity: 1, y: 0, stagger: 0.15, duration: 0.5, ease: 'power2.out' }, 
-          '-=0.3'
-        );
-    }, containerRef);
+    killEnvelopeTweens();
+    const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
+    tlRef.current = tl;
 
-    return () => ctx.revert();
+    tl.to(sealRef.current, { scale: 1.4, opacity: 0, duration: 0.35, ease: 'power2.inOut', overwrite: 'auto' })
+      .to(flapRef.current, { rotateX: 180, transformOrigin: 'top', duration: 0.55, ease: 'power2.inOut', overwrite: 'auto' }, '-=0.15')
+      .to(letterRef.current, { y: -160, duration: 0.7, ease: 'power3.out', overwrite: 'auto' })
+      .call(() => {
+        if (letterRef.current) gsap.set(letterRef.current, { zIndex: 30 });
+      })
+      .to(letterRef.current, {
+        scale: 1.15,
+        y: -70,
+        duration: 0.5,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      })
+      .call(() => {
+        // Single end-state shadow set (avoids interpolating box-shadow every frame).
+        if (letterRef.current) letterRef.current.style.boxShadow = '0 30px 60px -12px rgba(0, 0, 0, 0.7)';
+      })
+      .fromTo('.letter-line',
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, stagger: 0.15, duration: 0.5, ease: 'power2.out', overwrite: 'auto' },
+        '-=0.3'
+      );
   };
 
   const closeLetter = (e?: React.MouseEvent) => {
@@ -54,17 +74,17 @@ export const LoveLetter: React.FC = () => {
     if (!isOpen) return;
     setIsLetterOpen(false);
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
-      
-      tl.to('.letter-line', { opacity: 0, y: 10, duration: 0.25, stagger: -0.05, ease: 'power2.in' })
-        .to(letterRef.current, { scale: 1, y: 0, duration: 0.5, ease: 'power2.inOut' })
-        .to(letterRef.current, { zIndex: 10, duration: 0.05 })
-        .to(flapRef.current, { rotateX: 0, duration: 0.5, ease: 'power2.inOut' }, '-=0.1')
-        .to(sealRef.current, { scale: 1, opacity: 1, duration: 0.35, ease: 'power2.inOut' });
-    }, containerRef);
-    
-    return () => ctx.revert();
+    killEnvelopeTweens();
+    const tl = gsap.timeline({ defaults: { overwrite: 'auto' } });
+    tlRef.current = tl;
+
+    tl.to('.letter-line', { opacity: 0, y: 10, duration: 0.25, stagger: -0.05, ease: 'power2.in', overwrite: 'auto' })
+      .to(letterRef.current, { scale: 1, y: 0, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' })
+      .call(() => {
+        if (letterRef.current) gsap.set(letterRef.current, { zIndex: 10 });
+      })
+      .to(flapRef.current, { rotateX: 0, duration: 0.5, ease: 'power2.inOut', overwrite: 'auto' }, '-=0.1')
+      .to(sealRef.current, { scale: 1, opacity: 1, duration: 0.35, ease: 'power2.inOut', overwrite: 'auto' });
   };
 
   return (
