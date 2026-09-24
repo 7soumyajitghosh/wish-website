@@ -64,17 +64,6 @@ const AppContent = () => {
     <div className={`grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8] ${!isExperienceUnlocked ? 'overflow-hidden max-h-screen' : ''}`}>
       <CursorGlow />
       <Navigation />
-      {/* Visible escape hatch: skip the locked intro at any time. */}
-      {!isExperienceUnlocked && (
-        <button
-          type="button"
-          onClick={() => setIntroState('EXPERIENCE_UNLOCKED')}
-          aria-label="Skip intro and enter the experience"
-          className="fixed bottom-6 left-6 z-[70] px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-[#ffd6a5]/50 text-[#fffdf8] font-serif text-base tracking-wide transition-all hover:bg-white/20 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
-        >
-          Skip intro →
-        </button>
-      )}
       <main>
         {/* Interactive Heart Tree Experience (owns opening intro overlay & auto-growth journey) */}
         <CinematicExperience />

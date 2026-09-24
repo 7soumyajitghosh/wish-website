@@ -5,18 +5,7 @@ import { Hero } from '../Hero/Hero';
 import { WindOverlay } from '../Effects/WindOverlay';
 import { LightTransition } from '../Effects/LightTransition';
 import { AmbientField } from '../Effects/AmbientField';
-import { CinematicBars, SceneCaption } from '../Effects/CinematicBars';
-
-// Automatic chapter captions for the cinematic beats.
-function chapterFor(introState: string, stage: number): { kicker: string; title: string } | null {
-  if (introState === 'SEED_FALLING') return { kicker: 'Chapter I — The Wind', title: 'A seed rides the evening breeze' };
-  if (introState === 'SEED_LANDED' || introState === 'WATERING')
-    return { kicker: 'Chapter II — Water', title: 'Every love needs tending' };
-  if (introState === 'WATERED' || (stage >= 2 && stage <= 11))
-    return { kicker: 'Chapter III — Growth', title: 'Watch love take root' };
-  if (stage >= 13) return { kicker: 'Chapter V — The Wind', title: 'Letting love fly' };
-  return null; // stage 12 has its own bloom pause card; INTRO has the title hero
-}
+import { CinematicBars } from '../Effects/CinematicBars';
 import {
   useStory,
   STAGE_DESCRIPTIONS,
@@ -28,6 +17,10 @@ export const CinematicExperience: React.FC = () => {
   const stickyRef = useRef<HTMLDivElement>(null);
   const isAutoGrowingRef = useRef(false);
   const autoGrowthTlRef = useRef<gsap.core.Timeline | null>(null);
+  const stormTlRef = useRef<gsap.core.Timeline | null>(null);
+  // Camera (zoom) + black fade are applied straight to the DOM (no re-renders).
+  const camRef = useRef<HTMLDivElement>(null);
+  const fadeRef = useRef<HTMLDivElement>(null);
 
   const {
     introState,
@@ -48,6 +41,8 @@ export const CinematicExperience: React.FC = () => {
 
   const [userWind, setUserWind] = useState(0);
   const [isAutoGrowing, setIsAutoGrowing] = useState(false);
+  const [isBloomPaused, setIsBloomPaused] = useState(false);
+  const [isStorming, setIsStorming] = useState(false);
   const [transitionPlay, setTransitionPlay] = useState(false);
   const quoteCloseRef = useRef<HTMLButtonElement>(null);
 
@@ -62,13 +57,66 @@ export const CinematicExperience: React.FC = () => {
     unlockFlightRef.current = isFlightUnlocked;
   }, [isFlightUnlocked]);
 
-  // Single GSAP auto-growth timeline from watering to Full Bloom (Stage 12, 0.82)
+  // Camera zoom (direct DOM write — GPU transform, no re-renders).
+  // Origin sits at the tree base (~46% x, ~73% y, matching the canvas layout).
+  const applyCam = useCallback((z: number) => {
+    const el = camRef.current;
+    if (el) el.style.transform = `scale(${z})`;
+  }, []);
+
+  // Black fade that follows the trailing leaves (direct DOM write).
+  const applyFade = useCallback((o: number) => {
+    const el = fadeRef.current;
+    if (el) el.style.opacity = String(Math.max(0, Math.min(1, o)));
+  }, []);
+
+  // Shared finish: leaves gone → unlock → cinematic transition into content.
+  const finishCinematic = useCallback(() => {
+    if (autoGrowthTlRef.current) {
+      autoGrowthTlRef.current.kill();
+      autoGrowthTlRef.current = null;
+    }
+    if (stormTlRef.current) {
+      stormTlRef.current.kill();
+      stormTlRef.current = null;
+    }
+    isAutoGrowingRef.current = false;
+    setIsAutoGrowing(false);
+    setIsBloomPaused(false);
+    setIsStorming(false);
+    setTargetProgress(STAGE_PROGRESS_MAP[16]);
+    unlockBloom();
+    unlockFlight();
+    applyCam(1);
+    // Lift the black fade once the transition takes over.
+    const fadeEl = fadeRef.current;
+    if (fadeEl) {
+      gsap.to(fadeEl, { opacity: 0, duration: 1.4, delay: 0.5, ease: 'power2.out', overwrite: 'auto' });
+    }
+    setIntroState('EXPERIENCE_UNLOCKED');
+    setTransitionPlay(true);
+
+    // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
+    const container = containerRef.current;
+    if (container) {
+      const totalScrollable = container.offsetHeight - window.innerHeight;
+      if (totalScrollable > 0) {
+        const rawProgress = (STAGE_PROGRESS_MAP[16] - 0.02) / 0.98;
+        const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
+        window.scrollTo({ top: targetScrollY, behavior: 'instant' });
+      }
+    }
+  }, [applyCam, setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+
+  // Phased auto-growth: roots in close-up → slow zoom out → branches → leaves.
+  // Pauses at full bloom for the storm beat. Tree code itself is untouched;
+  // only targetProgress waypoints + the environmental camera move.
   const startAutoGrowth = useCallback(() => {
     if (isAutoGrowingRef.current) return;
     isAutoGrowingRef.current = true;
     setIsAutoGrowing(true);
+    setIsBloomPaused(false);
 
-    // Clean up any existing timeline to ensure strict single-timeline execution
     if (autoGrowthTlRef.current) {
       autoGrowthTlRef.current.kill();
       autoGrowthTlRef.current = null;
@@ -78,189 +126,146 @@ export const CinematicExperience: React.FC = () => {
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Skip faster for reduced motion: keep authored durations normal and
-    // run the whole timeline at 3x via timeScale (durations * 0.2 would
-    // read as "faster" too but scatters magic numbers through every tween).
     const progressObj = { p: 0.02 };
+    const camObj = { z: 1.5 };
+    let lastBroadcastTime = 0;
+    const broadcast = () => {
+      const now = performance.now();
+      if (now - lastBroadcastTime > 30 || progressObj.p >= 0.819) {
+        lastBroadcastTime = now;
+        setTargetProgress(progressObj.p);
+      }
+      if (progressObj.p >= 0.81 && !unlockBloomRef.current) {
+        unlockBloom();
+      }
+    };
+
+    // Match the seed close-up the intro hands off, then hold it for the roots.
+    applyCam(1.5);
+
+    const tl = gsap.timeline({
+      onUpdate: broadcast,
+      onComplete: () => {
+        broadcast();
+        isAutoGrowingRef.current = false;
+        setIsAutoGrowing(false);
+        setIsBloomPaused(true);
+      },
+    });
+
+    // 0.02 -> 0.06 seed settles, 0.06 -> 0.15 roots extend (close-up)
+    tl.to(progressObj, { p: STAGE_PROGRESS_MAP[2], duration: 1.2, ease: 'power1.inOut' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 2.8, ease: 'power2.out' })
+      .to({}, { duration: 0.6 })
+      // Slow zoom back out as the trunk + branches rise
+      .to(camObj, {
+        z: 1.0,
+        duration: 3.2,
+        ease: 'power2.inOut',
+        overwrite: 'auto',
+        onUpdate: () => applyCam(camObj.z),
+      })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[5], duration: 2.4, ease: 'power1.inOut' }, '<')
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[6], duration: 2.6, ease: 'power2.out' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[7], duration: 2.4, ease: 'power1.inOut' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[8], duration: 2.2, ease: 'power1.out' })
+      // Leaves unfurl gradually until full cover
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[9], duration: 2.0, ease: 'sine.inOut' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[10], duration: 2.2, ease: 'power2.out' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[11], duration: 2.0, ease: 'power1.inOut' })
+      .to(progressObj, { p: STAGE_PROGRESS_MAP[12], duration: 2.0, ease: 'power2.out' })
+      .to({}, { duration: 0.8 });
+
+    tl.timeScale(prefersReducedMotion ? 3 : 1);
+
+    autoGrowthTlRef.current = tl;
+  }, [applyCam, setTargetProgress, unlockBloom]);
+
+  // Storm beat: button-triggered gale blows every leaf off, black follows
+  // the trailing leaves, then the page transitions.
+  const startStorm = useCallback(() => {
+    if (isStorming || !isBloomPaused) return;
+    setIsBloomPaused(false);
+    setIsStorming(true);
+    isAutoGrowingRef.current = true;
+    setIsAutoGrowing(true);
+
+    if (stormTlRef.current) {
+      stormTlRef.current.kill();
+      stormTlRef.current = null;
+    }
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const progressObj = { p: STAGE_PROGRESS_MAP[12] };
+    const camObj = { z: 1.0 };
     let lastBroadcastTime = 0;
 
     const tl = gsap.timeline({
       onUpdate: () => {
         const now = performance.now();
-        // Throttle updates to avoid unnecessary React re-renders while updating HUD accurately
-        if (now - lastBroadcastTime > 30 || progressObj.p >= 0.819) {
+        if (now - lastBroadcastTime > 30 || progressObj.p >= 0.99) {
           lastBroadcastTime = now;
           setTargetProgress(progressObj.p);
         }
-
-        // Milestone 1: Unlock bloom as the timeline crosses the threshold
-        if (progressObj.p >= 0.81 && !unlockBloomRef.current) {
-          unlockBloom();
-        }
-
-        // Milestone 2: Unlock flight as the timeline crosses the threshold
-        if (progressObj.p >= 0.90 && !unlockFlightRef.current) {
+        if (progressObj.p >= 0.9 && !unlockFlightRef.current) {
           unlockFlight();
         }
+        // Fade to black following the trailing leaves off-screen.
+        applyFade((progressObj.p - 0.93) / 0.07);
       },
       onComplete: () => {
-        setTargetProgress(STAGE_PROGRESS_MAP[16]);
-        unlockBloom();
-        unlockFlight();
-        setIntroState('EXPERIENCE_UNLOCKED');
-        setTransitionPlay(true);
-
-        // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
-        const container = containerRef.current;
-        if (container) {
-          const totalScrollable = container.offsetHeight - window.innerHeight;
-          if (totalScrollable > 0) {
-            const rawProgress = (STAGE_PROGRESS_MAP[16] - 0.02) / 0.98;
-            const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
-            window.scrollTo({ top: targetScrollY, behavior: 'instant' });
-          }
-        }
-        isAutoGrowingRef.current = false;
-        setIsAutoGrowing(false);
+        finishCinematic();
       },
     });
 
-    // Sequential waypoint tweening using official STAGE_PROGRESS_MAP values
-    // 1: 0.02 -> 2: 0.06 (Glowing Seed)
-    tl.to(progressObj, {
-      p: STAGE_PROGRESS_MAP[2],
-      duration: 1.4,
-      ease: 'power1.inOut',
+    // Gale: slight push-in + full sweep to destination as leaves detach.
+    tl.to(camObj, {
+      z: 1.12,
+      duration: 6.5,
+      ease: 'power1.in',
+      overwrite: 'auto',
+      onUpdate: () => applyCam(camObj.z),
     })
-      // 2: 0.06 -> 3: 0.15 (Roots Emerge into soil)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[3],
-        duration: 2.2,
-        ease: 'power2.out',
-      })
-      // Dramatic contemplation hold for deep roots
-      .to({}, { duration: 0.35 })
-      // 3: 0.15 -> 4: 0.23 (Trunk Begins)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[4],
-        duration: 1.6,
-        ease: 'sine.inOut',
-      })
-      // 4: 0.23 -> 5: 0.29 (Trunk Grows)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[5],
-        duration: 1.4,
-        ease: 'power1.out',
-      })
-      // 5: 0.29 -> 6: 0.38 (Main Branches)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[6],
-        duration: 2.2,
-        ease: 'power2.out',
-      })
-      // Hold for wide bough canopy silhouette
-      .to({}, { duration: 0.3 })
-      // 6: 0.38 -> 7: 0.48 (Secondary Branches)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[7],
-        duration: 2.0,
-        ease: 'power1.inOut',
-      })
-      // 7: 0.48 -> 8: 0.58 (Fine Twigs)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[8],
-        duration: 1.8,
-        ease: 'power1.out',
-      })
-      // 8: 0.58 -> 9: 0.65 (Tiny Buds)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[9],
-        duration: 1.6,
-        ease: 'sine.inOut',
-      })
-      // 9: 0.65 -> 10: 0.72 (Hearts Bloom Wave 1)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[10],
-        duration: 2.2,
-        ease: 'power2.out',
-      })
-      // 10: 0.72 -> 11: 0.78 (More Hearts Wave 2)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[11],
-        duration: 1.8,
-        ease: 'power1.inOut',
-      })
-      // 11: 0.78 -> 12: 0.82 (Full Bloom)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[12],
-        duration: 1.8,
-        ease: 'power2.out',
-      })
-      // Hold momentarily at Full Bloom
-      .to({}, { duration: 0.4 })
-      // 12: 0.82 -> 13: 0.88 (Wind Begins)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[13],
-        duration: 1.6,
-        ease: 'power1.inOut',
-      })
-      // 13: 0.88 -> 14: 0.94 (Hearts Fly Away)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[14],
-        duration: 2.0,
-        ease: 'power2.out',
-      })
-      // 14: 0.94 -> 15: 0.98 (Celestial Stream)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[15],
-        duration: 1.6,
-        ease: 'power1.out',
-      })
-      // 15: 0.98 -> 16: 1.00 (Destination)
-      .to(progressObj, {
-        p: STAGE_PROGRESS_MAP[16],
-        duration: 1.4,
-        ease: 'sine.out',
-      });
+      .to(
+        progressObj,
+        { p: STAGE_PROGRESS_MAP[16], duration: 6.5, ease: 'power1.in' },
+        0
+      );
 
-    // Reduced-motion skip: play the authored timeline faster instead of
-    // stretching/shrinking individual durations.
     tl.timeScale(prefersReducedMotion ? 3 : 1);
 
-    autoGrowthTlRef.current = tl;
-  }, [setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+    stormTlRef.current = tl;
+  }, [applyCam, applyFade, finishCinematic, isBloomPaused, isStorming, setTargetProgress, unlockFlight]);
 
-  // Clean up auto-growth timeline on unmount
+  // Clean up cinematic timelines on unmount
   useEffect(() => {
     return () => {
       if (autoGrowthTlRef.current) {
         autoGrowthTlRef.current.kill();
         autoGrowthTlRef.current = null;
       }
+      if (stormTlRef.current) {
+        stormTlRef.current.kill();
+        stormTlRef.current = null;
+      }
     };
   }, []);
 
-  // Escape hatch for the ~30s auto-growth: jump straight to the end state.
+  // Escape hatch for the cinematic: jump straight to the end state.
   const skipAutoGrowth = useCallback(() => {
-    if (autoGrowthTlRef.current) {
-      autoGrowthTlRef.current.kill();
-      autoGrowthTlRef.current = null;
-    }
-    isAutoGrowingRef.current = false;
-    setIsAutoGrowing(false);
-    setTargetProgress(STAGE_PROGRESS_MAP[16]);
-    unlockBloom();
-    unlockFlight();
-    setIntroState('EXPERIENCE_UNLOCKED');
-    setTransitionPlay(true);
-  }, [setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+    finishCinematic();
+  }, [finishCinematic]);
 
   // Background-tab stranding guard: GSAP timers throttle while hidden, so
-  // fast-forward the growth timeline when the tab becomes visible again.
+  // fast-forward the cinematic timelines when the tab becomes visible again.
   useEffect(() => {
     const onVisibility = () => {
-      if (!document.hidden && autoGrowthTlRef.current) {
-        autoGrowthTlRef.current.progress(1);
+      if (!document.hidden) {
+        if (stormTlRef.current) stormTlRef.current.progress(1);
+        else if (autoGrowthTlRef.current) autoGrowthTlRef.current.progress(1);
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -336,7 +341,7 @@ export const CinematicExperience: React.FC = () => {
       style={{ height: '550vh' }}
       aria-label="Interactive Story Experience"
     >
-      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; }`}</style>
+      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(30,41,59,0.55) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
@@ -346,8 +351,12 @@ export const CinematicExperience: React.FC = () => {
         <div className="sr-only" aria-live="polite">
           Stage {currentStage} of 16: {currentInfo.title}
         </div>
-        {/* Heart Tree Canvas - The single authoritative tree instance */}
-        <div className="absolute inset-0 z-0">
+        {/* Heart Tree Canvas — camera wrapper (environmental zoom only) */}
+        <div
+          ref={camRef}
+          className="absolute inset-0 z-0 will-change-transform"
+          style={{ transformOrigin: '46% 73%' }}
+        >
           <HeartTreeAnimation
             targetProgress={targetProgress}
             onTreeInteract={handleTreeInteract}
@@ -376,17 +385,27 @@ export const CinematicExperience: React.FC = () => {
           <AmbientField density={46} />
         </div>
 
-        {/* Scene 6 — strong wind trails as hearts detach (environmental only) */}
+        {/* Storm gale trails (environmental only) */}
         <div className="absolute inset-0 z-[6] pointer-events-none">
-          <WindOverlay active={targetProgress >= 0.86 || currentStage >= 13} strength={1 + Math.abs(userWind) * 0.15} />
+          <WindOverlay
+            active={isStorming || targetProgress >= 0.86 || currentStage >= 13}
+            strength={isStorming ? 2.4 : 1 + Math.abs(userWind) * 0.15}
+          />
         </div>
 
-        {/* Cinematic letterbox + chapter caption (automatic film framing) */}
+        {/* Storm clouds while the gale blows */}
+        {isStorming && <div aria-hidden="true" className="storm-tint pointer-events-none absolute inset-0 z-[7]" />}
+
+        {/* Fade to black following the trailing leaves */}
+        <div
+          ref={fadeRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[45] bg-black"
+          style={{ opacity: 0 }}
+        />
+
+        {/* Cinematic letterbox (automatic film framing) */}
         <CinematicBars visible={introState !== 'EXPERIENCE_UNLOCKED' || isAutoGrowing} />
-        {(() => {
-          const chapter = chapterFor(introState, currentStage);
-          return chapter ? <SceneCaption kicker={chapter.kicker} title={chapter.title} /> : null;
-        })()}
 
         {/* ================= INTRO PHASE OVERLAY (Owned by CinematicExperience) ================= */}
         {introState !== 'EXPERIENCE_UNLOCKED' && (
@@ -538,19 +557,26 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
 
-        {/* Scene 5 — full-bloom cinematic pause */}
-        {currentStage === 12 && introState === 'EXPERIENCE_UNLOCKED' && (
-          <div className="pointer-events-none absolute left-1/2 top-[16%] z-30 -translate-x-1/2 text-center">
-            <p className="font-serif italic text-[#ffd6a5] text-xl md:text-2xl drop-shadow-[0_0_18px_rgba(255,214,165,0.5)]">
-              Full bloom — hold this moment
-            </p>
-          </div>
-        )}
-
         {/* Premium cinematic transition into website content */}
         <LightTransition play={transitionPlay} onDone={() => setTransitionPlay(false)} />
+
+        {/* Storm beat: full bloom reached — summon the gale */}
+        {isBloomPaused && !isStorming && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
+            <button
+              onClick={startStorm}
+              className="btn-primary font-serif shadow-[0_0_30px_rgba(100,181,246,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2"
+              aria-label="Summon the storm"
+            >
+              Summon the storm →
+            </button>
+            <span className="text-sm font-sans tracking-widest uppercase text-[#cfe8ff]/85">
+              The wind takes every leaf
+            </span>
+          </div>
+        )}
         {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
-        {currentStage >= 11 && !isBloomUnlocked && (
+        {currentStage >= 11 && !isBloomUnlocked && !isStorming && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <button
               onClick={unlockBloom}
@@ -566,7 +592,7 @@ export const CinematicExperience: React.FC = () => {
         )}
 
         {/* Milestone 2: Bloom complete & wind rising -> "Release the hearts →" */}
-        {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && (
+        {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && !isBloomPaused && !isStorming && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <p className="font-serif text-sm text-[#fff8eb]/90 drop-shadow">
               "Some things are meant to take flight."
@@ -582,7 +608,7 @@ export const CinematicExperience: React.FC = () => {
         )}
 
         {/* Milestone 3: Flight initiated -> Proceed to Destination */}
-        {isFlightUnlocked && currentStage >= 14 && (
+        {introState === 'EXPERIENCE_UNLOCKED' && isFlightUnlocked && currentStage >= 14 && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <p className="font-serif text-sm text-[#ffd6a5] drop-shadow">
               Hearts are sailing across the twilight sky...

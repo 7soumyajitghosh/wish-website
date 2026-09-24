@@ -135,15 +135,37 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
           </p>
 
           <style>{`
-            .hero-line { display: block; overflow: hidden; }
+            .hero-line { display: block; overflow: hidden; padding-bottom: 0.16em; margin-bottom: -0.16em; }
             .hero-line > span { display: block; animation: heroRise 1s cubic-bezier(0.22,1,0.36,1) both; }
             .hero-line:nth-child(2) > span { animation-delay: 0.14s; }
             @keyframes heroRise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
-            @media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } }
+            .heart-chain { position: absolute; inset-inline: 0; top: 50%; height: 0; pointer-events: none; }
+            .heart-chain > span {
+              position: absolute; top: 0; left: 0;
+              font-size: clamp(1rem, 2.4vw, 1.6rem); line-height: 1;
+              color: #ff6b8d; text-shadow: 0 0 12px rgba(255,77,109,0.95), 0 0 30px rgba(255,77,109,0.55);
+              opacity: 0; animation: heartSlide 2.8s linear infinite;
+            }
+            @keyframes heartSlide {
+              0% { opacity: 0; transform: translate(-8vw, 10px) scale(0.7); }
+              15% { opacity: 1; }
+              80% { opacity: 1; }
+              100% { opacity: 0; transform: translate(108vw, -14px) scale(1.15); }
+            }
+            @media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } .heart-chain { display: none; } }
           `}</style>
-          <h1 className="font-serif text-[#fffdf8] tracking-wide mb-6 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+          <h1 className="relative font-serif text-[#fffdf8] tracking-wide mb-6 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 1.14 }}>
             <span className="hero-line"><span>Where Love</span></span>
             <span className="hero-line"><span>Takes Flight</span></span>
+            <span aria-hidden="true" className="heart-chain">
+              <span style={{ animationDelay: '0.9s' }}>♥️</span>
+              <span style={{ animationDelay: '1.15s' }}>♥️</span>
+              <span style={{ animationDelay: '1.4s' }}>♥️</span>
+              <span style={{ animationDelay: '1.65s' }}>♥️</span>
+              <span style={{ animationDelay: '1.9s' }}>♥️</span>
+              <span style={{ animationDelay: '2.15s' }}>♥️</span>
+              <span style={{ animationDelay: '2.4s' }}>♥️</span>
+            </span>
           </h1>
 
           <p className="font-serif italic text-[#ffd6a5]/90 text-lg md:text-xl mb-8 max-w-xl leading-relaxed">
@@ -175,10 +197,6 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
                 </span>
               </button>
             </MagneticButton>
-
-            <p className="text-sm font-sans tracking-widest text-[#f5baa4]/85 uppercase mt-4">
-              Sound on recommended · tap to begin
-            </p>
           </div>
         </div>
       )}

@@ -29,10 +29,13 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   const { introState, setIntroState } = useStory();
   const containerRef = useRef<HTMLDivElement>(null);
   const seedGroupRef = useRef<SVGGElement>(null);
+  const heartEmojiRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<HTMLDivElement>(null);
   const potRef = useRef<HTMLDivElement>(null);
   const soilRef = useRef<SVGPathElement>(null);
   const auraRef = useRef<SVGCircleElement>(null);
   const seedTlRef = useRef<gsap.core.Timeline | null>(null);
+  const zoomTweenRef = useRef<gsap.core.Tween | null>(null);
   const potTlRef = useRef<gsap.core.Tween | gsap.core.Timeline | null>(null);
   const waterTlRef = useRef<gsap.core.Timeline | null>(null);
   const seedTimeoutRef = useRef<number | null>(null);
@@ -75,6 +78,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
 
   // Track if action already completed to prevent duplicate triggers
   const hasWateredRef = useRef(false);
+  const autoWaterRef = useRef<number | null>(null);
   const pointerStartRef = useRef({ x: 0, y: 0 });
   const dragStartOffsetRef = useRef({ x: 0, y: 0 });
   const onWaterCompleteRef = useRef(onWaterComplete);
@@ -91,10 +95,15 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       seedTlRef.current?.kill();
       potTlRef.current?.kill();
       waterTlRef.current?.kill();
-      seedTlRef.current = potTlRef.current = waterTlRef.current = null;
+      zoomTweenRef.current?.kill();
+      seedTlRef.current = potTlRef.current = waterTlRef.current = zoomTweenRef.current = null;
       if (seedTimeoutRef.current !== null) {
         window.clearTimeout(seedTimeoutRef.current);
         seedTimeoutRef.current = null;
+      }
+      if (autoWaterRef.current !== null) {
+        window.clearTimeout(autoWaterRef.current);
+        autoWaterRef.current = null;
       }
     };
   }, []);
@@ -153,21 +162,25 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       /* noop */
     }
 
-    // Scene 1 — wind-carried seed: curved flight from off-screen (physical, not linear)
+    // Opening beat: a heart drifts in on the wind, floats down, lands,
+    // then morphs into the seed pod.
     const startX = reduced ? 0 : -dims.w * 0.42;
     const startY = reduced ? 0 : -dims.h * 0.52;
+    const emojiEl = heartEmojiRef.current;
+    // Seed pod waits hidden at the landing spot until the morph.
     gsap.set(seedEl, {
-      y: startY,
-      x: startX,
-      scale: reduced ? 1 : 0.85,
-      opacity: reduced ? 1 : 0,
-      rotation: reduced ? 0 : -42,
+      y: 0,
+      x: 0,
+      scale: 0,
+      opacity: 0,
+      rotation: 0,
       scaleX: 1,
       scaleY: 1,
-      filter: 'blur(0px)',
     });
 
     if (reduced) {
+      if (emojiEl) gsap.set(emojiEl, { opacity: 0 });
+      gsap.set(seedEl, { scale: 1, opacity: 1 });
       if (soilRef.current) gsap.set(soilRef.current, { fill: '#240b19' });
       setIntroState('SEED_LANDED');
       if (seedTimeoutRef.current !== null) window.clearTimeout(seedTimeoutRef.current);
@@ -177,6 +190,15 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       }, 250);
       return;
     }
+    if (!emojiEl) return;
+
+    gsap.set(emojiEl, {
+      x: startX,
+      y: startY,
+      scale: 0.9,
+      opacity: 0,
+      rotation: -30,
+    });
 
     seedTlRef.current?.kill();
     const tl = gsap.timeline({
@@ -193,87 +215,60 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     });
     seedTlRef.current = tl;
 
-      // Wind-blown curved trajectory: gust in → ride the wind → settle.
-      // Acceleration/deceleration + rotation + scale + faint motion blur.
-      tl.to(seedEl, {
-        opacity: 1,
-        duration: 0.45,
-        ease: 'power1.out',
-      })
-        .to(
-          seedEl,
-          {
-            x: startX * 0.45,
-            y: startY * 0.55,
-            rotation: -18,
-            scale: 1.06,
-            filter: 'blur(2px)',
-            duration: 0.9,
-            ease: 'power2.out',
-          },
-          0
-        )
-        .to(
-          seedEl,
-          {
-            x: startX * 0.08,
-            y: startY * 0.18,
-            rotation: 10,
-            scale: 1.0,
-            filter: 'blur(0px)',
-            duration: 0.9,
-            ease: 'sine.inOut',
-          },
-          0.9
-        )
-        .to(
-          seedEl,
-          {
-            x: 0,
-            y: 0,
-            rotation: 0,
-            scale: 1,
-            duration: 1.5,
-            ease: 'power2.in',
-          },
-          1.8
-        )
-        // Impact squash and stretch on soil landing
-        .to(seedEl, {
-          scaleY: 0.7,
-          scaleX: 1.35,
-          duration: 0.12,
-          ease: 'power2.out',
-        })
-        .to(seedEl, {
-          scaleY: 1.08,
-          scaleX: 0.94,
-          y: -8,
-          duration: 0.22,
-          ease: 'sine.out',
-        })
-        .to(seedEl, {
-          scaleY: 1,
-          scaleX: 1,
-          y: 0,
-          duration: 0.35,
-          ease: 'bounce.out',
-        });
+    // Heart drifts in on the wind: gust in → ride → float down → land.
+    tl.to(emojiEl, { opacity: 1, duration: 0.4, ease: 'power1.out' }, 0)
+      .to(
+        emojiEl,
+        { x: startX * 0.45, y: startY * 0.55, rotation: -14, scale: 1.1, duration: 0.9, ease: 'power2.out' },
+        0
+      )
+      .to(
+        emojiEl,
+        { x: startX * 0.08, y: startY * 0.18, rotation: 8, scale: 1.0, duration: 0.9, ease: 'sine.inOut' },
+        0.9
+      )
+      .to(
+        emojiEl,
+        { x: 0, y: 0, rotation: 0, duration: 1.4, ease: 'power2.in' },
+        1.8
+      )
+      // Morph: heart shrinks into the ground as the seed pod blooms out.
+      .to(
+        emojiEl,
+        { scale: 0.12, opacity: 0, duration: 0.35, ease: 'power2.in' },
+        3.2
+      )
+      .to(
+        seedEl,
+        { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(2)', overwrite: 'auto' },
+        3.25
+      )
+      .to(seedEl, { scaleY: 1, scaleX: 1, y: 0, duration: 0.3, ease: 'bounce.out' }, 3.7);
 
-      // Gentle soil ripple response (timed to the new ~3.3s landing)
-      if (soilRef.current) {
-        tl.to(
-          soilRef.current,
-          {
-            fill: '#240b19',
-            duration: 0.3,
-            yoyo: true,
-            repeat: 1,
-            overwrite: 'auto',
-          },
-          3.2
-        );
-      }
+    // Seed aura flashes alive at the morph.
+    if (auraRef.current) {
+      tl.fromTo(
+        auraRef.current,
+        { opacity: 0 },
+        { opacity: 0.9, duration: 0.5, ease: 'sine.out', overwrite: 'auto' },
+        3.25
+      );
+    }
+
+    // Gentle soil ripple response (timed to the ~3.2s landing)
+    if (soilRef.current) {
+      tl.to(
+        soilRef.current,
+        {
+          fill: '#240b19',
+          duration: 0.3,
+          yoyo: true,
+          repeat: 1,
+          overwrite: 'auto',
+        },
+        3.2
+      );
+    }
 
     // NOTE: intentionally no ctx.revert() here — revert would wipe the
     // landed end-state. Timeline is killed on unmount via seedTlRef.
@@ -336,7 +331,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Oscillate the sprinkler arm (small wiggle — it is a sprinkler, not a pot)
+    // Tip the watering can forward to pour (small tilt — the stream does the work).
     tl.to(potEl, {
       rotation: -12,
       duration: reduced ? 0 : 0.6,
@@ -344,24 +339,41 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       overwrite: 'auto',
     });
 
-    // Spurt water droplets
-    tl.call(() => {
-      if (!mountedRef.current) return;
-      const drops: WaterDrop[] = Array.from({ length: 18 }, (_, i) => ({
-        id: i,
-        x: (Math.random() - 0.5) * 14,
-        y: Math.random() * 22,
-        length: Math.random() * 10 + 6,
-        speed: Math.random() * 2 + 3,
-      }));
-      setWaterDrops(drops);
+    // Camera pushes in on the seed as the water falls.
+    const zoomEl = zoomRef.current;
+    if (zoomEl) {
+      zoomTweenRef.current?.kill();
+      zoomTweenRef.current = gsap.to(zoomEl, {
+        scale: 1.45,
+        transformOrigin: `${baseX}px ${seedLandingY}px`,
+        duration: reduced ? 0 : 1.6,
+        ease: 'power2.inOut',
+        overwrite: 'auto',
+      });
+    }
 
-      try {
-        soundManager.playBloomChime();
-      } catch {
-        /* noop */
-      }
-    });
+    // Spurt water droplets — immediately on click, synced to the pour.
+    tl.call(
+      () => {
+        if (!mountedRef.current) return;
+        const drops: WaterDrop[] = Array.from({ length: 18 }, (_, i) => ({
+          id: i,
+          x: (Math.random() - 0.5) * 14,
+          y: Math.random() * 22,
+          length: Math.random() * 10 + 6,
+          speed: Math.random() * 2 + 3,
+        }));
+        setWaterDrops(drops);
+
+        try {
+          soundManager.playBloomChime();
+        } catch {
+          /* noop */
+        }
+      },
+      undefined,
+      '<'
+    );
 
     // Pulse seed as it drinks water + glow the aura circle (no filter tween)
     // Reduced motion: skip yoyo pulse, jump to end state.
@@ -447,11 +459,17 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const t = window.setTimeout(
+    if (autoWaterRef.current !== null) window.clearTimeout(autoWaterRef.current);
+    autoWaterRef.current = window.setTimeout(
       () => triggerWatering(),
       reduced ? 2500 : 6000
     );
-    return () => window.clearTimeout(t);
+    return () => {
+      if (autoWaterRef.current !== null) {
+        window.clearTimeout(autoWaterRef.current);
+        autoWaterRef.current = null;
+      }
+    };
   }, [introState, triggerWatering]);
 
   // Pointer drag event handlers for watering pot (mouse + touch)
@@ -504,9 +522,30 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
 
   return (
     <div
-      ref={containerRef}
+      ref={(el) => {
+        containerRef.current = el;
+        zoomRef.current = el;
+      }}
       className="absolute inset-0 w-full h-full flex flex-col items-center justify-center overflow-hidden z-20 select-none"
     >
+      {/* Drifting heart — the seed before it transforms (opening beat) */}
+      {introState === 'SEED_FALLING' && (
+        <div
+          ref={heartEmojiRef}
+          aria-hidden="true"
+          className="absolute z-10 pointer-events-none"
+          style={{
+            left: baseX,
+            top: seedLandingY,
+            transform: 'translate(-50%,-60%)',
+            fontSize: 38,
+            lineHeight: 1,
+            filter: 'drop-shadow(0 0 14px rgba(255,77,109,0.9)) drop-shadow(0 0 34px rgba(255,77,109,0.5))',
+          }}
+        >
+          ♥️
+        </div>
+      )}
       {/* Interactive SVG Canvas Area strictly matched to viewport & canvas tree */}
       <svg
         viewBox={`0 0 ${dims.w} ${dims.h}`}
@@ -686,7 +725,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
         }
       `}</style>
 
-      {/* INTERACTIVE GARDEN SPRINKLER — outer wrapper owned by React, inner owned by GSAP */}
+      {/* INTERACTIVE WATERING CAN — outer wrapper owned by React, inner owned by GSAP */}
       {(introState === 'WATERING' || introState === 'SEED_LANDED') && (
         <div
           className="absolute left-0 top-0 pointer-events-auto"
@@ -705,60 +744,66 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           onKeyDown={handleKeyDown}
           tabIndex={0}
           role="button"
-          aria-label="Garden sprinkler. Drag near the seed or press Enter to water."
+          aria-label="Watering can. Drag near the seed or press Enter to water."
           className="cursor-pointer"
           style={{ scale: isDragging ? '1.05' : '1' }}
         >
-          {/* Sprinkler Visual */}
+          {/* Watering Can Visual */}
           <div className="relative group flex flex-col items-center">
-            {/* Interaction hint above sprinkler */}
+            {/* Interaction hint above the can */}
             {showHelperText && (
               <div className="mb-2 px-3 py-1.5 rounded-full bg-[#1c0814]/90 backdrop-blur-md border border-[#a2d2ff]/40 text-[#cfe8ff] text-xs font-sans tracking-wider text-center shadow-lg pointer-events-none animate-pulse">
-                Tap the sprinkler — or just watch
+                Tap the watering can — or just watch
                 <span className="block text-[10px] text-[#fffdf8]/70">
                   Drag near the seed, press Enter, or let it happen
                 </span>
               </div>
             )}
 
-            {/* Garden sprinkler SVG — brass base, stem, oscillating arm, rose head */}
+            {/* Watering can SVG — body, top opening, handle, spout + rose head */}
             <div className="w-20 h-20 md:w-24 md:h-24 drop-shadow-[0_4px_16px_rgba(100,181,246,0.45)]">
               <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" aria-hidden="true">
-                <defs>
-                  <linearGradient id="sprinklerBrass" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffd166" />
-                    <stop offset="45%" stopColor="#e8a04c" />
-                    <stop offset="100%" stopColor="#8a5a2b" />
-                  </linearGradient>
-                  <linearGradient id="sprinklerSteel" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#dff1ff" />
-                    <stop offset="100%" stopColor="#64b5f6" />
-                  </linearGradient>
-                </defs>
-
-                {/* ground spike base */}
-                <path d="M 44 92 L 56 92 L 50 100 Z" fill="#8a5a2b" />
-                <ellipse cx="50" cy="90" rx="12" ry="4" fill="url(#sprinklerBrass)" />
-
-                {/* vertical stem */}
-                <rect x="47.5" y="52" width="5" height="40" rx="2.5" fill="url(#sprinklerSteel)" />
-
-                {/* oscillating arm */}
-                <rect x="30" y="48" width="44" height="6" rx="3" fill="url(#sprinklerBrass)" />
-                {/* left + right rose heads */}
-                <circle cx="28" cy="51" r="5" fill="url(#sprinklerSteel)" stroke="#ffd166" strokeWidth="1.5" />
-                <circle cx="72" cy="51" r="5" fill="url(#sprinklerSteel)" stroke="#ffd166" strokeWidth="1.5" />
-                {/* mist preview dots */}
-                <circle cx="22" cy="46" r="1.4" fill="#cfe8ff" opacity="0.8" />
-                <circle cx="18" cy="41" r="1" fill="#cfe8ff" opacity="0.6" />
-                <circle cx="78" cy="46" r="1.4" fill="#cfe8ff" opacity="0.8" />
-                <circle cx="82" cy="41" r="1" fill="#cfe8ff" opacity="0.6" />
-
-                {/* heart emblem on the base */}
+                {/* spout: tapered arm from body down to the rose */}
                 <path
-                  d="M 50 84 C 48 81.5, 45 81.5, 45 84 C 45 86.5, 50 89, 50 89.8 C 50 89, 55 86.5, 55 84 C 55 81.5, 52 81.5, 50 84 Z"
+                  d="M 38 58 L 20 66 L 18 60 L 36 52 Z"
+                  fill="#9fd3dd"
+                  stroke="#14313b"
+                  strokeWidth="2.5"
+                  strokeLinejoin="round"
+                />
+                {/* rose head */}
+                <rect x="10" y="56" width="11" height="12" rx="3" fill="#7fb9c6" stroke="#14313b" strokeWidth="2.5" />
+                <circle cx="13.5" cy="60" r="1" fill="#14313b" />
+                <circle cx="17" cy="60" r="1" fill="#14313b" />
+                <circle cx="13.5" cy="64" r="1" fill="#14313b" />
+                <circle cx="17" cy="64" r="1" fill="#14313b" />
+
+                {/* body */}
+                <path
+                  d="M 38 34 L 66 34 L 70 78 Q 70 84 64 84 L 40 84 Q 34 84 34 78 Z"
+                  fill="#9fd3dd"
+                  stroke="#14313b"
+                  strokeWidth="2.5"
+                  strokeLinejoin="round"
+                />
+                {/* top rim + opening */}
+                <ellipse cx="52" cy="34" rx="14" ry="5" fill="#bfe6ee" stroke="#14313b" strokeWidth="2.5" />
+                <ellipse cx="52" cy="34" rx="9" ry="3" fill="#1f7d99" />
+
+                {/* handle */}
+                <path
+                  d="M 68 40 C 86 40, 88 66, 70 70"
+                  fill="none"
+                  stroke="#9fd3dd"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                />
+
+                {/* heart emblem */}
+                <path
+                  d="M 52 60 C 50 57, 46.5 57, 46.5 60 C 46.5 63, 52 66.5, 52 67.2 C 52 66.5, 57.5 63, 57.5 60 C 57.5 57, 54 57, 52 60 Z"
                   fill="#fffdf8"
-                  opacity="0.9"
+                  opacity="0.92"
                 />
               </svg>
             </div>
