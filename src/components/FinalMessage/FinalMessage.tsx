@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
+import { Reveal } from '../Effects/Reveal';
+import { MagneticButton } from '../Effects/MagneticButton';
 
 export const FinalMessage = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -65,6 +67,11 @@ export const FinalMessage = () => {
     >
       {/* Subtle Vignette (single primary glow) */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(13,4,8,0.85)_100%)]" />
+      {/* Decorative ambient glow */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_55%_40%_at_50%_55%,rgba(216,27,70,0.12),transparent_70%)]"
+      />
 
       <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto text-center">
         {!unlocked ? (
@@ -73,21 +80,25 @@ export const FinalMessage = () => {
             <span className="text-sm uppercase tracking-[0.4em] text-[#f5baa4] font-sans font-medium">
               The Journey's Crest
             </span>
-            <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
-              One last thing...
-            </h2>
+            <Reveal className="flex flex-col items-center">
+              <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+                One last thing...
+              </h2>
+            </Reveal>
             <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent my-2" />
             <p className="text-base font-serif text-[#fff8eb]/85 max-w-md">
               Before you step away, there is a quiet truth waiting to be unveiled.
             </p>
 
-            <button
-              onClick={handleTakeFinalStep}
-              className="btn-primary mt-4 font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer"
-              aria-label="Take the final step"
-            >
-              Take the final step
-            </button>
+            <MagneticButton>
+              <button
+                onClick={handleTakeFinalStep}
+                className="btn-primary mt-4 font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer transition-transform duration-300 hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(216,27,70,0.65)] active:scale-95"
+                aria-label="Take the final step"
+              >
+                Take the final step
+              </button>
+            </MagneticButton>
           </div>
         ) : (
           /* The Grand Revealed Message */
@@ -96,10 +107,12 @@ export const FinalMessage = () => {
               Forever Remembered
             </span>
 
-            <h2 className="final-fade-item font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
-              Somewhere between a beginning and a forever,
-              <br className="hidden md:block" /> love takes flight.
-            </h2>
+            <Reveal delay={0.1} className="flex flex-col items-center">
+              <h2 className="final-fade-item font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+                Somewhere between a beginning and a forever,
+                <br className="hidden md:block" /> love takes flight.
+              </h2>
+            </Reveal>
 
             <div className="final-fade-item flex flex-col items-center space-y-6 mb-10">
               <div className="w-28 h-[1px] bg-[#ffd6a5] opacity-70" />

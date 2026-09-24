@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
+import { Reveal } from '../Effects/Reveal';
+import { MagneticButton } from '../Effects/MagneticButton';
 
 const content = {
   recipient: 'My Dearest,',
@@ -110,25 +112,28 @@ export const LoveLetter: React.FC = () => {
       ref={containerRef}
       aria-label="Love Letter Section"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2a0e1e] via-[#12050c] to-[#0d0408] opacity-80" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2a0e1e] via-[#12050c] to-[#0d0408] opacity-80" />
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#ffd6a5]/5 via-transparent to-[#0d0408]/50" />
       
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center">
-        <header className="text-center mb-12">
-          <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
+        <Reveal delay={0} className="flex flex-col items-center">
+        <header className="text-center mb-10 sm:mb-12">
+          <span className="text-xs sm:text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
             A Keepsake of Affection
           </span>
-          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance" style={{ fontSize: 'clamp(1.9rem,5vw + 0.5rem,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             The Love Letter
           </h2>
-          <p className="text-base font-sans text-[#fff8eb]/85">
+          <p className="text-sm sm:text-base font-sans text-[#fff8eb]/85">
             Written in the stillness between heartbeats
           </p>
         </header>
+        </Reveal>
 
         {/* Envelope Interactive Unit */}
         <div className="relative flex flex-col items-center mb-10">
           <div 
-            className="relative cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
+            className="relative cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]"
             onClick={isOpen ? undefined : openLetter}
             onKeyDown={(e) => {
               if (isOpen) return;
@@ -149,7 +154,7 @@ export const LoveLetter: React.FC = () => {
             {/* Letter Paper */}
             <div 
               ref={letterRef}
-              className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-6 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5]"
+              className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-6 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5] transition-shadow duration-300 hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
             >
               <div className="w-full h-full font-serif text-slate-800 flex flex-col text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
                 <div className="letter-line flex justify-between mb-3 italic text-slate-600 border-b border-slate-200 pb-2">
@@ -222,21 +227,25 @@ export const LoveLetter: React.FC = () => {
           {/* Primary Action Button Below */}
           <div className="mt-8 flex flex-col items-center">
             {!isOpen ? (
+              <MagneticButton>
               <button
                 onClick={openLetter}
-                className="btn-primary font-serif tracking-wide shadow-[0_0_20px_rgba(216,27,70,0.4)] cursor-pointer"
+                className="btn-primary font-serif tracking-wide shadow-[0_0_20px_rgba(216,27,70,0.4)] cursor-pointer transition-all duration-300 hover:shadow-[0_0_28px_rgba(216,27,70,0.55)] hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Open the letter"
               >
                 Open the letter
               </button>
+              </MagneticButton>
             ) : (
+              <MagneticButton>
               <button
                 onClick={(e) => closeLetter(e)}
-                className="btn-ghost font-serif tracking-wide cursor-pointer"
+                className="btn-ghost font-serif tracking-wide cursor-pointer transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Close letter"
               >
                 Close letter
               </button>
+              </MagneticButton>
             )}
           </div>
         </div>

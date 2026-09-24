@@ -9,6 +9,23 @@ import { Journey } from './components/Journey/Journey';
 import { Footer } from './components/Footer/Footer';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
 import { StoryProvider, useStory } from './context/StoryContext';
+import { CursorGlow } from './components/Effects/CursorGlow';
+
+const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
+  <div aria-hidden="true" className="relative mx-auto w-full max-w-4xl px-6">
+    <div className="flex items-center gap-4 opacity-70">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#ffb3c1]/40 to-[#ffb3c1]/40" />
+      {label ? (
+        <span className="font-serif italic text-sm text-[#f5baa4]/80">{label}</span>
+      ) : (
+        <svg className="h-3.5 w-3.5 text-[#ffb3c1]/60" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+      )}
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-[#ffb3c1]/40 to-[#ffb3c1]/40" />
+    </div>
+  </div>
+);
 
 const AppContent = () => {
   const { isExperienceUnlocked, setIntroState } = useStory();
@@ -44,6 +61,7 @@ const AppContent = () => {
 
   return (
     <div className={`grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8] ${!isExperienceUnlocked ? 'overflow-hidden max-h-screen' : ''}`}>
+      <CursorGlow />
       <Navigation />
       {/* Visible escape hatch: skip the locked intro at any time. */}
       {!isExperienceUnlocked && (
@@ -65,14 +83,22 @@ const AppContent = () => {
           {/* The Final Destination: Where Love Takes Flight */}
           <FinalDestination />
 
+          <StoryDivider label="and the story continues…" />
+
           {/* User-Controlled Love Letter */}
           <LoveLetter />
+
+          <StoryDivider />
 
           {/* Draggable Wish Release */}
           <WishSection />
 
+          <StoryDivider label="sealed with love" />
+
           {/* Final Revealed Message */}
           <FinalMessage />
+
+          <StoryDivider />
 
           {/* Complete Interactive Milestones Explorer */}
           <Journey />

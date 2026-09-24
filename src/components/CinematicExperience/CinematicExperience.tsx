@@ -2,6 +2,9 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import HeartTreeAnimation, { type TreeInteractionEvent } from '../HeartTreeAnimation';
 import { Hero } from '../Hero/Hero';
+import { WindOverlay } from '../Effects/WindOverlay';
+import { LightTransition } from '../Effects/LightTransition';
+import { AmbientField } from '../Effects/AmbientField';
 import {
   useStory,
   STAGE_DESCRIPTIONS,
@@ -33,6 +36,7 @@ export const CinematicExperience: React.FC = () => {
 
   const [userWind, setUserWind] = useState(0);
   const [isAutoGrowing, setIsAutoGrowing] = useState(false);
+  const [transitionPlay, setTransitionPlay] = useState(false);
   const quoteCloseRef = useRef<HTMLButtonElement>(null);
 
   // Refs mirror unlock flags so the long-lived GSAP onUpdate never closes
@@ -92,6 +96,7 @@ export const CinematicExperience: React.FC = () => {
         unlockBloom();
         unlockFlight();
         setIntroState('EXPERIENCE_UNLOCKED');
+        setTransitionPlay(true);
 
         // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
         const container = containerRef.current;
@@ -235,6 +240,7 @@ export const CinematicExperience: React.FC = () => {
     unlockBloom();
     unlockFlight();
     setIntroState('EXPERIENCE_UNLOCKED');
+    setTransitionPlay(true);
   }, [setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
 
   // Background-tab stranding guard: GSAP timers throttle while hidden, so
@@ -339,6 +345,16 @@ export const CinematicExperience: React.FC = () => {
 
         {/* Ambient Vignette Overlay */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(13,4,8,0.75)_100%)] z-10" />
+
+        {/* Scene 5 — full-bloom atmosphere (environmental only, tree untouched) */}
+        <div className="absolute inset-0 z-[5] pointer-events-none">
+          <AmbientField density={46} />
+        </div>
+
+        {/* Scene 6 — strong wind trails as hearts detach (environmental only) */}
+        <div className="absolute inset-0 z-[6] pointer-events-none">
+          <WindOverlay active={targetProgress >= 0.86 || currentStage >= 13} strength={1 + Math.abs(userWind) * 0.15} />
+        </div>
 
         {/* ================= INTRO PHASE OVERLAY (Owned by CinematicExperience) ================= */}
         {introState !== 'EXPERIENCE_UNLOCKED' && (
@@ -490,7 +506,17 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
 
-        {/* ================= USER-TRIGGERED TRANSITION ACTIONS ================= */}
+        {/* Scene 5 — full-bloom cinematic pause */}
+        {currentStage === 12 && introState === 'EXPERIENCE_UNLOCKED' && (
+          <div className="pointer-events-none absolute left-1/2 top-[16%] z-30 -translate-x-1/2 text-center">
+            <p className="font-serif italic text-[#ffd6a5] text-xl md:text-2xl drop-shadow-[0_0_18px_rgba(255,214,165,0.5)]">
+              Full bloom — hold this moment
+            </p>
+          </div>
+        )}
+
+        {/* Premium cinematic transition into website content */}
+        <LightTransition play={transitionPlay} onDone={() => setTransitionPlay(false)} />
         {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
         {currentStage >= 11 && !isBloomUnlocked && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">

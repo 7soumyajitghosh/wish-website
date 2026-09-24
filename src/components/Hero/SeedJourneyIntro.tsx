@@ -153,14 +153,18 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       /* noop */
     }
 
+    // Scene 1 — wind-carried seed: curved flight from off-screen (physical, not linear)
+    const startX = reduced ? 0 : -dims.w * 0.42;
+    const startY = reduced ? 0 : -dims.h * 0.52;
     gsap.set(seedEl, {
-      y: reduced ? 0 : -dims.h * 0.6,
-      x: 0,
-      scale: 1,
-      opacity: 1,
-      rotation: 0,
+      y: startY,
+      x: startX,
+      scale: reduced ? 1 : 0.85,
+      opacity: reduced ? 1 : 0,
+      rotation: reduced ? 0 : -42,
       scaleX: 1,
       scaleY: 1,
+      filter: 'blur(0px)',
     });
 
     if (reduced) {
@@ -189,31 +193,38 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     });
     seedTlRef.current = tl;
 
-      // Gentle floating descent with subtle organic sway
+      // Wind-blown curved trajectory: gust in → ride the wind → settle.
+      // Acceleration/deceleration + rotation + scale + faint motion blur.
       tl.to(seedEl, {
         opacity: 1,
-        duration: 0.4,
+        duration: 0.45,
         ease: 'power1.out',
       })
         .to(
           seedEl,
           {
-            x: 18,
-            rotation: 8,
-            duration: 0.7,
-            ease: 'sine.inOut',
+            x: startX * 0.45,
+            y: startY * 0.55,
+            rotation: -18,
+            scale: 1.06,
+            filter: 'blur(2px)',
+            duration: 0.9,
+            ease: 'power2.out',
           },
           0
         )
         .to(
           seedEl,
           {
-            x: -12,
-            rotation: -6,
-            duration: 0.7,
+            x: startX * 0.08,
+            y: startY * 0.18,
+            rotation: 10,
+            scale: 1.0,
+            filter: 'blur(0px)',
+            duration: 0.9,
             ease: 'sine.inOut',
           },
-          0.7
+          0.9
         )
         .to(
           seedEl,
@@ -222,10 +233,10 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             y: 0,
             rotation: 0,
             scale: 1,
-            duration: 1.8,
+            duration: 1.5,
             ease: 'power2.in',
           },
-          0
+          1.8
         )
         // Impact squash and stretch on soil landing
         .to(seedEl, {
@@ -249,7 +260,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           ease: 'bounce.out',
         });
 
-      // Gentle soil ripple response
+      // Gentle soil ripple response (timed to the new ~3.3s landing)
       if (soilRef.current) {
         tl.to(
           soilRef.current,
@@ -260,7 +271,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             repeat: 1,
             overwrite: 'auto',
           },
-          1.8
+          3.2
         );
       }
 
@@ -325,9 +336,9 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Tilt inner pot
+    // Oscillate the sprinkler arm (small wiggle — it is a sprinkler, not a pot)
     tl.to(potEl, {
-      rotation: -38,
+      rotation: -12,
       duration: reduced ? 0 : 0.6,
       ease: 'power2.out',
       overwrite: 'auto',
@@ -560,28 +571,107 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           <circle cx="0" cy="-11" r="2" fill="#ffd166" />
         </g>
 
-        {/* WATER DROPS CASCADE */}
-        {waterDrops.length > 0 && (
-          <g className="water-drops-stream">
-            {waterDrops.map((d) => (
+        {/* WIND STREAKS — visible gusts carrying the seed (Scene 1) */}
+        {introState === 'SEED_FALLING' && (
+          <g className="wind-streaks" opacity="0.7">
+            {[
+              { x1: -320, y1: -260, x2: -160, y2: -230 },
+              { x1: -360, y1: -180, x2: -180, y2: -150 },
+              { x1: -300, y1: -100, x2: -140, y2: -80 },
+              { x1: -260, y1: -320, x2: -120, y2: -290 },
+            ].map((s, i) => (
               <line
-                key={d.id}
-                x1={baseX + 3 + d.x}
-                y1={seedLandingY - 80 + d.y}
-                x2={baseX + d.x}
-                y2={seedLandingY - 80 + d.y + d.length}
-                stroke="#a2d2ff"
-                strokeWidth="2"
+                key={i}
+                x1={baseX + s.x1}
+                y1={seedLandingY + s.y1}
+                x2={baseX + s.x2}
+                y2={seedLandingY + s.y2}
+                stroke="rgba(255,214,180,0.5)"
+                strokeWidth="1.6"
                 strokeLinecap="round"
-                opacity="0.85"
-                filter="drop-shadow(0 0 3px #64b5f6)"
+                className="wind-streak-line"
+                style={{ animationDelay: `${i * 0.25}s` } as React.CSSProperties}
               />
             ))}
           </g>
         )}
-      </svg>
 
-      {/* INTERACTIVE WATERING POT (🫖) — outer wrapper owned by React, inner owned by GSAP */}
+        {/* WATER ARC — sprinkler → seed (Scene 3): stream + droplets + splash */}
+        {waterDrops.length > 0 && (
+          <g className="water-arc-stream">
+            <path
+              d={`M ${baseX + 8} ${seedLandingY - 96} Q ${baseX - 26} ${seedLandingY - 52}, ${baseX} ${seedLandingY - 8}`}
+              fill="none"
+              stroke="rgba(162,210,255,0.75)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              className="water-stream-path"
+              style={{ filter: 'drop-shadow(0 0 5px #64b5f6)' }}
+            />
+            {waterDrops.map((d, i) => {
+              const t = (i + 1) / (waterDrops.length + 1);
+              const sx = baseX + 8;
+              const sy = seedLandingY - 96;
+              const cx = baseX - 26;
+              const cy = seedLandingY - 52;
+              const ex = baseX;
+              const ey = seedLandingY - 8;
+              const mt = 1 - t;
+              const px = mt * mt * sx + 2 * mt * t * cx + t * t * ex + d.x * 0.4;
+              const py = mt * mt * sy + 2 * mt * t * cy + t * t * ey + (d.y % 8);
+              return (
+                <circle
+                  key={d.id}
+                  cx={px}
+                  cy={py}
+                  r={2.4}
+                  fill="#cfe8ff"
+                  opacity="0.9"
+                  className="water-arc-drop"
+                  style={{ animationDelay: `${(i % 9) * 0.09}s`, filter: 'drop-shadow(0 0 3px #64b5f6)' } as React.CSSProperties}
+                />
+              );
+            })}
+            {/* splash glow at the seed */}
+            <ellipse
+              cx={baseX}
+              cy={seedLandingY + 2}
+              rx="20"
+              ry="6"
+              fill="rgba(162,210,255,0.35)"
+              className="water-splash-glow"
+            />
+          </g>
+        )}
+      </svg>
+      <style>{`
+        .wind-streak-line { animation: windStreak 1.1s ease-in-out infinite; }
+        @keyframes windStreak {
+          0% { opacity: 0; transform: translateX(-14px); }
+          40% { opacity: 0.8; }
+          100% { opacity: 0; transform: translateX(26px); }
+        }
+        .water-stream-path {
+          stroke-dasharray: 10 8;
+          animation: waterDash 0.6s linear infinite;
+        }
+        @keyframes waterDash { to { stroke-dashoffset: -18; } }
+        .water-arc-drop { animation: dropShimmer 0.8s ease-in-out infinite; }
+        @keyframes dropShimmer {
+          0%, 100% { opacity: 0.55; transform: scale(0.85); }
+          50% { opacity: 1; transform: scale(1.15); }
+        }
+        .water-splash-glow { animation: splashPulse 0.9s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+        @keyframes splashPulse {
+          0%, 100% { opacity: 0.35; transform: scaleX(0.9); }
+          50% { opacity: 0.8; transform: scaleX(1.15); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .wind-streak-line, .water-stream-path, .water-arc-drop, .water-splash-glow { animation: none; }
+        }
+      `}</style>
+
+      {/* INTERACTIVE GARDEN SPRINKLER — outer wrapper owned by React, inner owned by GSAP */}
       {(introState === 'WATERING' || introState === 'SEED_LANDED') && (
         <div
           className="absolute left-0 top-0 pointer-events-auto"
@@ -600,62 +690,58 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           onKeyDown={handleKeyDown}
           tabIndex={0}
           role="button"
-          aria-label="Interactive Watering Pot. Drag or click to water the seed."
-          className="cursor-grab active:cursor-grabbing"
+          aria-label="Garden sprinkler. Drag near the seed or press Enter to water."
+          className="cursor-pointer"
           style={{ scale: isDragging ? '1.05' : '1' }}
         >
-          {/* Watering Pot Visual */}
+          {/* Sprinkler Visual */}
           <div className="relative group flex flex-col items-center">
-            {/* Instruction tooltip above pot */}
+            {/* Interaction hint above sprinkler */}
             {showHelperText && (
-              <div className="mb-2 px-3 py-1.5 rounded-full bg-[#1c0814]/90 backdrop-blur-md border border-[#f5baa4]/40 text-[#f5baa4] text-xs font-sans tracking-wider text-center shadow-lg pointer-events-none animate-pulse">
-                Water the seed
+              <div className="mb-2 px-3 py-1.5 rounded-full bg-[#1c0814]/90 backdrop-blur-md border border-[#a2d2ff]/40 text-[#cfe8ff] text-xs font-sans tracking-wider text-center shadow-lg pointer-events-none animate-pulse">
+                Tap the sprinkler
                 <span className="block text-[10px] text-[#fffdf8]/70">
-                  Drag 🫖 to seed or tap
+                  Drag near the seed or press Enter
                 </span>
               </div>
             )}
 
-            {/* Stylized Romantic Watering Pot SVG */}
-            <div className="w-20 h-20 md:w-24 md:h-24 drop-shadow-[0_4px_16px_rgba(216,27,70,0.4)]">
-              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+            {/* Garden sprinkler SVG — brass base, stem, oscillating arm, rose head */}
+            <div className="w-20 h-20 md:w-24 md:h-24 drop-shadow-[0_4px_16px_rgba(100,181,246,0.45)]">
+              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" aria-hidden="true">
                 <defs>
-                  <linearGradient id="potGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <linearGradient id="sprinklerBrass" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#ffd166" />
-                    <stop offset="45%" stopColor="#f5baa4" />
-                    <stop offset="100%" stopColor="#a81438" />
+                    <stop offset="45%" stopColor="#e8a04c" />
+                    <stop offset="100%" stopColor="#8a5a2b" />
+                  </linearGradient>
+                  <linearGradient id="sprinklerSteel" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#dff1ff" />
+                    <stop offset="100%" stopColor="#64b5f6" />
                   </linearGradient>
                 </defs>
 
-                {/* Handle on right */}
+                {/* ground spike base */}
+                <path d="M 44 92 L 56 92 L 50 100 Z" fill="#8a5a2b" />
+                <ellipse cx="50" cy="90" rx="12" ry="4" fill="url(#sprinklerBrass)" />
+
+                {/* vertical stem */}
+                <rect x="47.5" y="52" width="5" height="40" rx="2.5" fill="url(#sprinklerSteel)" />
+
+                {/* oscillating arm */}
+                <rect x="30" y="48" width="44" height="6" rx="3" fill="url(#sprinklerBrass)" />
+                {/* left + right rose heads */}
+                <circle cx="28" cy="51" r="5" fill="url(#sprinklerSteel)" stroke="#ffd166" strokeWidth="1.5" />
+                <circle cx="72" cy="51" r="5" fill="url(#sprinklerSteel)" stroke="#ffd166" strokeWidth="1.5" />
+                {/* mist preview dots */}
+                <circle cx="22" cy="46" r="1.4" fill="#cfe8ff" opacity="0.8" />
+                <circle cx="18" cy="41" r="1" fill="#cfe8ff" opacity="0.6" />
+                <circle cx="78" cy="46" r="1.4" fill="#cfe8ff" opacity="0.8" />
+                <circle cx="82" cy="41" r="1" fill="#cfe8ff" opacity="0.6" />
+
+                {/* heart emblem on the base */}
                 <path
-                  d="M 68 38 C 92 38, 92 72, 68 72"
-                  fill="none"
-                  stroke="url(#potGrad)"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
-
-                {/* Spout on left */}
-                <path
-                  d="M 32 55 L 10 32 L 8 38"
-                  fill="none"
-                  stroke="url(#potGrad)"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                />
-                {/* Spout rose head */}
-                <ellipse cx="9" cy="34" rx="3" ry="5" fill="#ffd166" transform="rotate(-30 9 34)" />
-
-                {/* Main Pot Vessel */}
-                <ellipse cx="50" cy="56" rx="22" ry="18" fill="url(#potGrad)" />
-
-                {/* Pot Neck & Rim */}
-                <path d="M 40 40 L 60 40 L 58 45 L 42 45 Z" fill="#ffd166" />
-
-                {/* Engraved Heart Emblem */}
-                <path
-                  d="M 50 54 C 47 50, 43 50, 43 54 C 43 58, 50 62, 50 64 C 50 62, 57 58, 57 54 C 57 50, 53 50, 50 54 Z"
+                  d="M 50 84 C 48 81.5, 45 81.5, 45 84 C 45 86.5, 50 89, 50 89.8 C 50 89, 55 86.5, 55 84 C 55 81.5, 52 81.5, 50 84 Z"
                   fill="#fffdf8"
                   opacity="0.9"
                 />

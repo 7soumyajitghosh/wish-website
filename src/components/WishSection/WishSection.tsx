@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import gsap from 'gsap';
+import { Reveal } from '../Effects/Reveal';
+import { MagneticButton } from '../Effects/MagneticButton';
 
 type Wish = {
   id: string;
@@ -216,8 +218,15 @@ export const WishSection = () => {
         aria-hidden="true"
       />
 
+      {/* Decorative ambient glow */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_60%_45%_at_50%_38%,rgba(216,27,70,0.14),transparent_70%)]"
+      />
+
       <div className="relative z-10 w-full max-w-2xl px-6 flex flex-col items-center">
-        <header className="text-center mb-10">
+        <Reveal className="w-full flex flex-col items-center">
+          <header className="text-center mb-10">
           <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
             Celestial Whispers
           </span>
@@ -225,10 +234,12 @@ export const WishSection = () => {
           <p className="text-base md:text-lg text-[#fff8eb]/85 font-serif">
             Close your eyes. Give words to your deepest desire.
           </p>
-        </header>
+          </header>
+        </Reveal>
 
         {/* Input Form */}
         {!isHoldingWish && (
+          <Reveal delay={0.12} className="w-full flex flex-col items-center">
           <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-6">
             <div className="w-full relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#ffb3c1] to-[#ffd6a5] rounded-2xl opacity-0 group-focus-within:opacity-15 transition-opacity duration-500 blur-sm pointer-events-none" />
@@ -242,15 +253,18 @@ export const WishSection = () => {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={!wishText.trim()}
-              className="btn-primary font-serif tracking-wide shadow-lg cursor-pointer"
-              aria-label="Release My Wish"
-            >
-              Release My Wish
-            </button>
+            <MagneticButton>
+              <button
+                type="submit"
+                disabled={!wishText.trim()}
+                className="btn-primary font-serif tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:scale-[1.03] active:scale-95 disabled:hover:scale-100"
+                aria-label="Release My Wish"
+              >
+                Release My Wish
+              </button>
+            </MagneticButton>
           </form>
+          </Reveal>
         )}
 
         {/* Wish Count */}
@@ -306,19 +320,21 @@ export const WishSection = () => {
 
           {/* No-drag alternatives: launch in place, or cancel */}
           <div className="mt-3 flex items-center gap-2 pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => launchWish(heartPos.x, heartPos.y)}
-              aria-label="Launch wish without dragging"
-              className="px-5 py-2 min-h-[44px] rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-sm tracking-wide shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
-            >
-              Launch wish ✨
-            </button>
+            <MagneticButton strength={4}>
+              <button
+                type="button"
+                onClick={() => launchWish(heartPos.x, heartPos.y)}
+                aria-label="Launch wish without dragging"
+                className="px-5 py-2 min-h-[44px] rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-sm tracking-wide shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,117,143,0.6)] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+              >
+                Launch wish ✨
+              </button>
+            </MagneticButton>
             <button
               type="button"
               onClick={cancelWish}
               aria-label="Cancel wish"
-              className="px-5 py-2 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-[#fffdf8] font-serif text-sm tracking-wide transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+              className="px-5 py-2 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 hover:scale-[1.03] border border-white/20 text-[#fffdf8] font-serif text-sm tracking-wide transition-all duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
             >
               Cancel
             </button>
