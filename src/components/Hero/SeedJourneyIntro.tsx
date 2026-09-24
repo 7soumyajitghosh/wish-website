@@ -439,6 +439,21 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     // NOTE: timeline persists (no ctx.revert); killed on unmount via waterTlRef.
   }, [isWatering, baseX, seedLandingY, restingPotPos.x, restingPotPos.y, setIntroState]);
 
+  // Automatic fallback: if the visitor just watches, water after a beat.
+  // Manual drag/tap/Enter still wins (hasWateredRef guard inside triggerWatering).
+  useEffect(() => {
+    if (introState !== 'WATERING') return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t = window.setTimeout(
+      () => triggerWatering(),
+      reduced ? 2500 : 6000
+    );
+    return () => window.clearTimeout(t);
+  }, [introState, triggerWatering]);
+
   // Pointer drag event handlers for watering pot (mouse + touch)
   const handlePointerDown = (e: React.PointerEvent) => {
     if (introState !== 'WATERING' || isWatering || hasWateredRef.current) return;
@@ -699,9 +714,9 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             {/* Interaction hint above sprinkler */}
             {showHelperText && (
               <div className="mb-2 px-3 py-1.5 rounded-full bg-[#1c0814]/90 backdrop-blur-md border border-[#a2d2ff]/40 text-[#cfe8ff] text-xs font-sans tracking-wider text-center shadow-lg pointer-events-none animate-pulse">
-                Tap the sprinkler
+                Tap the sprinkler — or just watch
                 <span className="block text-[10px] text-[#fffdf8]/70">
-                  Drag near the seed or press Enter
+                  Drag near the seed, press Enter, or let it happen
                 </span>
               </div>
             )}

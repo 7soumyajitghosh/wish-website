@@ -10,6 +10,7 @@ import { Footer } from './components/Footer/Footer';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
 import { StoryProvider, useStory } from './context/StoryContext';
 import { CursorGlow } from './components/Effects/CursorGlow';
+import { Marquee } from './components/Effects/Marquee';
 
 const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
   <div aria-hidden="true" className="relative mx-auto w-full max-w-4xl px-6">
@@ -88,7 +89,7 @@ const AppContent = () => {
           {/* User-Controlled Love Letter */}
           <LoveLetter />
 
-          <StoryDivider />
+          <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
 
           {/* Draggable Wish Release */}
           <WishSection />
@@ -97,6 +98,8 @@ const AppContent = () => {
 
           {/* Final Revealed Message */}
           <FinalMessage />
+
+          <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
 
           <StoryDivider />
 

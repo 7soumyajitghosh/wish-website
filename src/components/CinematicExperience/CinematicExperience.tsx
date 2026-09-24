@@ -5,6 +5,18 @@ import { Hero } from '../Hero/Hero';
 import { WindOverlay } from '../Effects/WindOverlay';
 import { LightTransition } from '../Effects/LightTransition';
 import { AmbientField } from '../Effects/AmbientField';
+import { CinematicBars, SceneCaption } from '../Effects/CinematicBars';
+
+// Automatic chapter captions for the cinematic beats.
+function chapterFor(introState: string, stage: number): { kicker: string; title: string } | null {
+  if (introState === 'SEED_FALLING') return { kicker: 'Chapter I — The Wind', title: 'A seed rides the evening breeze' };
+  if (introState === 'SEED_LANDED' || introState === 'WATERING')
+    return { kicker: 'Chapter II — Water', title: 'Every love needs tending' };
+  if (introState === 'WATERED' || (stage >= 2 && stage <= 11))
+    return { kicker: 'Chapter III — Growth', title: 'Watch love take root' };
+  if (stage >= 13) return { kicker: 'Chapter V — The Wind', title: 'Letting love fly' };
+  return null; // stage 12 has its own bloom pause card; INTRO has the title hero
+}
 import {
   useStory,
   STAGE_DESCRIPTIONS,
@@ -346,6 +358,19 @@ export const CinematicExperience: React.FC = () => {
         {/* Ambient Vignette Overlay */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(13,4,8,0.75)_100%)] z-10" />
 
+        {/* Living sky — automatic tint shifting with the story (environmental only) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[4] transition-opacity duration-1000"
+          style={{
+            opacity: targetProgress > 0.6 ? 1 : 0,
+            background:
+              targetProgress >= 0.9
+                ? 'radial-gradient(ellipse at 50% 30%, rgba(60,40,140,0.22) 0%, transparent 60%)'
+                : 'radial-gradient(ellipse at 50% 35%, rgba(216,27,70,0.16) 0%, transparent 60%)',
+          }}
+        />
+
         {/* Scene 5 — full-bloom atmosphere (environmental only, tree untouched) */}
         <div className="absolute inset-0 z-[5] pointer-events-none">
           <AmbientField density={46} />
@@ -355,6 +380,13 @@ export const CinematicExperience: React.FC = () => {
         <div className="absolute inset-0 z-[6] pointer-events-none">
           <WindOverlay active={targetProgress >= 0.86 || currentStage >= 13} strength={1 + Math.abs(userWind) * 0.15} />
         </div>
+
+        {/* Cinematic letterbox + chapter caption (automatic film framing) */}
+        <CinematicBars visible={introState !== 'EXPERIENCE_UNLOCKED' || isAutoGrowing} />
+        {(() => {
+          const chapter = chapterFor(introState, currentStage);
+          return chapter ? <SceneCaption kicker={chapter.kicker} title={chapter.title} /> : null;
+        })()}
 
         {/* ================= INTRO PHASE OVERLAY (Owned by CinematicExperience) ================= */}
         {introState !== 'EXPERIENCE_UNLOCKED' && (

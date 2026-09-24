@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { spotlightMove } from '../Effects/spotlight';
 import { useStory, STAGE_DESCRIPTIONS } from '../../context/StoryContext';
 import { Reveal } from '../Effects/Reveal';
 
@@ -107,7 +108,8 @@ export const Journey: React.FC = () => {
                 aria-label={`Jump to stage ${stage.id}: ${stage.title}`}
                 aria-current={isCurrent ? 'true' : undefined}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(stage.id); } }}
-                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] ${
+                onPointerMove={spotlightMove}
+                className={`spotlight p-5 rounded-2xl cursor-pointer transition-all duration-300 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] ${
                   isCurrent
                     ? 'bg-[#3b1224]/80 border-[#f5baa4] shadow-[0_0_20px_rgba(245,186,164,0.3)] scale-[1.02]'
                     : 'bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(216,27,70,0.25)]'

@@ -134,8 +134,16 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
             A Journey of Love
           </p>
 
+          <style>{`
+            .hero-line { display: block; overflow: hidden; }
+            .hero-line > span { display: block; animation: heroRise 1s cubic-bezier(0.22,1,0.36,1) both; }
+            .hero-line:nth-child(2) > span { animation-delay: 0.14s; }
+            @keyframes heroRise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
+            @media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } }
+          `}</style>
           <h1 className="font-serif text-[#fffdf8] tracking-wide mb-6 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
-            Where Love<br />Takes Flight
+            <span className="hero-line"><span>Where Love</span></span>
+            <span className="hero-line"><span>Takes Flight</span></span>
           </h1>
 
           <p className="font-serif italic text-[#ffd6a5]/90 text-lg md:text-xl mb-8 max-w-xl leading-relaxed">

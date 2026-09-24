@@ -218,6 +218,28 @@ body {
   animation: fadeScaleIn 0.7s ease both;
 }
 
+/* Spotlight cards — cursor-following glow (transform-free, GSAP-safe) */
+.spotlight {
+  position: relative;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 179, 193, 0.14),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.spotlight:hover::before {
+  opacity: 1;
+}
+
 /* ============================================================
    NOISE / GRAIN TEXTURE OVERLAY
    ============================================================ */
