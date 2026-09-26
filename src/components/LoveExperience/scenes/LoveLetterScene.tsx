@@ -172,16 +172,23 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   const handleContinue = () => {
     if (hasContinuedRef.current) return;
     hasContinuedRef.current = true;
+    // No local fade-out here: the parent LoveExperience veil owns the
+    // Page 2 → Page 3 passage. Fading this container AND the veil caused
+    // a double-dim flash. A tiny settle-back keeps the handoff connected.
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      onComplete();
+      return;
+    }
     continueTlRef.current?.kill();
     continueTlRef.current = gsap.to(containerRef.current, {
-      opacity: 0,
-      scale: 0.98,
-      duration: reduced ? 0 : 1.2,
-      ease: 'power2.inOut',
+      scale: 0.985,
+      y: 10,
+      duration: 0.35,
+      ease: 'power2.in',
       overwrite: 'auto',
       onComplete,
     });

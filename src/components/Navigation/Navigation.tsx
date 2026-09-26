@@ -203,7 +203,7 @@ export function Navigation() {
       <div
         ref={menuRef}
         id="mobile-menu"
-        className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden transform"
+        className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden"
         aria-hidden={!isOpen}
         inert={!isOpen}
       >

@@ -87,7 +87,20 @@ export const CinematicExperience: React.FC = () => {
     setTargetProgress(STAGE_PROGRESS_MAP[16]);
     unlockBloom();
     unlockFlight();
-    applyCam(1);
+    // Ease the storm push-in back out instead of snapping 1.12 → 1
+    // (snap = visible jump on the handoff frame).
+    const camEl = camRef.current;
+    if (camEl) {
+      gsap.to(camEl, {
+        scale: 1,
+        duration: 1.2,
+        ease: 'power2.out',
+        overwrite: 'auto',
+        onComplete: () => applyCam(1),
+      });
+    } else {
+      applyCam(1);
+    }
     // Lift the black fade once the transition takes over.
     const fadeEl = fadeRef.current;
     if (fadeEl) {
@@ -96,14 +109,16 @@ export const CinematicExperience: React.FC = () => {
     setIntroState('EXPERIENCE_UNLOCKED');
     setTransitionPlay(true);
 
-    // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly
+    // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly.
+    // Instant jump without a behavior flag (broadest ScrollBehavior support);
+    // guarded so a missing layout never throws or shifts the page.
     const container = containerRef.current;
-    if (container) {
+    if (container && container.offsetHeight > window.innerHeight) {
       const totalScrollable = container.offsetHeight - window.innerHeight;
       if (totalScrollable > 0) {
         const rawProgress = (STAGE_PROGRESS_MAP[16] - 0.02) / 0.98;
         const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
-        window.scrollTo({ top: targetScrollY, behavior: 'instant' });
+        if (Number.isFinite(targetScrollY)) window.scrollTo(0, targetScrollY);
       }
     }
   }, [applyCam, setIntroState, setTargetProgress, unlockBloom, unlockFlight]);

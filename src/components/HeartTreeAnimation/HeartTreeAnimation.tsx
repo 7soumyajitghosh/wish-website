@@ -815,7 +815,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       </p>
       <canvas
         ref={canvasRef}
-        className="heart-tree-canvas cursor-pointer touch-none"
+        className="heart-tree-canvas cursor-pointer touch-pan-y"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

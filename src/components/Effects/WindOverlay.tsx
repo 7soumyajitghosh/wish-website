@@ -26,6 +26,7 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
     let h = 0;
     let raf = 0;
     let running = true;
+    let visible = true;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     interface S { x: number; y: number; len: number; sp: number; a: number; }
@@ -55,6 +56,15 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
     let last = performance.now();
     const loop = (now: number) => {
       if (!running) return;
+      // Park the RAF when off-screen or fully faded — no wasted frames,
+      // no per-streak gradient churn while invisible.
+      if (!visible || (opacity <= 0.02 && !stateRef.current.active)) {
+        opacity = stateRef.current.active ? opacity : 0;
+        ctx.clearRect(0, 0, w, h);
+        last = now;
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const target = stateRef.current.active ? 1 : 0;
@@ -62,29 +72,35 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       ctx.clearRect(0, 0, w, h);
       if (opacity > 0.02) {
         const s = stateRef.current.strength;
+        // Single batched path + one alpha (no per-streak gradient objects).
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = `rgba(255,214,180,${(0.28 * opacity).toFixed(3)})`;
+        ctx.beginPath();
         for (const st of streaks) {
           st.x += st.sp * dt * 60 * s * (0.6 + opacity);
           if (st.x - st.len > w) {
             st.x = -st.len;
             st.y = Math.random() * h;
           }
-          const g = ctx.createLinearGradient(st.x - st.len, st.y, st.x, st.y);
-          g.addColorStop(0, 'rgba(255,179,193,0)');
-          g.addColorStop(1, `rgba(255,214,180,${(st.a * opacity).toFixed(3)})`);
-          ctx.strokeStyle = g;
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
           ctx.moveTo(st.x - st.len, st.y);
           ctx.lineTo(st.x, st.y);
-          ctx.stroke();
         }
+        ctx.stroke();
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    );
+    io.observe(canvas);
     return () => {
       running = false;
       cancelAnimationFrame(raf);
+      io.disconnect();
       window.removeEventListener('resize', resize);
     };
   }, []);

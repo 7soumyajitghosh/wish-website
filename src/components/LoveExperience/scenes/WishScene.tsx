@@ -75,6 +75,11 @@ export const WishScene: React.FC = () => {
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Finale lines stay hidden until the wish is released (avoids the
+    // final message flashing behind the prompt on load).
+    gsap.set(finaleRef.current?.querySelectorAll('.finale-reveal-item') ?? [], {
+      opacity: 0,
+    });
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
 

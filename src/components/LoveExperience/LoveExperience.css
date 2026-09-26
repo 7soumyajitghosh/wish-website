@@ -39,20 +39,53 @@
 }
 
 /* Transition Overlay — JS toggles .is-active during crossfades so the
-   overlay blocks pointer events only while fading (CSS default: none). */
+   overlay blocks pointer events only while fading (CSS default: none).
+   Premium veil: deep-plum gradient (never pure white/black snap) with a
+   warm light sweep; clip-path wipe is driven by GSAP. */
 .cinematic-transition-overlay {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--color-bg-deep);
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(216, 27, 70, 0.22) 0%, transparent 60%),
+    linear-gradient(180deg, #14070e 0%, #220b17 50%, #0d0408 100%);
   opacity: 0;
   pointer-events: none;
   z-index: 100;
+  will-change: opacity, clip-path;
+  clip-path: inset(0 0 100% 0);
 }
 
 .cinematic-transition-overlay.is-active {
   pointer-events: auto;
+}
+
+.cinematic-transition-sweep {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 38%;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 214, 165, 0.16) 35%,
+    rgba(255, 179, 193, 0.28) 50%,
+    rgba(255, 214, 165, 0.16) 65%,
+    transparent 100%
+  );
+  filter: blur(18px);
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-transition-overlay,
+  .cinematic-transition-sweep {
+    transition: none;
+  }
 }
 
 /* ==========================================================================

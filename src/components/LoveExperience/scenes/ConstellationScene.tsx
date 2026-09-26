@@ -201,7 +201,10 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
       holdCallRef.current?.kill();
       ctx.revert();
     };
-  }, [onComplete]);
+    // onComplete is routed via onCompleteRef so resize/re-render never
+    // restarts the entrance timeline (restart = visible flicker).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Constellation contour path string
   const mainContourPath =

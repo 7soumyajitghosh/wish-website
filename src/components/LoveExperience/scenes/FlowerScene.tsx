@@ -267,7 +267,10 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       fadeTweenRef.current?.kill();
       ctx.revert();
     };
-  }, [onComplete]);
+    // onComplete is routed via onCompleteRef/finishScene so parent
+    // re-renders never restart the bloom timeline (restart = flicker).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div ref={containerRef} className="flower-scene">

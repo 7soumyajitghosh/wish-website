@@ -46,24 +46,39 @@ export const FinalDestination: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   
-  const [parallax, setParallax] = useState(0);
+  // Parallax targets updated via direct DOM writes (no per-frame React
+  // re-render — the old setParallax state re-rendered this whole section
+  // on every scroll frame, causing jank).
+  const sunRef = useRef<HTMLDivElement>(null);
+  const branchLRef = useRef<HTMLDivElement>(null);
+  const branchRRef = useRef<HTMLDivElement>(null);
+  const lampRef = useRef<HTMLDivElement>(null);
+  const benchRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const heartsWrapRef = useRef<HTMLDivElement>(null);
   const fairyWrapRef = useRef<HTMLDivElement>(null);
   const scrollRaf = useRef<number>(0);
 
-  // Section-relative parallax (clamped; disabled on small screens + reduced motion)
+  // Section-relative parallax (clamped; disabled on small screens + reduced motion).
+  // Direct DOM writes only — no React state, no re-render jank.
   useEffect(() => {
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
+    const apply = (offset: number) => {
+      if (sunRef.current) sunRef.current.style.transform = `translateX(-50%) translateY(${(offset * 0.5).toFixed(1)}px)`;
+      if (branchLRef.current) branchLRef.current.style.transform = `translateY(${(offset * -0.2).toFixed(1)}px)`;
+      if (branchRRef.current) branchRRef.current.style.transform = `scaleX(-1) translateY(${(offset * -0.25).toFixed(1)}px)`;
+      if (lampRef.current) lampRef.current.style.transform = `translateY(${(offset * -0.2).toFixed(1)}px)`;
+      if (benchRef.current) benchRef.current.style.transform = `translateY(${(offset * -0.15).toFixed(1)}px)`;
+    };
     const update = () => {
       scrollRaf.current = 0;
       if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
         if (window.matchMedia('(max-width: 768px)').matches) {
-          setParallax(0);
+          apply(0);
           return;
         }
       }
@@ -73,7 +88,7 @@ export const FinalDestination: React.FC = () => {
       // Distance of section center from viewport center; clamp to [-100, 200]px.
       const raw = (window.innerHeight / 2 - (rect.top + rect.height / 2)) * 0.2;
       const clamped = Math.max(-100, Math.min(200, raw));
-      setParallax(clamped);
+      apply(clamped);
     };
     const handleScroll = () => {
       if (scrollRaf.current) return;
@@ -176,8 +191,6 @@ export const FinalDestination: React.FC = () => {
     return () => ctx.revert();
   }, [isVisible]);
 
-  const offset = parallax;
-
   return (
     <section
       id="destination"
@@ -188,9 +201,10 @@ export const FinalDestination: React.FC = () => {
       <div ref={containerRef} className="absolute inset-0 w-full h-full">
         {/* Glowing heart-shaped sun — parallax on outer, GSAP reveal on inner */}
         <div
+          ref={sunRef}
           aria-hidden="true"
-          className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none will-change-transform"
-          style={{ transform: `translateX(-50%) translateY(${offset * 0.5}px)`, willChange: 'transform' }}
+          className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none"
+          style={{ transform: 'translateX(-50%)' }}
         >
           <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
           <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[100px] opacity-40 mix-blend-screen" />
@@ -202,9 +216,9 @@ export const FinalDestination: React.FC = () => {
 
         {/* Cherry blossom branches - Top Left */}
         <div
+          ref={branchLRef}
           aria-hidden="true"
-          className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none will-change-transform"
-          style={{ transform: `translateY(${offset * -0.2}px)`, willChange: 'transform' }}
+          className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none"
         >
           <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
@@ -221,9 +235,10 @@ export const FinalDestination: React.FC = () => {
 
         {/* Cherry blossom branches - Top Right (single mirror via inline transform) */}
         <div
+          ref={branchRRef}
           aria-hidden="true"
-          className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none will-change-transform"
-          style={{ transform: `scaleX(-1) translateY(${offset * -0.25}px)`, willChange: 'transform' }}
+          className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none"
+          style={{ transform: 'scaleX(-1)' }}
         >
           <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
@@ -251,9 +266,9 @@ export const FinalDestination: React.FC = () => {
 
         {/* Victorian Street Lamp */}
         <div
+          ref={lampRef}
           aria-hidden="true"
-          className="absolute bottom-0 left-[10%] sm:left-[20%] w-32 h-64 sm:w-48 sm:h-96 z-20 pointer-events-none will-change-transform"
-          style={{ transform: `translateY(${offset * -0.2}px)`, willChange: 'transform' }}
+          className="absolute bottom-0 left-[10%] sm:left-[20%] w-32 h-64 sm:w-48 sm:h-96 z-20 pointer-events-none"
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 100 300" className="w-full h-full">
@@ -282,9 +297,9 @@ export const FinalDestination: React.FC = () => {
 
         {/* Garden Bench */}
         <div
+          ref={benchRef}
           aria-hidden="true"
-          className="absolute bottom-10 right-[10%] sm:right-[20%] w-48 h-32 sm:w-64 sm:h-48 z-20 pointer-events-none will-change-transform"
-          style={{ transform: `translateY(${offset * -0.15}px)`, willChange: 'transform' }}
+          className="absolute bottom-10 right-[10%] sm:right-[20%] w-48 h-32 sm:w-64 sm:h-48 z-20 pointer-events-none"
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl">

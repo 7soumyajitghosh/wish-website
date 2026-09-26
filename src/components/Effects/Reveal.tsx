@@ -37,6 +37,11 @@ export const Reveal: React.FC<{
           delay,
           ease: 'power3.out',
           overwrite: 'auto',
+          onComplete: () => {
+            // Release the compositor hint — permanent will-change on every
+            // reveal section wastes GPU memory.
+            el.style.willChange = 'auto';
+          },
         });
         io.disconnect();
       },
