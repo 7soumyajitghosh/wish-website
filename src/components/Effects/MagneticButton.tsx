@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 
 /**
  * MagneticButton — spring-like magnetic hover wrapper (Active Theory style micro-interaction).
@@ -11,6 +11,11 @@ export const MagneticButton: React.FC<{
   strength?: number;
 }> = ({ children, className = '', strength = 6 }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+  }, []);
 
   const onMove = useCallback(
     (e: React.PointerEvent) => {
@@ -33,8 +38,10 @@ export const MagneticButton: React.FC<{
     if (!el) return;
     el.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
     el.style.transform = 'translate3d(0,0,0)';
-    window.setTimeout(() => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
       if (ref.current) ref.current.style.transition = '';
+      timerRef.current = null;
     }, 500);
   }, []);
 

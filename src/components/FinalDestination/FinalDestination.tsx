@@ -4,18 +4,18 @@ import { Reveal } from '../Effects/Reveal';
 import { MagneticButton } from '../Effects/MagneticButton';
 
 const DESTINATION_HEARTS = [
-  { left: 10, top: 120, duration: 18, delay: 1.5, size: 18 },
-  { left: 25, top: 140, duration: 22, delay: 3.2, size: 24 },
-  { left: 40, top: 110, duration: 16, delay: 0.8, size: 14 },
-  { left: 55, top: 160, duration: 20, delay: 4.5, size: 26 },
-  { left: 70, top: 130, duration: 24, delay: 2.1, size: 20 },
-  { left: 85, top: 150, duration: 17, delay: 5.7, size: 22 },
-  { left: 18, top: 170, duration: 21, delay: 6.3, size: 16 },
-  { left: 34, top: 135, duration: 19, delay: 2.8, size: 28 },
-  { left: 62, top: 155, duration: 23, delay: 4.1, size: 15 },
-  { left: 78, top: 125, duration: 15, delay: 1.2, size: 25 },
-  { left: 48, top: 165, duration: 25, delay: 7.0, size: 19 },
-  { left: 92, top: 145, duration: 18, delay: 3.6, size: 21 },
+  { left: 10, top: 62, duration: 18, delay: 1.5, size: 18 },
+  { left: 25, top: 70, duration: 22, delay: 3.2, size: 24 },
+  { left: 40, top: 58, duration: 16, delay: 0.8, size: 14 },
+  { left: 55, top: 75, duration: 20, delay: 4.5, size: 26 },
+  { left: 70, top: 64, duration: 24, delay: 2.1, size: 20 },
+  { left: 85, top: 72, duration: 17, delay: 5.7, size: 22 },
+  { left: 18, top: 80, duration: 21, delay: 6.3, size: 16 },
+  { left: 34, top: 66, duration: 19, delay: 2.8, size: 28 },
+  { left: 62, top: 74, duration: 23, delay: 4.1, size: 15 },
+  { left: 78, top: 60, duration: 15, delay: 1.2, size: 25 },
+  { left: 48, top: 78, duration: 25, delay: 7.0, size: 19 },
+  { left: 92, top: 68, duration: 18, delay: 3.6, size: 21 },
 ];
 
 const FAIRY_LIGHTS = [

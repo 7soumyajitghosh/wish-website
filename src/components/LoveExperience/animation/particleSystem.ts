@@ -127,10 +127,9 @@ export class ParticleEmitter {
       ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
       ctx.fillStyle = p.color;
 
-      // Subtle 4-point sparkle for larger stars
+      // Subtle 4-point sparkle for larger stars (no shadowBlur: per-particle
+      // shadows stall 200+ frame loops; cross-glint carries the glow)
       if (p.isStar && p.size > 1.8) {
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 4;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
         ctx.fill();

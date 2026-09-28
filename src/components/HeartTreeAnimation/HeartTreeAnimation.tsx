@@ -105,7 +105,10 @@ const MAX_PARTICLES = 400;
 /** Shared RNG for ambient embers (avoids per-frame allocation). */
 const emberRng = new SeededRandom(1234567);
 
-/** Map progress [0,1] to stage number [1..16] */
+/** Map progress [0,1] to stage number [1..16] (thresholds must ascend:
+ * seed 0.04 < roots 0.10 < trunk 0.20/0.26 < primary 0.32 < secondary 0.42
+ * < twigs 0.52 < buds 0.62 < bloom1 0.68 < bloom2 0.74 < full 0.82
+ * < wind 0.84 < detach 0.90 < fade 0.97 < end 1.0) */
 function getStageFromProgress(p: number): number {
   if (p < GROWTH_T.SEED_START) return 1;
   if (p < GROWTH_T.ROOTS_START) return 2;

@@ -35,6 +35,10 @@ export const CursorGlow: React.FC = () => {
     };
 
     const loop = () => {
+      if (document.hidden) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       x += (tx - x) * 0.08;
       y += (ty - y) * 0.08;
       el.style.transform = `translate3d(${x - 260}px, ${y - 260}px, 0)`;

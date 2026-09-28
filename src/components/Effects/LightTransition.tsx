@@ -20,7 +20,12 @@ export const LightTransition: React.FC<{
   }, [onDone]);
 
   useEffect(() => {
-    if (!play || playedRef.current) return;
+    if (!play) {
+      // Allow a future play=true to replay the passage.
+      playedRef.current = false;
+      return;
+    }
+    if (playedRef.current) return;
     const el = ref.current;
     const glow = glowRef.current;
     if (!el || !glow) {

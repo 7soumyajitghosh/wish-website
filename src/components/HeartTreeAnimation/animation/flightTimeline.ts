@@ -9,8 +9,9 @@
  */
 
 export const FLIGHT_T = {
-  // Stage 14: Hearts Fly Away
-  DETACH_START: 0.75,
+  // Stage 14: Hearts Fly Away (must start AFTER full bloom 0.82 + wind peak
+  // 0.90, otherwise hearts detach mid-bloom and stage 13 is unreachable)
+  DETACH_START: 0.90,
   STREAM_PEAK: 0.98,
   FADE_LOOP_START: 0.97,
   CYCLE_END: 1.0,

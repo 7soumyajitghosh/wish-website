@@ -80,12 +80,11 @@ export const AmbientField: React.FC<{
         const twinkle = 0.65 + Math.sin(p.tw) * 0.35;
         ctx.beginPath();
         ctx.fillStyle = `rgba(${p.hue},${(p.a * twinkle).toFixed(3)})`;
-        ctx.shadowColor = `rgba(${p.hue},0.8)`;
-        ctx.shadowBlur = 8;
+        // No per-particle shadowBlur (GPU churn on 200+ frame loops);
+        // glow is baked into the low-alpha fill + one mist gradient.
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.shadowBlur = 0;
     };
 
     if (reduced) {

@@ -54,7 +54,11 @@ export const WishScene: React.FC = () => {
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      // Clear the actual backing store (DPR-scaled), not window dims.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       emitterRef.current.update(dt, now * 0.001);
       emitterRef.current.draw(ctx);
 
