@@ -7,7 +7,7 @@ import { Reveal } from '../Effects/Reveal';
 export const Journey: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLElement | null)[]>([]);
-  const { currentStage, jumpToStage, isExperienceUnlocked, setIntroState } = useStory();
+  const { currentStage, goToStage } = useStory();
 
   useEffect(() => {
     const cards = cardsRef.current.filter(Boolean) as HTMLElement[];
@@ -55,15 +55,9 @@ export const Journey: React.FC = () => {
   }, []);
 
   const handleCardClick = (stageId: number) => {
-    // Unlock first when the experience is still gated, then jump.
-    if (!isExperienceUnlocked) {
-      setIntroState('EXPERIENCE_UNLOCKED');
-    }
-    jumpToStage(stageId);
-    const storyEl = document.getElementById('story-experience');
-    if (storyEl) {
-      storyEl.scrollIntoView({ behavior: 'smooth' });
-    }
+    // Connected jump: unlock if gated, then land the sticky viewport
+    // exactly on that stage — no sweep/replay through earlier stages.
+    goToStage(stageId);
   };
 
   return (

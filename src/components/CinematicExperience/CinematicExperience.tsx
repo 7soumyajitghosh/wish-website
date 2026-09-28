@@ -18,6 +18,9 @@ export const CinematicExperience: React.FC = () => {
   const isAutoGrowingRef = useRef(false);
   const autoGrowthTlRef = useRef<gsap.core.Timeline | null>(null);
   const stormTlRef = useRef<gsap.core.Timeline | null>(null);
+  // Once the cinematic has finished, auto-growth / storm can never restart —
+  // this is the root guard against the tree replaying itself.
+  const finishedRef = useRef(false);
   // Camera (zoom) + black fade are applied straight to the DOM (no re-renders).
   const camRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
@@ -71,7 +74,11 @@ export const CinematicExperience: React.FC = () => {
   }, []);
 
   // Shared finish: leaves gone → unlock → cinematic transition into content.
+  // Idempotent: safe to call from skip buttons, timeline completion, and
+  // the background-tab guard without replaying anything.
   const finishCinematic = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     if (autoGrowthTlRef.current) {
       autoGrowthTlRef.current.kill();
       autoGrowthTlRef.current = null;
@@ -127,7 +134,7 @@ export const CinematicExperience: React.FC = () => {
   // Pauses at full bloom for the storm beat. Tree code itself is untouched;
   // only targetProgress waypoints + the environmental camera move.
   const startAutoGrowth = useCallback(() => {
-    if (isAutoGrowingRef.current) return;
+    if (finishedRef.current || isAutoGrowingRef.current) return;
     isAutoGrowingRef.current = true;
     setIsAutoGrowing(true);
     setIsBloomPaused(false);
@@ -199,7 +206,7 @@ export const CinematicExperience: React.FC = () => {
   // Storm beat: button-triggered gale blows every leaf off, black follows
   // the trailing leaves, then the page transitions.
   const startStorm = useCallback(() => {
-    if (isStorming || !isBloomPaused) return;
+    if (finishedRef.current || isStorming || !isBloomPaused) return;
     setIsBloomPaused(false);
     setIsStorming(true);
     isAutoGrowingRef.current = true;
@@ -269,6 +276,28 @@ export const CinematicExperience: React.FC = () => {
     };
   }, []);
 
+  // External unlock (nav / milestones / Escape while a cinematic is running):
+  // finishCinematic was bypassed, so kill the orphaned timelines and restore
+  // the camera — otherwise the tree stays frozen mid-growth at 1.5x zoom or
+  // the timeline keeps broadcasting and fights scroll-scrub (replay).
+  useEffect(() => {
+    if (introState !== 'EXPERIENCE_UNLOCKED' || finishedRef.current) return;
+    if (autoGrowthTlRef.current) {
+      autoGrowthTlRef.current.kill();
+      autoGrowthTlRef.current = null;
+    }
+    if (stormTlRef.current) {
+      stormTlRef.current.kill();
+      stormTlRef.current = null;
+    }
+    isAutoGrowingRef.current = false;
+    setIsAutoGrowing(false);
+    setIsBloomPaused(false);
+    setIsStorming(false);
+    applyCam(1);
+    applyFade(0);
+  }, [introState, applyCam, applyFade]);
+
   // Escape hatch for the cinematic: jump straight to the end state.
   const skipAutoGrowth = useCallback(() => {
     finishCinematic();
@@ -276,12 +305,13 @@ export const CinematicExperience: React.FC = () => {
 
   // Background-tab stranding guard: GSAP timers throttle while hidden, so
   // fast-forward the cinematic timelines when the tab becomes visible again.
+  // Only while a cinematic timeline is actively playing — never after finish
+  // (progressing a completed storm would re-fire finishCinematic).
   useEffect(() => {
     const onVisibility = () => {
-      if (!document.hidden) {
-        if (stormTlRef.current) stormTlRef.current.progress(1);
-        else if (autoGrowthTlRef.current) autoGrowthTlRef.current.progress(1);
-      }
+      if (document.hidden || finishedRef.current) return;
+      if (stormTlRef.current?.isActive()) stormTlRef.current.progress(1);
+      else if (autoGrowthTlRef.current?.isActive()) autoGrowthTlRef.current.progress(1);
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -468,10 +498,12 @@ export const CinematicExperience: React.FC = () => {
           </div>
         </nav>
 
-        {/* Vertical Chapter Indicator Dots (Right Edge) */}
+        {/* Vertical Chapter Indicator Dots (Right Edge) — disabled while the
+            auto-growth / storm cinematic owns progress, so jumps can't fight
+            the timeline and replay the tree. */}
         <aside
           className={`absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 hidden sm:flex flex-col items-center gap-2.5 py-4 px-2 rounded-full bg-black/25 backdrop-blur-md border border-white/10 transition-opacity duration-700 ${
-            introState === 'INTRO' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            introState === 'INTRO' || isAutoGrowing ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
           aria-label="Stage Navigation Dots"
         >
@@ -481,7 +513,7 @@ export const CinematicExperience: React.FC = () => {
             return (
               <button
                 key={s.id}
-                onClick={() => jumpToStage(s.id)}
+                onClick={() => { if (!isAutoGrowing) jumpToStage(s.id); }}
                 className="group relative flex items-center justify-center p-3 min-w-[44px] min-h-[44px] cursor-pointer transition-transform hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] rounded-full"
                 aria-label={`Jump to stage ${s.id}: ${s.title}`}
                 aria-current={isActive ? 'true' : undefined}
@@ -591,7 +623,7 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
         {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
-        {currentStage >= 11 && !isBloomUnlocked && !isStorming && (
+        {currentStage >= 11 && !isBloomUnlocked && !isStorming && !isAutoGrowing && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <button
               onClick={unlockBloom}
@@ -607,7 +639,7 @@ export const CinematicExperience: React.FC = () => {
         )}
 
         {/* Milestone 2: Bloom complete & wind rising -> "Release the hearts →" */}
-        {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && !isBloomPaused && !isStorming && (
+        {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && !isBloomPaused && !isStorming && !isAutoGrowing && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
             <p className="font-serif text-sm text-[#fff8eb]/90 drop-shadow">
               "Some things are meant to take flight."

@@ -268,10 +268,22 @@ export const WishSection = () => {
         )}
 
         {/* Wish Count */}
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center flex flex-col items-center gap-4">
           <p className="text-[#fff8eb]/70 text-sm font-sans tracking-widest uppercase">
             Wishes released into the stars: {wishCount}
           </p>
+          {/* Chapter link — keeps every page connected in one flow. */}
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('final-message');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
+            aria-label="Continue to the final message"
+          >
+            Continue to the final message →
+          </button>
         </div>
       </div>
 

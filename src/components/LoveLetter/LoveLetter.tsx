@@ -225,7 +225,7 @@ export const LoveLetter: React.FC = () => {
           </div>
 
           {/* Primary Action Button Below */}
-          <div className="mt-8 flex flex-col items-center">
+          <div className="mt-8 flex flex-col items-center gap-4">
             {!isOpen ? (
               <MagneticButton>
               <button
@@ -247,6 +247,18 @@ export const LoveLetter: React.FC = () => {
               </button>
               </MagneticButton>
             )}
+            {/* Chapter link — keeps every page connected in one flow. */}
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('make-a-wish');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
+              aria-label="Continue to Make a Wish"
+            >
+              Continue to Make a Wish →
+            </button>
           </div>
         </div>
       </div>

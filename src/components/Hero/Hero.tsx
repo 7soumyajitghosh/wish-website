@@ -15,6 +15,8 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   const contentRef = useRef<HTMLDivElement>(null);
   const tweenRef = useRef<gsap.core.Tween | null>(null);
   const mountedRef = useRef(true);
+  const begunRef = useRef(false);
+  const waterDoneRef = useRef(false);
   const { introState, startStory } = useStory();
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
@@ -37,6 +39,9 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   }, []);
 
   const handleBegin = () => {
+    // One-shot: double-clicks must not restart the intro sequence.
+    if (begunRef.current) return;
+    begunRef.current = true;
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -60,6 +65,10 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   };
 
   const handleWaterComplete = useCallback(() => {
+    // One-shot: the watering timeline fires once; a second call would
+    // restart auto-growth and replay the tree.
+    if (waterDoneRef.current) return;
+    waterDoneRef.current = true;
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&

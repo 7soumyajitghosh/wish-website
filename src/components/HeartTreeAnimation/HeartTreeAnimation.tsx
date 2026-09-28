@@ -167,6 +167,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   const autoPlayRef = useRef(autoPlay);
   const loopRef = useRef(loop);
   const lastProgressCbRef = useRef({ time: 0, progress: -1 });
+  // Render loop parks while the canvas is off-screen (one shared sticky
+  // viewport + several ambient canvases otherwise burn frames forever).
+  const visibleRef = useRef(true);
 
   // Mouse & Touch interaction state
   const pointerRef = useRef({
@@ -228,6 +231,17 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     getStage: () => getStageFromProgress(progressRef.current),
   }), []);
 
+  // Off-screen visibility tracking for the main render loop.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => {
+      visibleRef.current = entry.isIntersecting;
+    }, { threshold: 0 });
+    io.observe(container);
+    return () => io.disconnect();
+  }, []);
+
   // Ambient drifting petals
   const ambientPetalsRef = useRef<AmbientPetal[]>([
     { speed: 18, xRatio: 0.1, yOffset: 30, size: 4.5, color: '#ffb3c1' },
@@ -240,7 +254,10 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     { speed: 21, xRatio: 0.55, yOffset: 25, size: 4.6, color: '#ffa4b6' },
   ]);
 
-  // Handle container resize & canvas scaling
+  // Handle container resize & canvas scaling.
+  // Geometry rebuilds, but flight/detachment state is preserved: clearing
+  // detached hearts + particles here made the bloom visibly replay on
+  // every mobile URL-bar resize / orientation nudge.
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -250,6 +267,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       const rect = container.getBoundingClientRect();
       const w = Math.max(rect.width || window.innerWidth || 320, 320);
       const h = Math.max(rect.height || window.innerHeight || 320, 320);
+      const prev = layoutRef.current;
+      // No-op when nothing changed (breaks RO feedback loops).
+      if (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1 && prev.w !== 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       canvas.width = Math.floor(w * dpr);
@@ -265,21 +285,25 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
 
       layoutRef.current = { w, h, groundY, baseX, baseY, scale, dpr, isMobile };
       treeRef.current = buildTree(baseX, baseY, scale);
-
-      particlesRef.current = [];
-      embersRef.current = [];
-      detachedRef.current.clear();
     };
 
     handleResize();
 
-    const observer = new ResizeObserver(handleResize);
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        handleResize();
+      });
+    });
     observer.observe(container);
     window.addEventListener('resize', handleResize);
 
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
@@ -459,6 +483,13 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
 
     const loop = (now: number) => {
       if (!running || !mountedRef.current) return;
+      // Parked off-screen: keep the heartbeat alive but skip all work so
+      // returning never replays or jumps the animation.
+      if (!visibleRef.current) {
+        lastTime = now;
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;

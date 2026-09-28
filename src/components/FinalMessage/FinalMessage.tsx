@@ -133,6 +133,18 @@ export const FinalMessage = () => {
             <p className="final-fade-item text-xl md:text-2xl font-serif text-[#ffd6a5] font-normal tracking-wider opacity-95 max-w-2xl">
               And in that space, everything beautiful begins.
             </p>
+            {/* Chapter link — keeps every page connected in one flow. */}
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('journey');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="final-fade-item font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
+              aria-label="Revisit the sixteen milestones"
+            >
+              Revisit the sixteen milestones →
+            </button>
           </div>
         )}
       </div>
