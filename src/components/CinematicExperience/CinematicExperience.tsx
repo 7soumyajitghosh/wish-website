@@ -31,7 +31,6 @@ export const CinematicExperience: React.FC = () => {
     currentStage,
     targetProgress,
     setTargetProgress,
-    jumpToStage,
     isBloomUnlocked,
     unlockBloom,
     isFlightUnlocked,
@@ -423,7 +422,8 @@ export const CinematicExperience: React.FC = () => {
         ref={stickyRef}
         className="sticky top-0 w-full h-screen max-h-[100dvh] overflow-hidden flex flex-col justify-between select-none"
       >
-        {/* Screen-reader stage announcements */}
+        {/* Screen-reader stage announcements (the visual HUD was removed;
+            the canvas + story beats below are the whole experience) */}
         <div className="sr-only" aria-live="polite">
           Stage {currentStage} of 16: {currentInfo.title}
         </div>
@@ -502,99 +502,7 @@ export const CinematicExperience: React.FC = () => {
           </button>
         )}
 
-        {/* ================= STAGE NAVIGATION HUD ================= */}
-        <nav
-          className={`absolute top-8 left-6 md:left-12 z-30 flex flex-col items-start pointer-events-auto transition-opacity duration-700 ${
-            introState === 'INTRO' ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-          aria-label="Story Progress"
-        >
-          <div className="flex items-center gap-3">
-            <span className="font-sans text-sm uppercase tracking-[0.3em] text-[#f5baa4] opacity-90">
-              Journey
-            </span>
-            <span className="font-serif text-lg text-[#fffdf8] font-medium tracking-widest">
-              {String(currentStage).padStart(2, '0')} <span className="text-[#f5baa4]/60">/ 16</span>
-            </span>
-          </div>
-
-          {/* Current Stage Title & Subtitle */}
-          <div className="mt-2 max-w-xs md:max-w-md rounded-lg bg-gradient-to-b from-black/50 to-transparent px-3 py-2 -ml-3">
-            <h2 className="text-xl md:text-3xl font-serif text-[#fffdf8] tracking-wide drop-shadow-md">
-              {currentInfo.title}
-            </h2>
-            <p className="text-sm font-sans text-[#f5baa4]/90 font-normal mt-1 leading-relaxed">
-              {currentInfo.subtitle}
-            </p>
-          </div>
-        </nav>
-
-        {/* Vertical Chapter Indicator Dots (Right Edge) — disabled while the
-            auto-growth / storm cinematic owns progress, so jumps can't fight
-            the timeline and replay the tree. */}
-        <aside
-          className={`absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-30 hidden sm:flex flex-col items-center gap-2.5 py-4 px-2 rounded-full bg-black/25 backdrop-blur-md border border-white/10 transition-opacity duration-700 ${
-            introState === 'INTRO' || isAutoGrowing ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-          aria-label="Stage Navigation Dots"
-        >
-          {STAGE_DESCRIPTIONS.map((s) => {
-            const isActive = s.id === currentStage;
-            const isPassed = s.id < currentStage;
-            return (
-              <button
-                key={s.id}
-                onClick={() => { if (!isAutoGrowing) jumpToStage(s.id); }}
-                className="group relative flex items-center justify-center p-3 min-w-[44px] min-h-[44px] cursor-pointer transition-transform hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] rounded-full"
-                aria-label={`Jump to stage ${s.id}: ${s.title}`}
-                aria-current={isActive ? 'true' : undefined}
-              >
-                <span
-                  className={`block rounded-full transition-all duration-300 ${
-                    isActive
-                      ? 'w-2.5 h-2.5 bg-[#f5baa4] shadow-[0_0_8px_#f5baa4]'
-                      : isPassed
-                      ? 'w-1.5 h-1.5 bg-[#ffb3c1]/70'
-                      : 'w-1.5 h-1.5 bg-white/25 group-hover:bg-white/60'
-                  }`}
-                />
-                {/* Tooltip on hover */}
-                <span className="absolute right-7 px-2.5 py-1 rounded bg-[#1c0812]/90 border border-[#ffb3c1]/30 text-[#fffdf8] font-serif text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg">
-                  {s.id}. {s.title}
-                </span>
-              </button>
-            );
-          })}
-        </aside>
-
-        {/* Interactive Tree Hints (Bottom Left) — desktop only, hidden on mobile */}
-        <div
-          className={`absolute bottom-8 left-6 md:left-12 z-20 pointer-events-none max-w-sm transition-opacity duration-700 hidden sm:block ${
-            introState !== 'EXPERIENCE_UNLOCKED' ? 'opacity-0' : 'opacity-100'
-          }`}
-        >
-          <div className="flex flex-col gap-1.5 text-sm text-[#fff8eb]/85 font-sans tracking-wide">
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#f5baa4]" />
-              Scroll to explore stages
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ffb3c1]" />
-              Tap roots, branch, or hearts to reflect
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ffd6a5]" />
-              Drag across the sky to move the wind
-            </span>
-          </div>
-        </div>
-
-        {/* Active Wind feedback (Subtle) */}
-        {Math.abs(userWind) > 1 && (
-          <div className="absolute bottom-8 right-6 md:right-28 z-20 pointer-events-none flex items-center gap-2 text-xs font-sans text-[#ffd6a5]/80 uppercase tracking-widest animate-pulse">
-            <span>Wind: {userWind > 0 ? 'East breeze →' : '← West breeze'}</span>
-          </div>
-        )}
+        {/* ================= STORY BEATS (canvas + milestone actions) ================= */}
 
         {/* ================= FLOATING TREE REFLECTION QUOTE ================= */}
         {activeTreeQuote && (
