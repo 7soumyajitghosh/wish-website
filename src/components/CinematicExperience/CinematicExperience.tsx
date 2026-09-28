@@ -12,15 +12,35 @@ import {
   STAGE_PROGRESS_MAP,
 } from '../../context/StoryContext';
 
+/**
+ * One-way story flow. There is no transition backwards and no scroll-driven
+ * growth: watering is the only entry into `growing`, and each phase is
+ * entered exactly once.
+ *
+ *   idle → watering → growing → grown → stormReady → storm
+ *        → leavesTransition → destination
+ */
+type FlowPhase =
+  | 'idle'
+  | 'watering'
+  | 'growing'
+  | 'grown'
+  | 'stormReady'
+  | 'storm'
+  | 'leavesTransition'
+  | 'destination';
+
 export const CinematicExperience: React.FC = () => {
   const containerRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const isAutoGrowingRef = useRef(false);
   const autoGrowthTlRef = useRef<gsap.core.Timeline | null>(null);
   const stormTlRef = useRef<gsap.core.Timeline | null>(null);
-  // Once the cinematic has finished, auto-growth / storm can never restart —
-  // this is the root guard against the tree replaying itself.
-  const finishedRef = useRef(false);
+  const stormReadyCallRef = useRef<gsap.core.Tween | null>(null);
+  const leavesTlRef = useRef<gsap.core.Timeline | null>(null);
+  // One-shot guards: growth can only ever run once, storm only once.
+  const hasGrownRef = useRef(false);
+  const hasStormedRef = useRef(false);
   // Camera (zoom) + black fade are applied straight to the DOM (no re-renders).
   const camRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
@@ -31,10 +51,7 @@ export const CinematicExperience: React.FC = () => {
     currentStage,
     targetProgress,
     setTargetProgress,
-    isBloomUnlocked,
-    unlockBloom,
     isFlightUnlocked,
-    unlockFlight,
     activeTreeQuote,
     setActiveTreeQuote,
     pauseTreeQuote,
@@ -42,28 +59,30 @@ export const CinematicExperience: React.FC = () => {
   } = useStory();
 
   const [userWind, setUserWind] = useState(0);
-  const [isAutoGrowing, setIsAutoGrowing] = useState(false);
-  const [isBloomPaused, setIsBloomPaused] = useState(false);
-  const [isStorming, setIsStorming] = useState(false);
+  const [phase, setPhaseState] = useState<FlowPhase>('idle');
   const [transitionPlay, setTransitionPlay] = useState(false);
   const quoteCloseRef = useRef<HTMLButtonElement>(null);
 
+  // Ref mirror of the phase so long-lived GSAP callbacks always read the
+  // current state instead of a stale closure.
+  const phaseRef = useRef<FlowPhase>('idle');
+  const setPhase = useCallback((next: FlowPhase) => {
+    phaseRef.current = next;
+    setPhaseState(next);
+  }, []);
+
   // Refs mirror unlock flags so the long-lived GSAP onUpdate never closes
-  // over stale state (30s timeline would otherwise miss unlock transitions).
-  const unlockBloomRef = useRef(isBloomUnlocked);
+  // over stale state.
   const unlockFlightRef = useRef(isFlightUnlocked);
-  useEffect(() => {
-    unlockBloomRef.current = isBloomUnlocked;
-  }, [isBloomUnlocked]);
   useEffect(() => {
     unlockFlightRef.current = isFlightUnlocked;
   }, [isFlightUnlocked]);
 
   // Intro close-up: when the seed beat starts, push the ONE camera toward
   // the tree base so the canvas seed carries the moment. Killed on sight
-  // by auto-growth / external unlock so tweens never fight (no jump).
+  // by growth / external unlock so tweens never fight (no jump).
   useEffect(() => {
-    if (finishedRef.current) return;
+    if (hasGrownRef.current) return;
     if (introState === 'INTRO' || introState === 'EXPERIENCE_UNLOCKED') return;
     const camEl = camRef.current;
     if (!camEl) return;
@@ -95,71 +114,53 @@ export const CinematicExperience: React.FC = () => {
     if (el) el.style.opacity = String(Math.max(0, Math.min(1, o)));
   }, []);
 
-  // Shared finish: leaves gone → unlock → cinematic transition into content.
-  // Idempotent: safe to call from skip buttons, timeline completion, and
-  // the background-tab guard without replaying anything.
-  const finishCinematic = useCallback(() => {
-    if (finishedRef.current) return;
-    finishedRef.current = true;
-    if (autoGrowthTlRef.current) {
-      autoGrowthTlRef.current.kill();
-      autoGrowthTlRef.current = null;
-    }
-    if (stormTlRef.current) {
-      stormTlRef.current.kill();
-      stormTlRef.current = null;
-    }
-    isAutoGrowingRef.current = false;
-    setIsAutoGrowing(false);
-    setIsBloomPaused(false);
-    setIsStorming(false);
-    setTargetProgress(STAGE_PROGRESS_MAP[16]);
-    unlockBloom();
-    unlockFlight();
-    // Ease the storm push-in back out instead of snapping 1.12 → 1
-    // (snap = visible jump on the handoff frame).
-    const camEl = camRef.current;
-    if (camEl) {
-      gsap.to(camEl, {
-        scale: 1,
-        duration: 1.2,
-        ease: 'power2.out',
-        overwrite: 'auto',
-        onComplete: () => applyCam(1),
-      });
-    } else {
-      applyCam(1);
-    }
-    // Lift the black fade once the transition takes over.
+  // ---------------------------------------------------------------------
+  // LEAVES → DESTINATION
+  // Runs only after the storm has fully completed, so nothing is still
+  // animating when we move. The black fade covers the cut, then the warm
+  // light transition lifts to reveal the Destination. No scroll required.
+  // ---------------------------------------------------------------------
+  const transitionToDestination = useCallback(() => {
+    setPhase('leavesTransition');
+
     const fadeEl = fadeRef.current;
-    if (fadeEl) {
-      gsap.to(fadeEl, { opacity: 0, duration: 1.4, delay: 0.5, ease: 'power2.out', overwrite: 'auto' });
-    }
-    setIntroState('EXPERIENCE_UNLOCKED');
-    setTransitionPlay(true);
+    const tl = gsap.timeline({
+      defaults: { overwrite: 'auto' },
+      onComplete: () => {
+        setPhase('destination');
+      },
+    });
+    leavesTlRef.current = tl;
 
-    // Re-sync scroll position inside 550vh container so subsequent scroll continues seamlessly.
-    // Instant jump without a behavior flag (broadest ScrollBehavior support);
-    // guarded so a missing layout never throws or shifts the page.
-    const container = containerRef.current;
-    if (container && container.offsetHeight > window.innerHeight) {
-      const totalScrollable = container.offsetHeight - window.innerHeight;
-      if (totalScrollable > 0) {
-        const rawProgress = (STAGE_PROGRESS_MAP[16] - 0.02) / 0.98;
-        const targetScrollY = container.offsetTop + rawProgress * totalScrollable;
-        if (Number.isFinite(targetScrollY)) window.scrollTo(0, targetScrollY);
-      }
-    }
-  }, [applyCam, setIntroState, setTargetProgress, unlockBloom, unlockFlight]);
+    tl.to(fadeEl, { opacity: 1, duration: 0.45, ease: 'power2.in' })
+      .call(() => {
+        // Unlock first so body can scroll and destination is accessible
+        setIntroState('EXPERIENCE_UNLOCKED');
+      })
+      .call(() => {
+        // Fully covered by black — move instantly to Destination
+        const destEl = document.getElementById('destination');
+        if (destEl) {
+          destEl.scrollIntoView();
+          window.scrollTo(0, destEl.offsetTop);
+        }
+      }, undefined, '+=0.05')
+      .call(() => {
+        setTransitionPlay(true);
+      }, undefined, '+=0.15');
+  }, [setIntroState, setPhase]);
 
-  // Phased auto-growth: roots in close-up → slow zoom out → branches → leaves.
-  // Pauses at full bloom for the storm beat. Tree code itself is untouched;
-  // only targetProgress waypoints + the environmental camera move.
+  // ---------------------------------------------------------------------
+  // TREE GROWTH — ONE TIME ONLY, triggered only by the watering action.
+  // ---------------------------------------------------------------------
   const startAutoGrowth = useCallback(() => {
-    if (finishedRef.current || isAutoGrowingRef.current) return;
+    // Hard one-shot guard: growth can never run twice, for any reason.
+    if (hasGrownRef.current || isAutoGrowingRef.current) return;
+    // Watering is the only legal trigger (intro === idle/watering).
+    if (phaseRef.current !== 'idle' && phaseRef.current !== 'watering') return;
+    hasGrownRef.current = true;
     isAutoGrowingRef.current = true;
-    setIsAutoGrowing(true);
-    setIsBloomPaused(false);
+    setPhase('growing');
 
     if (autoGrowthTlRef.current) {
       autoGrowthTlRef.current.kill();
@@ -168,11 +169,11 @@ export const CinematicExperience: React.FC = () => {
 
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // The intro already played the seed beat (heart falls → lands → morphs
-    // into the seed), so growth continues from the landed seed — replaying
-    // 0.02 → 0.06 here showed the seed appearing a 2nd time.
+    // The intro already played the seed beat, so growth continues from the
+    // landed seed — replaying 0.02 → 0.06 here showed the seed a 2nd time.
     const progressObj = { p: STAGE_PROGRESS_MAP[2] };
     const camObj = { z: 1.5 };
     let lastBroadcastTime = 0;
@@ -182,33 +183,33 @@ export const CinematicExperience: React.FC = () => {
         lastBroadcastTime = now;
         setTargetProgress(progressObj.p);
       }
-      if (progressObj.p >= 0.81 && !unlockBloomRef.current) {
-        unlockBloom();
-      }
+    };
+
+    // Growth completed → the tree stays fully grown until the storm starts.
+    const onGrown = () => {
+      isAutoGrowingRef.current = false;
+      setTargetProgress(STAGE_PROGRESS_MAP[12]);
+      setPhase('grown');
+      // Small beat before the single CTA appears.
+      stormReadyCallRef.current?.kill();
+      stormReadyCallRef.current = gsap.delayedCall(0.5, () => {
+        if (phaseRef.current === 'grown') setPhase('stormReady');
+      });
     };
 
     // The intro close-up already holds ~1.5 on the single camera; take
     // ownership of it (killing that tween) instead of snapping — no jump.
     if (camRef.current) gsap.killTweensOf(camRef.current);
-    // Seed is already landed — sync state so the canvas never flashes the
-    // seed-appear beat again.
     setTargetProgress(STAGE_PROGRESS_MAP[2]);
 
     const tl = gsap.timeline({
       onUpdate: broadcast,
-      onComplete: () => {
-        broadcast();
-        isAutoGrowingRef.current = false;
-        setIsAutoGrowing(false);
-        setIsBloomPaused(true);
-      },
+      onComplete: onGrown,
     });
 
-    // Seed already landed in the intro → straight to roots (close-up),
-    // then trunk + branches as the camera pulls back.
+    // Roots in close-up → camera pulls back → trunk, branches, leaves.
     tl.to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 2.8, ease: 'power2.out' })
       .to({}, { duration: 0.6 })
-      // Slow zoom back out as the trunk + branches rise
       .to(camObj, {
         z: 1.0,
         duration: 3.2,
@@ -220,7 +221,6 @@ export const CinematicExperience: React.FC = () => {
       .to(progressObj, { p: STAGE_PROGRESS_MAP[6], duration: 2.6, ease: 'power2.out' })
       .to(progressObj, { p: STAGE_PROGRESS_MAP[7], duration: 2.4, ease: 'power1.inOut' })
       .to(progressObj, { p: STAGE_PROGRESS_MAP[8], duration: 2.2, ease: 'power1.out' })
-      // Leaves unfurl gradually until full cover
       .to(progressObj, { p: STAGE_PROGRESS_MAP[9], duration: 2.0, ease: 'sine.inOut' })
       .to(progressObj, { p: STAGE_PROGRESS_MAP[10], duration: 2.2, ease: 'power2.out' })
       .to(progressObj, { p: STAGE_PROGRESS_MAP[11], duration: 2.0, ease: 'power1.inOut' })
@@ -230,16 +230,33 @@ export const CinematicExperience: React.FC = () => {
     tl.timeScale(prefersReducedMotion ? 3 : 1);
 
     autoGrowthTlRef.current = tl;
-  }, [applyCam, setTargetProgress, unlockBloom]);
+  }, [applyCam, setPhase, setTargetProgress]);
 
-  // Storm beat: button-triggered gale blows every leaf off, black follows
-  // the trailing leaves, then the page transitions.
+  // Escape hatch during growth: jump to the fully grown state. It never
+  // starts the storm — the storm still requires the CTA click.
+  const skipGrowth = useCallback(() => {
+    if (!isAutoGrowingRef.current) return;
+    if (autoGrowthTlRef.current) {
+      autoGrowthTlRef.current.kill();
+      autoGrowthTlRef.current = null;
+    }
+    isAutoGrowingRef.current = false;
+    setTargetProgress(STAGE_PROGRESS_MAP[12]);
+    setPhase('grown');
+    stormReadyCallRef.current?.kill();
+    stormReadyCallRef.current = gsap.delayedCall(0.4, () => {
+      if (phaseRef.current === 'grown') setPhase('stormReady');
+    });
+  }, [setPhase, setTargetProgress]);
+
+  // ---------------------------------------------------------------------
+  // STORM — only from the grown/stormReady state and only on CTA click.
+  // ---------------------------------------------------------------------
   const startStorm = useCallback(() => {
-    if (finishedRef.current || isStorming || !isBloomPaused) return;
-    setIsBloomPaused(false);
-    setIsStorming(true);
-    isAutoGrowingRef.current = true;
-    setIsAutoGrowing(true);
+    if (hasStormedRef.current) return;
+    if (phaseRef.current !== 'stormReady') return;
+    hasStormedRef.current = true;
+    setPhase('storm');
 
     if (stormTlRef.current) {
       stormTlRef.current.kill();
@@ -248,8 +265,10 @@ export const CinematicExperience: React.FC = () => {
 
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Start from exactly the grown state so the tree never jumps.
     const progressObj = { p: STAGE_PROGRESS_MAP[12] };
     const camObj = { z: 1.0 };
     let lastBroadcastTime = 0;
@@ -261,18 +280,17 @@ export const CinematicExperience: React.FC = () => {
           lastBroadcastTime = now;
           setTargetProgress(progressObj.p);
         }
-        if (progressObj.p >= 0.9 && !unlockFlightRef.current) {
-          unlockFlight();
-        }
         // Fade to black following the trailing leaves off-screen.
         applyFade((progressObj.p - 0.93) / 0.07);
       },
       onComplete: () => {
-        finishCinematic();
+        // Leaves have all flown away — hand off to the Destination.
+        setTargetProgress(STAGE_PROGRESS_MAP[16]);
+        transitionToDestination();
       },
     });
 
-    // Gale: slight push-in + full sweep to destination as leaves detach.
+    // Gale: slight push-in + full sweep as the leaves detach and fly.
     tl.to(camObj, {
       z: 1.12,
       duration: 6.5,
@@ -289,57 +307,46 @@ export const CinematicExperience: React.FC = () => {
     tl.timeScale(prefersReducedMotion ? 3 : 1);
 
     stormTlRef.current = tl;
-  }, [applyCam, applyFade, finishCinematic, isBloomPaused, isStorming, setTargetProgress, unlockFlight]);
+  }, [applyCam, applyFade, setPhase, setTargetProgress, transitionToDestination]);
 
-  // Clean up cinematic timelines on unmount
+  // Clean up every timeline on unmount.
   useEffect(() => {
     return () => {
-      if (autoGrowthTlRef.current) {
-        autoGrowthTlRef.current.kill();
-        autoGrowthTlRef.current = null;
-      }
-      if (stormTlRef.current) {
-        stormTlRef.current.kill();
-        stormTlRef.current = null;
-      }
+      autoGrowthTlRef.current?.kill();
+      autoGrowthTlRef.current = null;
+      stormTlRef.current?.kill();
+      stormTlRef.current = null;
+      stormReadyCallRef.current?.kill();
+      stormReadyCallRef.current = null;
+      leavesTlRef.current?.kill();
+      leavesTlRef.current = null;
     };
   }, []);
 
-  // External unlock (nav / milestones / Escape while a cinematic is running):
-  // finishCinematic was bypassed, so kill the orphaned timelines and restore
-  // the camera — otherwise the tree stays frozen mid-growth at 1.5x zoom or
-  // the timeline keeps broadcasting and fights scroll-scrub (replay).
+  // External unlock (nav / milestones / Escape) bypasses the cinematic, so
+  // kill any orphaned timeline and settle the camera instead of leaving the
+  // tree frozen mid-growth.
   useEffect(() => {
-    if (introState !== 'EXPERIENCE_UNLOCKED' || finishedRef.current) return;
-    if (autoGrowthTlRef.current) {
-      autoGrowthTlRef.current.kill();
-      autoGrowthTlRef.current = null;
-    }
-    if (stormTlRef.current) {
-      stormTlRef.current.kill();
-      stormTlRef.current = null;
-    }
+    if (introState !== 'EXPERIENCE_UNLOCKED') return;
+    if (phaseRef.current === 'destination' || phaseRef.current === 'leavesTransition') return;
+    autoGrowthTlRef.current?.kill();
+    autoGrowthTlRef.current = null;
+    stormTlRef.current?.kill();
+    stormTlRef.current = null;
+    stormReadyCallRef.current?.kill();
+    stormReadyCallRef.current = null;
     isAutoGrowingRef.current = false;
-    setIsAutoGrowing(false);
-    setIsBloomPaused(false);
-    setIsStorming(false);
     if (camRef.current) gsap.killTweensOf(camRef.current);
     applyCam(1);
     applyFade(0);
-  }, [introState, applyCam, applyFade]);
-
-  // Escape hatch for the cinematic: jump straight to the end state.
-  const skipAutoGrowth = useCallback(() => {
-    finishCinematic();
-  }, [finishCinematic]);
+    setPhase('destination');
+  }, [introState, applyCam, applyFade, setPhase]);
 
   // Background-tab stranding guard: GSAP timers throttle while hidden, so
-  // fast-forward the cinematic timelines when the tab becomes visible again.
-  // Only while a cinematic timeline is actively playing — never after finish
-  // (progressing a completed storm would re-fire finishCinematic).
+  // fast-forward only the timeline that is actively playing.
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden || finishedRef.current) return;
+      if (document.hidden) return;
       if (stormTlRef.current?.isActive()) stormTlRef.current.progress(1);
       else if (autoGrowthTlRef.current?.isActive()) autoGrowthTlRef.current.progress(1);
     };
@@ -354,43 +361,6 @@ export const CinematicExperience: React.FC = () => {
     }
   }, [activeTreeQuote]);
 
-  // Calculate scroll within the 550vh story container
-  useEffect(() => {
-    const handleScroll = () => {
-      // Protect auto-growth and intro: ignore scroll events while auto-growing or in intro
-      if (isAutoGrowingRef.current) return;
-      if (introState !== 'EXPERIENCE_UNLOCKED') return;
-
-      const container = containerRef.current;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const totalScrollable = container.offsetHeight - window.innerHeight;
-      if (totalScrollable <= 0) return;
-
-      const currentScrolled = -rect.top;
-      const rawProgress = Math.max(0, Math.min(1, currentScrolled / totalScrollable));
-
-      // Map raw scroll [0, 1] to story progress [0.02, 1.0]
-      // Respect user milestone locks:
-      let mappedP = 0.02 + rawProgress * 0.98;
-
-      // Milestone 1 Lock: Before unlocking bloom, clamp at Stage 11 (0.81)
-      if (!isBloomUnlocked && mappedP > 0.81) {
-        mappedP = 0.81;
-      }
-      // Milestone 2 Lock: Before unlocking flight, clamp at Stage 13 (0.90)
-      else if (!isFlightUnlocked && mappedP > 0.90) {
-        mappedP = 0.90;
-      }
-
-      setTargetProgress(mappedP);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [introState, isBloomUnlocked, isFlightUnlocked, setTargetProgress]);
-
   const handleTreeInteract = useCallback((event: TreeInteractionEvent) => {
     setActiveTreeQuote(event);
   }, [setActiveTreeQuote]);
@@ -401,32 +371,30 @@ export const CinematicExperience: React.FC = () => {
 
   const currentInfo = STAGE_DESCRIPTIONS.find((s) => s.id === currentStage) || STAGE_DESCRIPTIONS[0];
 
-  const handleDestinationClick = () => {
-    const destEl = document.getElementById('destination');
-    if (destEl) {
-      destEl.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  const isGrowing = phase === 'growing';
+  const isStorming = phase === 'storm';
+  const isLeavesTransition = phase === 'leavesTransition';
+  const barsVisible =
+    introState !== 'EXPERIENCE_UNLOCKED' || isGrowing || isStorming || isLeavesTransition;
 
   return (
     <section
       id="story-experience"
       ref={containerRef}
-      className="relative w-full bg-[#0d0408] text-[#fffdf8]"
-      style={{ height: '550vh' }}
+      className="relative w-full h-[100svh] bg-[#0d0408] text-[#fffdf8]"
       aria-label="Interactive Story Experience"
     >
       <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(30,41,59,0.55) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
-        className="sticky top-0 w-full h-screen max-h-[100dvh] overflow-hidden flex flex-col justify-between select-none"
+        className="sticky top-0 w-full h-[100svh] overflow-hidden flex flex-col justify-between select-none"
       >
-        {/* Screen-reader stage announcements (the visual HUD was removed;
-            the canvas + story beats below are the whole experience) */}
+        {/* Screen-reader stage announcements */}
         <div className="sr-only" aria-live="polite">
           Stage {currentStage} of 16: {currentInfo.title}
         </div>
+
         {/* Heart Tree Canvas — camera wrapper (environmental zoom only) */}
         <div
           ref={camRef}
@@ -464,7 +432,7 @@ export const CinematicExperience: React.FC = () => {
         {/* Storm gale trails (environmental only) */}
         <div className="absolute inset-0 z-[6] pointer-events-none">
           <WindOverlay
-            active={isStorming || targetProgress >= 0.86 || currentStage >= 13}
+            active={isStorming || isLeavesTransition}
             strength={isStorming ? 2.4 : 1 + Math.abs(userWind) * 0.15}
           />
         </div>
@@ -481,20 +449,20 @@ export const CinematicExperience: React.FC = () => {
         />
 
         {/* Cinematic letterbox (automatic film framing) */}
-        <CinematicBars visible={introState !== 'EXPERIENCE_UNLOCKED' || isAutoGrowing} />
+        <CinematicBars visible={barsVisible} />
 
-        {/* ================= INTRO PHASE OVERLAY (Owned by CinematicExperience) ================= */}
+        {/* ================= INTRO PHASE OVERLAY ================= */}
         {introState !== 'EXPERIENCE_UNLOCKED' && (
-          <div className="absolute inset-0 z-40 pointer-events-auto">
+          <div className={`absolute inset-0 z-40 ${phase !== 'idle' && phase !== 'watering' ? 'pointer-events-none' : 'pointer-events-auto'}`}>
             <Hero onWaterComplete={startAutoGrowth} />
           </div>
         )}
 
-        {/* Skip the ~30s auto-growth (also escapable when throttled/hidden) */}
-        {isAutoGrowing && (
+        {/* Optional skip during growth (never starts the storm) */}
+        {isGrowing && (
           <button
             type="button"
-            onClick={skipAutoGrowth}
+            onClick={skipGrowth}
             aria-label="Skip growth animation"
             className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-[#ffd6a5]/50 text-[#fffdf8] font-serif text-base md:text-lg tracking-wide transition-all hover:bg-white/20 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
           >
@@ -502,7 +470,22 @@ export const CinematicExperience: React.FC = () => {
           </button>
         )}
 
-        {/* ================= STORY BEATS (canvas + milestone actions) ================= */}
+        {/* THE single CTA after the tree is fully grown */}
+        {phase === 'stormReady' && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-3 animate-fade-in">
+            <button
+              type="button"
+              onClick={startStorm}
+              className="btn-primary font-serif shadow-[0_0_30px_rgba(100,181,246,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 cursor-pointer"
+              aria-label="Let the Storm Begin"
+            >
+              Let the Storm Begin →
+            </button>
+            <span className="text-sm font-sans tracking-widest uppercase text-[#cfe8ff]/85">
+              The wind will carry every leaf
+            </span>
+          </div>
+        )}
 
         {/* ================= FLOATING TREE REFLECTION QUOTE ================= */}
         {activeTreeQuote && (
@@ -543,72 +526,8 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
 
-        {/* Premium cinematic transition into website content */}
+        {/* Premium cinematic transition into the Destination */}
         <LightTransition play={transitionPlay} onDone={() => setTransitionPlay(false)} />
-
-        {/* Storm beat: full bloom reached — summon the gale */}
-        {isBloomPaused && !isStorming && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
-            <button
-              onClick={startStorm}
-              className="btn-primary font-serif shadow-[0_0_30px_rgba(100,181,246,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2"
-              aria-label="Summon the storm"
-            >
-              Summon the storm →
-            </button>
-            <span className="text-sm font-sans tracking-widest uppercase text-[#cfe8ff]/85">
-              The wind takes every leaf
-            </span>
-          </div>
-        )}
-        {/* Milestone 1: Canopy formed -> "Let it bloom →" (Available if stage >= 11 and bloom not yet unlocked) */}
-        {currentStage >= 11 && !isBloomUnlocked && !isStorming && !isAutoGrowing && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
-            <button
-              onClick={unlockBloom}
-              className="btn-primary font-serif shadow-[0_0_25px_rgba(216,27,70,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2"
-              aria-label="Let it bloom"
-            >
-              Let it bloom →
-            </button>
-            <span className="text-sm font-sans tracking-widest uppercase text-[#f5baa4]/85">
-              Click to awaken the blossoms
-            </span>
-          </div>
-        )}
-
-        {/* Milestone 2: Bloom complete & wind rising -> "Release the hearts →" */}
-        {isBloomUnlocked && currentStage >= 12 && !isFlightUnlocked && !isBloomPaused && !isStorming && !isAutoGrowing && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
-            <p className="font-serif text-sm text-[#fff8eb]/90 drop-shadow">
-              "Some things are meant to take flight."
-            </p>
-            <button
-              onClick={unlockFlight}
-              className="btn-primary font-serif shadow-[0_0_30px_rgba(216,27,70,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2"
-              aria-label="Release the hearts"
-            >
-              Release the hearts →
-            </button>
-          </div>
-        )}
-
-        {/* Milestone 3: Flight initiated -> Proceed to Destination */}
-        {introState === 'EXPERIENCE_UNLOCKED' && isFlightUnlocked && currentStage >= 14 && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
-            <p className="font-serif text-sm text-[#ffd6a5] drop-shadow">
-              Hearts are sailing across the twilight sky...
-            </p>
-            <button
-              onClick={handleDestinationClick}
-              className="btn-ghost font-serif shadow-[0_0_20px_rgba(255,214,165,0.4)] flex items-center gap-2"
-              aria-label="Follow the hearts to the destination"
-            >
-              <span>Follow the hearts</span>
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );

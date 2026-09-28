@@ -34,8 +34,6 @@ export interface StoryContextType {
   targetProgress: number;
   setTargetProgress: (p: number) => void;
   jumpToStage: (stage: number) => void;
-  /** Unlock (if gated) + jump + scroll the story viewport to that stage. */
-  goToStage: (stage: number) => void;
 
   // Milestone transition locks
   isBloomUnlocked: boolean;

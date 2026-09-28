@@ -1,13 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { spotlightMove } from '../Effects/spotlight';
-import { useStory, STAGE_DESCRIPTIONS } from '../../context/StoryContext';
+import { STAGE_DESCRIPTIONS } from '../../context/StoryContext';
 import { Reveal } from '../Effects/Reveal';
 
 export const Journey: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLElement | null)[]>([]);
-  const { currentStage, goToStage } = useStory();
 
   useEffect(() => {
     const cards = cardsRef.current.filter(Boolean) as HTMLElement[];
@@ -54,13 +53,8 @@ export const Journey: React.FC = () => {
     };
   }, []);
 
-  // Milestone cards jump the tree journey: unlock if gated, then land the
-  // sticky viewport exactly on that stage — no sweep/replay through earlier
-  // stages.
-  const handleCardClick = (stageId: number) => {
-    goToStage(stageId);
-  };
-
+  // Read-only milestone gallery. Jumping back into the tree scrubbed the
+  // growth animation a second time, so the cards no longer drive state.
   return (
     <section 
       id="journey" 
@@ -85,48 +79,33 @@ export const Journey: React.FC = () => {
             aria-hidden="true" 
           />
           <p className="text-base text-[#fff8eb]/85 font-serif">
-            Select any stage to jump into that chapter of the tree
+            Sixteen chapters, from the first spark of a seed to where love lands
           </p>
           </header>
         </Reveal>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {STAGE_DESCRIPTIONS.map((stage, index) => {
-            const isCurrent = stage.id === currentStage;
-            return (
-              <article
-                key={stage.id}
-                ref={(el) => { cardsRef.current[index] = el; }}
-                onClick={() => handleCardClick(stage.id)}
-                role="button"
-                tabIndex={0}
-                aria-label={`Jump to stage ${stage.id}: ${stage.title}`}
-                aria-current={isCurrent ? 'true' : undefined}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(stage.id); } }}
-                onPointerMove={spotlightMove}
-                className={`spotlight p-5 rounded-2xl cursor-pointer transition-all duration-300 border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] ${
-                  isCurrent
-                    ? 'bg-[#3b1224]/80 border-[#f5baa4] shadow-[0_0_20px_rgba(245,186,164,0.3)] scale-[1.02]'
-                    : 'bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_12px_40px_rgba(216,27,70,0.25)]'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-sans tracking-widest text-[#f5baa4]">
-                    {String(stage.id).padStart(2, '0')}
-                  </span>
-                  {isCurrent && (
-                    <span className="w-2 h-2 rounded-full bg-[#f5baa4] motion-safe:animate-ping" />
-                  )}
-                </div>
-                <h3 className="text-lg font-serif text-[#fffdf8] font-medium mb-1">
-                  {stage.title}
-                </h3>
-                <p className="text-sm font-sans text-[#fff8eb]/85 leading-relaxed">
-                  {stage.subtitle}
-                </p>
-              </article>
-            );
-          })}
+          {STAGE_DESCRIPTIONS.map((stage, index) => (
+            <article
+              key={stage.id}
+              ref={(el) => { cardsRef.current[index] = el; }}
+              aria-label={`Stage ${stage.id}: ${stage.title}`}
+              onPointerMove={spotlightMove}
+              className="spotlight p-5 rounded-2xl transition-all duration-300 border bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-1.5 hover:shadow-[0_12px_40px_rgba(216,27,70,0.25)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-sans tracking-widest text-[#f5baa4]">
+                  {String(stage.id).padStart(2, '0')}
+                </span>
+              </div>
+              <h3 className="text-lg font-serif text-[#fffdf8] font-medium mb-1">
+                {stage.title}
+              </h3>
+              <p className="text-sm font-sans text-[#fff8eb]/85 leading-relaxed">
+                {stage.subtitle}
+              </p>
+            </article>
+          ))}
         </div>
       </div>
     </section>

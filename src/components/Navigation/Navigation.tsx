@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
-import { scrollToSelectorDeferred, scrollToY } from '../../utils/storyNav';
+import { scrollToSelectorDeferred } from '../../utils/storyNav';
 
 const navLinks = [
   { name: 'Story', href: '#story-experience' },
@@ -135,11 +135,11 @@ export function Navigation() {
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
-    // Every page is connected: if the intro gate is still closed, unlock
-    // first and scroll after layout settles instead of swallowing the click.
-    if (target === 'body' || target === '#hero') {
+    // The intro gate is escapable: clicking a link unlocks the experience and
+    // then scrolls to the requested section.
+    if (target === 'body') {
       if (!isExperienceUnlocked) setIntroState('EXPERIENCE_UNLOCKED');
-      scrollToY(0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if (!isExperienceUnlocked) {

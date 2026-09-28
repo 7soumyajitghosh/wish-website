@@ -6,7 +6,6 @@ import {
   type IntroState,
   STAGE_PROGRESS_MAP,
 } from './storyTypes';
-import { scrollToStagePositionDeferred } from '../utils/storyNav';
 
 export * from './storyTypes';
 
@@ -65,23 +64,6 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTargetProgressState(target);
     if (validStage >= 12) setIsBloomUnlocked(true);
     if (validStage >= 14) setIsFlightUnlocked(true);
-  }, []);
-
-  // Connected navigation: unlock the intro gate if needed, jump the tree
-  // state, then land the sticky viewport exactly on that stage so the tree
-  // never visibly sweeps/replays through earlier stages on arrival.
-  const goToStage = useCallback((stage: number) => {
-    const validStage = Math.max(1, Math.min(16, stage));
-    // Unlock without resetting progress to the stage-2 entry point:
-    // setIntroState('EXPERIENCE_UNLOCKED') would first drop targetProgress
-    // to STAGE_PROGRESS_MAP[2]; write the unlocked state directly instead.
-    setIntroStateInternal('EXPERIENCE_UNLOCKED');
-    setIsStarted(true);
-    setCurrentStage(validStage);
-    setTargetProgressState(STAGE_PROGRESS_MAP[validStage]);
-    if (validStage >= 12) setIsBloomUnlocked(true);
-    if (validStage >= 14) setIsFlightUnlocked(true);
-    scrollToStagePositionDeferred(validStage);
   }, []);
 
   const startStory = useCallback(() => {
@@ -143,7 +125,6 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         targetProgress,
         setTargetProgress,
         jumpToStage,
-        goToStage,
         isBloomUnlocked,
         unlockBloom,
         isFlightUnlocked,
