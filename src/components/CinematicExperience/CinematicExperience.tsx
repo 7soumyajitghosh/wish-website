@@ -148,7 +148,10 @@ export const CinematicExperience: React.FC = () => {
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const progressObj = { p: 0.02 };
+    // The intro already played the seed beat (heart falls → lands → morphs
+    // into the seed), so growth continues from the landed seed — replaying
+    // 0.02 → 0.06 here showed the seed appearing a 2nd time.
+    const progressObj = { p: STAGE_PROGRESS_MAP[2] };
     const camObj = { z: 1.5 };
     let lastBroadcastTime = 0;
     const broadcast = () => {
@@ -164,6 +167,9 @@ export const CinematicExperience: React.FC = () => {
 
     // Match the seed close-up the intro hands off, then hold it for the roots.
     applyCam(1.5);
+    // Seed is already landed — sync state so the canvas never flashes the
+    // seed-appear beat again.
+    setTargetProgress(STAGE_PROGRESS_MAP[2]);
 
     const tl = gsap.timeline({
       onUpdate: broadcast,
@@ -175,9 +181,9 @@ export const CinematicExperience: React.FC = () => {
       },
     });
 
-    // 0.02 -> 0.06 seed settles, 0.06 -> 0.15 roots extend (close-up)
-    tl.to(progressObj, { p: STAGE_PROGRESS_MAP[2], duration: 1.2, ease: 'power1.inOut' })
-      .to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 2.8, ease: 'power2.out' })
+    // Seed already landed in the intro → straight to roots (close-up),
+    // then trunk + branches as the camera pulls back.
+    tl.to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 2.8, ease: 'power2.out' })
       .to({}, { duration: 0.6 })
       // Slow zoom back out as the trunk + branches rise
       .to(camObj, {
