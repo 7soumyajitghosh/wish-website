@@ -68,15 +68,20 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
   useEffect(() => {
     mountedRef.current = true;
 
-    // Reduced-motion: jump straight to the end state, no perpetual twinkle
+    // Reduced-motion: jump straight to the end state, no perpetual twinkle.
+    // Hold for reading (same contemplative pause as the full timeline) so
+    // the scene is not skipped instantly for reduced-motion visitors.
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       gsap.set(containerRef.current, { opacity: 1 });
       gsap.set(starsGroupRef.current?.children ?? [], { scale: 1, opacity: 1, transformBox: 'fill-box' });
       gsap.set(text1Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
       gsap.set(text2Ref.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
-      finishScene();
+      holdCallRef.current = gsap.delayedCall(1.6, () => {
+        if (mountedRef.current) finishScene();
+      });
       return () => {
         mountedRef.current = false;
+        holdCallRef.current?.kill();
       };
     }
 

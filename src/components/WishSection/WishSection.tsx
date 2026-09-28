@@ -101,7 +101,12 @@ export const WishSection = () => {
     e.preventDefault();
     if (!wishText.trim()) return;
 
-    const newWish = { id: Date.now().toString(), text: wishText.trim() };
+    // Unique id: Date.now alone collides on rapid double-submit (both items
+    // would be removed by one onDone). Random suffix keeps keys stable.
+    const newWish = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      text: wishText.trim(),
+    };
     setCurrentWish(newWish);
     setWishText('');
 

@@ -76,7 +76,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
           overwrite: 'auto',
           onComplete: () => {
             if (!mountedRef.current) return;
-            onComplete();
+            finishScene();
           },
         });
       });

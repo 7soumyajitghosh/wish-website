@@ -38,8 +38,10 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIntroStateInternal(state);
     if (state === 'EXPERIENCE_UNLOCKED') {
       setIsStarted(true);
-      setTargetProgressState(STAGE_PROGRESS_MAP[2]);
-      setCurrentStage(2);
+      // Never regress a grown tree: external unlock (nav / Escape) after
+      // growth must preserve the max progress, not snap back to the seed.
+      setTargetProgressState((prev) => Math.max(prev, STAGE_PROGRESS_MAP[2]));
+      setCurrentStage((prev) => Math.max(prev, 2));
     }
   }, []);
 
