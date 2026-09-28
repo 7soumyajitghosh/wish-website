@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Navigation } from './components/Navigation/Navigation';
+import { CinematicExperience } from './components/CinematicExperience/CinematicExperience';
 import { FinalDestination } from './components/FinalDestination/FinalDestination';
 import { LoveLetter } from './components/LoveLetter/LoveLetter';
 import { WishSection } from './components/WishSection/WishSection';
@@ -6,7 +8,7 @@ import { FinalMessage } from './components/FinalMessage/FinalMessage';
 import { Journey } from './components/Journey/Journey';
 import { Footer } from './components/Footer/Footer';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
-import { StoryProvider } from './context/StoryContext';
+import { StoryProvider, useStory } from './context/StoryContext';
 import { CursorGlow } from './components/Effects/CursorGlow';
 import { Marquee } from './components/Effects/Marquee';
 
@@ -27,35 +29,72 @@ const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const AppContent = () => {
+  const { isExperienceUnlocked, setIntroState } = useStory();
+
+  useEffect(() => {
+    if (!isExperienceUnlocked) {
+      document.body.style.overflow = 'hidden';
+      window.scrollTo(0, 0);
+    } else {
+      document.body.style.overflow = '';
+      // Move focus into the unlocked experience for keyboard/SR users.
+      const el = document.getElementById('story-experience');
+      if (el) {
+        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+        (el as HTMLElement).focus({ preventScroll: true });
+      }
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isExperienceUnlocked]);
+
+  // Keep the overflow-hidden intro gate escapable via keyboard.
+  useEffect(() => {
+    if (isExperienceUnlocked) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIntroState('EXPERIENCE_UNLOCKED');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isExperienceUnlocked, setIntroState]);
+
   return (
-    <div className="grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8]">
+    <div className={`grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8] ${!isExperienceUnlocked ? 'overflow-hidden max-h-screen' : ''}`}>
       <CursorGlow />
       <Navigation />
       <main>
-        {/* The Final Destination: Where Love Takes Flight */}
-        <FinalDestination />
+        {/* Interactive Heart Tree Experience (owns opening intro overlay & auto-growth journey) */}
+        <CinematicExperience />
 
-        <StoryDivider label="and the story continues…" />
+        {/* Locked sections: hidden from keyboard/AT until the intro unlocks. */}
+        <div inert={!isExperienceUnlocked}>
+          {/* The Final Destination: Where Love Takes Flight */}
+          <FinalDestination />
 
-        {/* User-Controlled Love Letter */}
-        <LoveLetter />
+          <StoryDivider label="and the story continues…" />
 
-        <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
+          {/* User-Controlled Love Letter */}
+          <LoveLetter />
 
-        {/* Draggable Wish Release */}
-        <WishSection />
+          <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
 
-        <StoryDivider label="sealed with love" />
+          {/* Draggable Wish Release */}
+          <WishSection />
 
-        {/* Final Revealed Message */}
-        <FinalMessage />
+          <StoryDivider label="sealed with love" />
 
-        <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
+          {/* Final Revealed Message */}
+          <FinalMessage />
 
-        <StoryDivider />
+          <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
 
-        {/* Complete Interactive Milestones Explorer */}
-        <Journey />
+          <StoryDivider />
+
+          {/* Complete Interactive Milestones Explorer */}
+          <Journey />
+        </div>
       </main>
       <Footer />
       <SoundToggle />

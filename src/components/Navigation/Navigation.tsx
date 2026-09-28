@@ -1,7 +1,10 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { useStory } from '../../context/StoryContext';
+import { scrollToSelectorDeferred, scrollToY } from '../../utils/storyNav';
 
 const navLinks = [
+  { name: 'Story', href: '#story-experience' },
   { name: 'Destination', href: '#destination' },
   { name: 'Love Letter', href: '#love-letter' },
   { name: 'Make a Wish', href: '#make-a-wish' },
@@ -9,6 +12,7 @@ const navLinks = [
 ];
 
 export function Navigation() {
+  const { isExperienceUnlocked, setIntroState } = useStory();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -131,8 +135,16 @@ export function Navigation() {
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
-    if (target === 'body') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Every page is connected: if the intro gate is still closed, unlock
+    // first and scroll after layout settles instead of swallowing the click.
+    if (target === 'body' || target === '#hero') {
+      if (!isExperienceUnlocked) setIntroState('EXPERIENCE_UNLOCKED');
+      scrollToY(0);
+      return;
+    }
+    if (!isExperienceUnlocked) {
+      setIntroState('EXPERIENCE_UNLOCKED');
+      scrollToSelectorDeferred(target);
       return;
     }
     const element = document.querySelector(target);
