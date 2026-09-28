@@ -60,6 +60,29 @@ export const CinematicExperience: React.FC = () => {
     unlockFlightRef.current = isFlightUnlocked;
   }, [isFlightUnlocked]);
 
+  // Intro close-up: when the seed beat starts, push the ONE camera toward
+  // the tree base so the canvas seed carries the moment. Killed on sight
+  // by auto-growth / external unlock so tweens never fight (no jump).
+  useEffect(() => {
+    if (finishedRef.current) return;
+    if (introState === 'INTRO' || introState === 'EXPERIENCE_UNLOCKED') return;
+    const camEl = camRef.current;
+    if (!camEl) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const tween = gsap.to(camEl, {
+      scale: 1.5,
+      duration: reduced ? 0 : 1.6,
+      ease: 'power2.inOut',
+      overwrite: 'auto',
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [introState]);
+
   // Camera zoom (direct DOM write — GPU transform, no re-renders).
   // Origin sits at the tree base (~46% x, ~73% y, matching the canvas layout).
   const applyCam = useCallback((z: number) => {
@@ -165,8 +188,9 @@ export const CinematicExperience: React.FC = () => {
       }
     };
 
-    // Match the seed close-up the intro hands off, then hold it for the roots.
-    applyCam(1.5);
+    // The intro close-up already holds ~1.5 on the single camera; take
+    // ownership of it (killing that tween) instead of snapping — no jump.
+    if (camRef.current) gsap.killTweensOf(camRef.current);
     // Seed is already landed — sync state so the canvas never flashes the
     // seed-appear beat again.
     setTargetProgress(STAGE_PROGRESS_MAP[2]);
@@ -300,6 +324,7 @@ export const CinematicExperience: React.FC = () => {
     setIsAutoGrowing(false);
     setIsBloomPaused(false);
     setIsStorming(false);
+    if (camRef.current) gsap.killTweensOf(camRef.current);
     applyCam(1);
     applyFade(0);
   }, [introState, applyCam, applyFade]);

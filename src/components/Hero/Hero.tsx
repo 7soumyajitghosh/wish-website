@@ -99,13 +99,13 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
       aria-label="A Journey of Love Opening"
       onPointerMove={introState === 'INTRO' ? handleOpeningMove : undefined}
     >
-      {/* Cinematic Deep Dusk Gradient Background - matches initial canvas twilight */}
+      {/* Readability vignette only — the canvas tree stays visible behind
+          this overlay: it is the one and only tree animation. */}
       <div
-        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
+        className="absolute inset-0 w-full h-full pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 60%, #2b0e1e 0%, #170711 50%, #0d0408 100%)',
-          opacity: introState === 'INTRO' ? 1 : 0.85,
+            'linear-gradient(180deg, rgba(13,4,8,0.55) 0%, transparent 35%, transparent 65%, rgba(13,4,8,0.6) 100%)',
         }}
       />
 
