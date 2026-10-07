@@ -27,7 +27,7 @@ export const WishScene: React.FC = () => {
     };
   }, []);
 
-  // Setup canvas and particle animation loop
+  // Setup canvas and particle animation loop — IO-gated + hidden-tab safe.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -49,8 +49,18 @@ export const WishScene: React.FC = () => {
     handleResize();
     window.addEventListener('resize', handleResize);
 
+    let visible = true;
     let lastTime = performance.now();
     const render = (now: number) => {
+      rafRef.current = null;
+      if (!visible || document.hidden) {
+        // Poll slowly while hidden instead of burning 60fps.
+        rafRef.current = window.setTimeout(() => {
+          rafRef.current = requestAnimationFrame(render);
+          lastTime = performance.now();
+        }, 500) as unknown as number;
+        return;
+      }
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
@@ -65,11 +75,29 @@ export const WishScene: React.FC = () => {
       rafRef.current = requestAnimationFrame(render);
     };
 
+    const gate = new IntersectionObserver(
+      ([entry]) => {
+        const was = visible;
+        visible = entry.isIntersecting;
+        if (visible && !was && rafRef.current == null) {
+          lastTime = performance.now();
+          rafRef.current = requestAnimationFrame(render);
+        }
+      },
+      { threshold: 0 }
+    );
+    gate.observe(canvas);
+
     rafRef.current = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      gate.disconnect();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        window.clearTimeout(rafRef.current);
+      }
+      rafRef.current = null;
     };
   }, []);
 

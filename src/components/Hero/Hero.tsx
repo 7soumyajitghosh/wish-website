@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { SeedJourneyIntro } from './SeedJourneyIntro';
@@ -18,15 +18,28 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   const begunRef = useRef(false);
   const waterDoneRef = useRef(false);
   const { introState, startStory } = useStory();
-  const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const glowRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const parallaxRaf = useRef<number>(0);
+  const parallaxTarget = useRef({ x: 0, y: 0 });
 
-  // Subtle mouse parallax for the opening layers (desktop, no reduced motion)
+  // Subtle mouse parallax for the opening layers (desktop, no reduced motion).
+  // Direct DOM writes via rAF — no per-mousemove React re-render.
   const handleOpeningMove = useCallback((e: React.PointerEvent) => {
     if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) return;
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const nx = (e.clientX / window.innerWidth - 0.5) * 2;
     const ny = (e.clientY / window.innerHeight - 0.5) * 2;
-    setParallax({ x: nx, y: ny });
+    parallaxTarget.current = { x: nx, y: ny };
+    if (parallaxRaf.current) return;
+    parallaxRaf.current = requestAnimationFrame(() => {
+      parallaxRaf.current = 0;
+      const { x, y } = parallaxTarget.current;
+      if (glowRef.current)
+        glowRef.current.style.transform = `translate3d(${x * 14}px, ${y * 10}px, 0)`;
+      if (titleRef.current)
+        titleRef.current.style.transform = `translate3d(${x * -8}px, ${y * -6}px, 0)`;
+    });
   }, []);
 
   useEffect(() => {
@@ -35,6 +48,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
       mountedRef.current = false;
       tweenRef.current?.kill();
       tweenRef.current = null;
+      cancelAnimationFrame(parallaxRaf.current);
     };
   }, []);
 
@@ -115,10 +129,10 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
           <AmbientField density={80} />
           <div
             aria-hidden="true"
+            ref={glowRef}
             className="pointer-events-none absolute inset-0"
             style={{
-              transform: `translate3d(${parallax.x * 14}px, ${parallax.y * 10}px, 0)`,
-              transition: 'transform 0.4s ease-out',
+              transform: 'translate3d(0px, 0px, 0)',
               background:
                 'radial-gradient(circle at 72% 22%, rgba(255,214,165,0.16) 0%, transparent 32%), radial-gradient(circle at 22% 70%, rgba(216,27,70,0.14) 0%, transparent 36%)',
             }}
@@ -134,11 +148,8 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
         <div
           ref={contentRef}
           className="relative z-20 flex flex-col items-center text-center px-6 max-w-4xl mx-auto w-full select-none"
-          style={{
-            transform: `translate3d(${parallax.x * -8}px, ${parallax.y * -6}px, 0)`,
-            transition: 'transform 0.4s ease-out',
-          }}
         >
+          <div ref={titleRef} className="flex flex-col items-center" style={{ transform: 'translate3d(0px, 0px, 0)' }}>
           <p className="text-sm font-sans font-medium uppercase tracking-[0.35em] text-[#f5baa4] mb-6 drop-shadow-md">
             A Journey of Love
           </p>
@@ -206,6 +217,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
                 </span>
               </button>
             </MagneticButton>
+          </div>
           </div>
         </div>
       )}

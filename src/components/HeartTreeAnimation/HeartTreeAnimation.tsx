@@ -173,6 +173,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   // Render loop parks while the canvas is off-screen (one shared sticky
   // viewport + several ambient canvases otherwise burn frames forever).
   const visibleRef = useRef(true);
+  const bgCacheRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
 
   // Mouse & Touch interaction state
   const pointerRef = useRef({
@@ -220,7 +221,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     return () => {
       mountedRef.current = false;
       cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(rafRef.current);
       cancelAnimationFrame(decayRafRef.current);
+      window.clearTimeout(decayRafRef.current);
     };
   }, []);
 
@@ -424,7 +427,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // 3. Clicked on Hearts / Foliage?
       if (p >= BLOOM_T.BUDS_START && tree.hearts.length > 0) {
         const time = performance.now() * 0.001;
-        const windStr = getWindStrength(p) + pointerRef.current.dragWindX;
+        const windStr = Math.max(-35, Math.min(45, getWindStrength(p) + pointerRef.current.dragWindX));
         let closestDist = Infinity;
         let hitHeart = false;
 
@@ -464,7 +467,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       fallback.textContent = 'Your browser does not support canvas rendering.';
       fallback.className = 'heart-tree-fallback';
       canvas.parentElement?.appendChild(fallback);
-      return;
+      return () => {
+        fallback.remove();
+      };
     }
 
     let running = true;
@@ -486,11 +491,14 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
 
     const loop = (now: number) => {
       if (!running || !mountedRef.current) return;
-      // Parked off-screen: keep the heartbeat alive but skip all work so
-      // returning never replays or jumps the animation.
+      // Suspended off-screen: poll at 2fps instead of 60fps heartbeat.
       if (!visibleRef.current) {
-        lastTime = now;
-        rafRef.current = requestAnimationFrame(loop);
+        rafRef.current = window.setTimeout(() => {
+          if (running && mountedRef.current) {
+            lastTime = performance.now();
+            rafRef.current = requestAnimationFrame(loop);
+          }
+        }, 500) as unknown as number;
         return;
       }
 
@@ -510,7 +518,8 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
 
       if (Math.abs(diff) > 0.0005) {
         const speed = getTimelineSpeed(currentP);
-        progressRef.current += diff * 0.09 * speed; // Silky smooth easing scaled by timeline speed
+        // Frame-rate independent easing (dt-normalized; 120Hz ≈ 60Hz speed).
+        progressRef.current += diff * Math.min(1, 0.09 * speed * dt * 60);
         emitProgressThrottled(progressRef.current);
       }
 
@@ -549,9 +558,10 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       }
 
       const { w, h, groundY, baseX, baseY, scale, dpr } = layout;
-      // Combined environmental wind + user drag wind
+      // Combined environmental wind + user drag wind (clamped so storm + full
+      // drag can't fling the canopy unrealistically far).
       const naturalWind = getWindStrength(p);
-      const windStr = naturalWind + pointerRef.current.dragWindX;
+      const windStr = Math.max(-35, Math.min(45, naturalWind + pointerRef.current.dragWindX));
 
       // --- 1. Heart Detachment Logic (Stage 14 Flight) ---
       if (p >= FLIGHT_T.DETACH_START) {
@@ -616,91 +626,106 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
-      // A. Sky Gradient
-      const skyGrd = ctx.createLinearGradient(0, 0, 0, groundY);
-      skyGrd.addColorStop(0.0, '#ba8b9d');
-      skyGrd.addColorStop(0.25, '#d99dae');
-      skyGrd.addColorStop(0.55, '#f5baa4');
-      skyGrd.addColorStop(0.82, '#fdd8b0');
-      skyGrd.addColorStop(1.0, '#fff5e3');
-      ctx.fillStyle = skyGrd;
-      ctx.fillRect(0, 0, w, groundY);
+      // Static background (sky/sun/mountains/ground/soil) — offscreen-cached
+      // per size so we don't re-path gradients + geometry every frame.
+      const bgKey = `${w | 0}x${h | 0}:${groundY.toFixed(1)}:${baseX.toFixed(1)}`;
+      if (!bgCacheRef.current || bgCacheRef.current.key !== bgKey) {
+        const bg = document.createElement('canvas');
+        bg.width = Math.max(1, Math.floor(w * dpr));
+        bg.height = Math.max(1, Math.floor(h * dpr));
+        const b = bg.getContext('2d');
+        if (b) {
+          b.scale(dpr, dpr);
+          // A. Sky Gradient
+          const skyGrd = b.createLinearGradient(0, 0, 0, groundY);
+          skyGrd.addColorStop(0.0, '#ba8b9d');
+          skyGrd.addColorStop(0.25, '#d99dae');
+          skyGrd.addColorStop(0.55, '#f5baa4');
+          skyGrd.addColorStop(0.82, '#fdd8b0');
+          skyGrd.addColorStop(1.0, '#fff5e3');
+          b.fillStyle = skyGrd;
+          b.fillRect(0, 0, w, groundY);
 
-      // B. Horizon Sun Glow & Sun Disk
-      const sunX = baseX - w * 0.02;
-      const sunY = groundY - 10;
-      const sunR = Math.max(w, h) * 0.38;
-      const sunGrd = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, sunR);
-      sunGrd.addColorStop(0, 'rgba(255, 250, 230, 0.96)');
-      sunGrd.addColorStop(0.08, 'rgba(255, 230, 180, 0.75)');
-      sunGrd.addColorStop(0.24, 'rgba(255, 185, 140, 0.40)');
-      sunGrd.addColorStop(0.55, 'rgba(235, 145, 155, 0.15)');
-      sunGrd.addColorStop(1, 'rgba(200, 130, 150, 0)');
-      ctx.fillStyle = sunGrd;
-      ctx.fillRect(0, 0, w, groundY + 12);
+          // B. Horizon Sun Glow & Sun Disk
+          const sunX = baseX - w * 0.02;
+          const sunY = groundY - 10;
+          const sunR = Math.max(w, h) * 0.38;
+          const sunGrd = b.createRadialGradient(sunX, sunY, 6, sunX, sunY, sunR);
+          sunGrd.addColorStop(0, 'rgba(255, 250, 230, 0.96)');
+          sunGrd.addColorStop(0.08, 'rgba(255, 230, 180, 0.75)');
+          sunGrd.addColorStop(0.24, 'rgba(255, 185, 140, 0.40)');
+          sunGrd.addColorStop(0.55, 'rgba(235, 145, 155, 0.15)');
+          sunGrd.addColorStop(1, 'rgba(200, 130, 150, 0)');
+          b.fillStyle = sunGrd;
+          b.fillRect(0, 0, w, groundY + 12);
 
-      const diskGrd = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 18);
-      diskGrd.addColorStop(0, 'rgba(255, 255, 248, 0.98)');
-      diskGrd.addColorStop(0.45, 'rgba(255, 240, 205, 0.85)');
-      diskGrd.addColorStop(1, 'rgba(255, 220, 170, 0)');
-      ctx.fillStyle = diskGrd;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
-      ctx.fill();
+          const diskGrd = b.createRadialGradient(sunX, sunY, 0, sunX, sunY, 18);
+          diskGrd.addColorStop(0, 'rgba(255, 255, 248, 0.98)');
+          diskGrd.addColorStop(0.45, 'rgba(255, 240, 205, 0.85)');
+          diskGrd.addColorStop(1, 'rgba(255, 220, 170, 0)');
+          b.fillStyle = diskGrd;
+          b.beginPath();
+          b.arc(sunX, sunY, 18, 0, Math.PI * 2);
+          b.fill();
 
-      // C. Distant Mountain Ridges
-      ctx.fillStyle = 'rgba(195, 138, 152, 0.38)';
-      ctx.beginPath();
-      ctx.moveTo(0, groundY);
-      ctx.bezierCurveTo(w * 0.2, groundY - 45, w * 0.45, groundY - 20, w * 0.7, groundY - 55);
-      ctx.bezierCurveTo(w * 0.85, groundY - 70, w * 0.95, groundY - 35, w * 1.05, groundY - 40);
-      ctx.lineTo(w, groundY);
-      ctx.closePath();
-      ctx.fill();
+          // C. Distant Mountain Ridges
+          b.fillStyle = 'rgba(195, 138, 152, 0.38)';
+          b.beginPath();
+          b.moveTo(0, groundY);
+          b.bezierCurveTo(w * 0.2, groundY - 45, w * 0.45, groundY - 20, w * 0.7, groundY - 55);
+          b.bezierCurveTo(w * 0.85, groundY - 70, w * 0.95, groundY - 35, w * 1.05, groundY - 40);
+          b.lineTo(w, groundY);
+          b.closePath();
+          b.fill();
 
-      ctx.fillStyle = 'rgba(182, 114, 126, 0.52)';
-      ctx.beginPath();
-      ctx.moveTo(0, groundY);
-      ctx.bezierCurveTo(w * 0.25, groundY - 25, w * 0.55, groundY - 48, w * 0.8, groundY - 28);
-      ctx.bezierCurveTo(w * 0.9, groundY - 18, w * 0.98, groundY - 30, w * 1.05, groundY - 22);
-      ctx.lineTo(w, groundY);
-      ctx.closePath();
-      ctx.fill();
+          b.fillStyle = 'rgba(182, 114, 126, 0.52)';
+          b.beginPath();
+          b.moveTo(0, groundY);
+          b.bezierCurveTo(w * 0.25, groundY - 25, w * 0.55, groundY - 48, w * 0.8, groundY - 28);
+          b.bezierCurveTo(w * 0.9, groundY - 18, w * 0.98, groundY - 30, w * 1.05, groundY - 22);
+          b.lineTo(w, groundY);
+          b.closePath();
+          b.fill();
 
-      // D. Foreground Earth Mound
-      ctx.beginPath();
-      ctx.moveTo(0, groundY + 12);
-      ctx.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
-      ctx.lineTo(w, groundY + 18);
-      ctx.lineTo(w, h);
-      ctx.lineTo(0, h);
-      ctx.closePath();
+          // D. Foreground Earth Mound
+          b.beginPath();
+          b.moveTo(0, groundY + 12);
+          b.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
+          b.lineTo(w, groundY + 18);
+          b.lineTo(w, h);
+          b.lineTo(0, h);
+          b.closePath();
 
-      const groundGrd = ctx.createLinearGradient(0, groundY - 15, 0, h);
-      groundGrd.addColorStop(0.0, '#e58058');
-      groundGrd.addColorStop(0.02, '#a5442e');
-      groundGrd.addColorStop(0.08, '#3c1b15');
-      groundGrd.addColorStop(0.35, '#200e0c');
-      groundGrd.addColorStop(1.0, '#100706');
-      ctx.fillStyle = groundGrd;
-      ctx.fill();
+          const groundGrd = b.createLinearGradient(0, groundY - 15, 0, h);
+          groundGrd.addColorStop(0.0, '#e58058');
+          groundGrd.addColorStop(0.02, '#a5442e');
+          groundGrd.addColorStop(0.08, '#3c1b15');
+          groundGrd.addColorStop(0.35, '#200e0c');
+          groundGrd.addColorStop(1.0, '#100706');
+          b.fillStyle = groundGrd;
+          b.fill();
 
-      // Soft rim line
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(0, groundY + 12);
-      ctx.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
-      ctx.strokeStyle = 'rgba(255, 180, 130, 0.42)';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-      ctx.restore();
+          // Soft rim line
+          b.beginPath();
+          b.moveTo(0, groundY + 12);
+          b.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
+          b.strokeStyle = 'rgba(255, 180, 130, 0.42)';
+          b.lineWidth = 1.8;
+          b.stroke();
 
-      // Fine soil marks
-      ctx.fillStyle = '#220e0b';
-      for (let gx = -10; gx < w + 20; gx += 14) {
-        const hOff = Math.sin(gx * 0.05) * 4 + Math.cos(gx * 0.12) * 3;
-        const gy = groundY - 6 + Math.sin((gx / w) * Math.PI) * -8;
-        ctx.fillRect(gx, gy, 1.8, 5 + hOff);
+          // Fine soil marks (static)
+          b.fillStyle = '#220e0b';
+          for (let gx = -10; gx < w + 20; gx += 14) {
+            const hOff = Math.sin(gx * 0.05) * 4 + Math.cos(gx * 0.12) * 3;
+            const gy = groundY - 6 + Math.sin((gx / w) * Math.PI) * -8;
+            b.fillRect(gx, gy, 1.8, 5 + hOff);
+          }
+        }
+        bgCacheRef.current = { key: bgKey, canvas: bg };
+      }
+      const bgCanvas = bgCacheRef.current?.canvas;
+      if (bgCanvas) {
+        ctx.drawImage(bgCanvas, 0, 0, bgCanvas.width, bgCanvas.height, 0, 0, w, h);
       }
 
       // E. Drifting Twilight Landscape Petals
@@ -830,6 +855,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     return () => {
       running = false;
       cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(rafRef.current);
     };
   }, []);
 

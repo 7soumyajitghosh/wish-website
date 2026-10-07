@@ -260,6 +260,12 @@ section[id] {
   background-repeat: repeat;
 }
 
+@media (max-width: 768px) {
+  .grain-overlay::after {
+    display: none;
+  }
+}
+
 /* ============================================================
    REDUCED MOTION
    CSS forces near-zero durations below. GSAP-driven scenes add JS

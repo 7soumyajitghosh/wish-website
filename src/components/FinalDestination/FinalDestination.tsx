@@ -207,8 +207,8 @@ export const FinalDestination: React.FC = () => {
           style={{ transform: 'translateX(-50%)' }}
         >
           <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
-          <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[100px] opacity-40 mix-blend-screen" />
-          <svg viewBox="0 0 100 100" className="w-full h-full text-[#ffb3c1] drop-shadow-[0_0_30px_rgba(255,179,193,0.9)] opacity-90 transition-all duration-700 hover:opacity-100 hover:drop-shadow-[0_0_45px_rgba(255,179,193,1)]">
+          <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[60px] opacity-40 mix-blend-screen" />
+          <svg viewBox="0 0 100 100" className="w-full h-full text-[#ffb3c1] drop-shadow-[0_0_30px_rgba(255,179,193,0.9)] opacity-90 transition-opacity duration-700 hover:opacity-100">
             <path d="M50 85 C 0 50, 0 10, 50 35 C 100 10, 100 50, 50 85 Z" fill="currentColor" />
           </svg>
           </div>
@@ -331,7 +331,6 @@ export const FinalDestination: React.FC = () => {
           ref={heartsWrapRef}
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none overflow-hidden z-20"
-          style={{ contentVisibility: 'auto' }}
         >
           {DESTINATION_HEARTS.map((h, i) => (
             <div
@@ -408,7 +407,7 @@ export const FinalDestination: React.FC = () => {
                   const el = document.getElementById('love-letter');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="btn-ghost font-serif text-base tracking-wide shadow-lg cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
+                className="btn-ghost font-serif text-base tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Proceed to the Love Letter"
               >
                 A letter awaits upon the bench →

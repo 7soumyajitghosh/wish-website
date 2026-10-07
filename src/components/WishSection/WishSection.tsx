@@ -17,7 +17,7 @@ export const WishSection = () => {
   const [currentWish, setCurrentWish] = useState<Wish | null>(null);
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [hasMoved, setHasMoved] = useState(false);
+  const [, setHasMoved] = useState(false);
   const [flyingHearts, setFlyingHearts] = useState<{ id: string; text: string; startX: number; startY: number }[]>([]);
 
   const containerRef = useRef<HTMLElement>(null);
@@ -25,7 +25,7 @@ export const WishSection = () => {
   const heartRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
 
-  // Background stars
+  // Background stars — cached size, IO-gated (no off-screen 60fps).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -37,7 +37,10 @@ export const WishSection = () => {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    let animationFrameId: number;
+    let animationFrameId = 0;
+    let cw = 1;
+    let ch = 1;
+    let running = true;
     const seedStars = (w: number, h: number) =>
       Array.from({ length: 45 }, () => ({
         x: Math.random() * w,
@@ -46,11 +49,13 @@ export const WishSection = () => {
         alpha: Math.random(),
         velocity: (Math.random() - 0.5) * 0.015,
       }));
-    let stars = seedStars(canvas.offsetWidth, canvas.offsetHeight);
+    let stars = seedStars(canvas.offsetWidth || 300, canvas.offsetHeight || 300);
     const resize = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cw = Math.max(1, w);
+      ch = Math.max(1, h);
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -62,7 +67,7 @@ export const WishSection = () => {
 
     // Reduced motion: render one static frame, no RAF loop.
     if (reduced) {
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      ctx.clearRect(0, 0, cw, ch);
       stars.forEach((star) => {
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -76,9 +81,10 @@ export const WishSection = () => {
 
     let last = performance.now();
     const render = (now: number) => {
+      if (!running) return;
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      ctx.clearRect(0, 0, cw, ch);
       stars.forEach((star) => {
         star.alpha += star.velocity * dt * 60;
         if (star.alpha <= 0 || star.alpha >= 1) star.velocity *= -1;
@@ -90,9 +96,27 @@ export const WishSection = () => {
       animationFrameId = requestAnimationFrame(render);
     };
 
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (!running) {
+            running = true;
+            last = performance.now();
+            animationFrameId = requestAnimationFrame(render);
+          }
+        } else {
+          running = false;
+          cancelAnimationFrame(animationFrameId);
+        }
+      },
+      { threshold: 0 }
+    );
+    io.observe(canvas);
     animationFrameId = requestAnimationFrame(render);
     return () => {
+      running = false;
       window.removeEventListener('resize', resize);
+      io.disconnect();
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -141,25 +165,44 @@ export const WishSection = () => {
     setCurrentWish(null);
   }, []);
 
+  const applyHeartTransform = (x: number, y: number) => {
+    const el = heartRef.current;
+    if (el) el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!isHoldingWish) return;
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     setHeartPos({ x: e.clientX, y: e.clientY });
+    applyHeartTransform(e.clientX, e.clientY);
   };
 
   // Window-level move/up listeners attach only while dragging. A release
   // counts as a drag-launch only after >10px of movement; a simple tap
   // keeps holding so keyboard users and tap users can use the Launch button.
+  // Ref-driven transform during drag (no per-move re-render); state committed on release.
   useEffect(() => {
     if (!isDragging) return;
+    let raf = 0;
+    let pending: { x: number; y: number } | null = null;
+    const flush = () => {
+      raf = 0;
+      if (pending) {
+        applyHeartTransform(pending.x, pending.y);
+      }
+    };
     const onMove = (e: PointerEvent) => {
-      setHeartPos({ x: e.clientX, y: e.clientY });
+      pending = { x: e.clientX, y: e.clientY };
+      if (!raf) raf = requestAnimationFrame(flush);
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
       if (Math.hypot(dx, dy) > 10) setHasMoved(true);
     };
     const onUp = (e: PointerEvent) => {
+      if (raf) cancelAnimationFrame(raf);
+      const finalPos = pending ?? { x: e.clientX, y: e.clientY };
+      setHeartPos(finalPos);
       setIsDragging(false);
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
@@ -167,10 +210,11 @@ export const WishSection = () => {
         launchWish(e.clientX, e.clientY);
       }
     };
-    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
     return () => {
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
@@ -305,10 +349,9 @@ export const WishSection = () => {
           aria-valuetext={`Wish at ${Math.round(heartPos.x)} pixels across, ${Math.round(heartPos.y)} pixels down`}
           aria-describedby="wish-drag-help"
           onKeyDown={handleHeartKeyDown}
-          className={`fixed left-0 top-0 z-50 flex flex-col items-center select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl ${!isDragging && hasMoved ? 'transition-transform duration-150' : ''}`}
+          className="fixed left-0 top-0 z-50 flex flex-col items-center select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl"
           style={{
             transform: `translate(${heartPos.x}px, ${heartPos.y}px) translate(-50%, -50%)`,
-            willChange: 'transform',
           }}
         >
           {/* Pulsing Light Aura (single primary glow) */}
@@ -342,7 +385,7 @@ export const WishSection = () => {
                 type="button"
                 onClick={() => launchWish(heartPos.x, heartPos.y)}
                 aria-label="Launch wish without dragging"
-                className="px-5 py-2 min-h-[44px] rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-sm tracking-wide shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,117,143,0.6)] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+                className="px-5 py-2 min-h-[44px] rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-sm tracking-wide shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,117,143,0.6)] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
               >
                 Launch wish ✨
               </button>
@@ -351,7 +394,7 @@ export const WishSection = () => {
               type="button"
               onClick={cancelWish}
               aria-label="Cancel wish"
-              className="px-5 py-2 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 hover:scale-[1.03] border border-white/20 text-[#fffdf8] font-serif text-sm tracking-wide transition-all duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+              className="px-5 py-2 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 hover:scale-[1.03] border border-white/20 text-[#fffdf8] font-serif text-sm tracking-wide transition-colors duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
             >
               Cancel
             </button>

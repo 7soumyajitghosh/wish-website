@@ -179,7 +179,7 @@ export const CinematicExperience: React.FC = () => {
     let lastBroadcastTime = 0;
     const broadcast = () => {
       const now = performance.now();
-      if (now - lastBroadcastTime > 30 || progressObj.p >= 0.819) {
+      if (now - lastBroadcastTime > 100 || progressObj.p >= 0.819) {
         lastBroadcastTime = now;
         setTargetProgress(progressObj.p);
       }
@@ -242,12 +242,14 @@ export const CinematicExperience: React.FC = () => {
     }
     isAutoGrowingRef.current = false;
     setTargetProgress(STAGE_PROGRESS_MAP[12]);
+    // Reset camera to grown framing — growth zoom would otherwise stick at ~1.2.
+    applyCam(1);
     setPhase('grown');
     stormReadyCallRef.current?.kill();
     stormReadyCallRef.current = gsap.delayedCall(0.4, () => {
       if (phaseRef.current === 'grown') setPhase('stormReady');
     });
-  }, [setPhase, setTargetProgress]);
+  }, [setPhase, setTargetProgress, applyCam]);
 
   // ---------------------------------------------------------------------
   // STORM — only from the grown/stormReady state and only on CTA click.
@@ -276,7 +278,7 @@ export const CinematicExperience: React.FC = () => {
     const tl = gsap.timeline({
       onUpdate: () => {
         const now = performance.now();
-        if (now - lastBroadcastTime > 30 || progressObj.p >= 0.99) {
+        if (now - lastBroadcastTime > 100 || progressObj.p >= 0.99) {
           lastBroadcastTime = now;
           setTargetProgress(progressObj.p);
         }

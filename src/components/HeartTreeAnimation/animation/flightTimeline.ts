@@ -48,8 +48,8 @@ export function updateFlyingHearts(
     ph.x += ph.vx * speed;
     ph.y += ph.vy * speed;
 
-    // Sustained wind push rightward
-    ph.vx += 0.02 * speed;
+    // Sustained wind push rightward (capped — unbounded accel streaked unnaturally).
+    ph.vx = Math.min(ph.vx + 0.02 * speed, 9);
 
     // Upward graceful loft into the celestial night sky
     const targetY = groundY * 0.28 + Math.sin(ph.x * 0.003 + time * 1.6) * 55;

@@ -42,8 +42,8 @@ export const Marquee: React.FC<{
 
   return (
     <div ref={ref} className={`relative overflow-hidden py-5 ${className}`} role="presentation">      <style>{`
-        .marquee-track { display: flex; width: max-content; animation: marqueeSlide 28s linear infinite; }
-        @keyframes marqueeSlide { to { transform: translateX(-50%); } }
+        .marquee-track { display: flex; width: max-content; animation: marqueeSlide 28s linear infinite; will-change: transform; }
+        @keyframes marqueeSlide { to { transform: translate3d(-50%, 0, 0); } }
         @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
       `}</style>
       <div className="marquee-track">

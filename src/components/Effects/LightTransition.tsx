@@ -42,12 +42,16 @@ export const LightTransition: React.FC<{
     // class) so the scale passage never snaps or jumps.
     const tl = gsap.timeline({
       defaults: { overwrite: 'auto' },
-      onComplete: () => doneRef.current?.(),
+      onComplete: () => {
+        if (el) el.style.willChange = 'auto';
+        if (glow) glow.style.willChange = 'auto';
+        doneRef.current?.();
+      },
     });
     tl.set(el, { visibility: 'visible', opacity: 0, clipPath: 'inset(0 0 0% 0)' })
       .set(glow, { xPercent: -50, yPercent: -50, scale: 0.5, opacity: 0.5, transformOrigin: 'center center' })
       .to(el, { opacity: 1, duration: 0.45, ease: 'power2.out' })
-      .to(glow, { scale: 2.2, opacity: 1, duration: 1.25, ease: 'power2.inOut' }, 0.1)
+      .to(glow, { scale: 1.6, opacity: 1, duration: 1.25, ease: 'power2.inOut' }, 0.1)
       // Soft upward wipe out (no hard display:none cut).
       .to(el, { clipPath: 'inset(0 0 100% 0)', duration: 0.85, ease: 'power3.inOut' }, 0.75)
       .to(el, { opacity: 0, duration: 0.4, ease: 'power2.out' }, 1.15)
@@ -76,7 +80,7 @@ export const LightTransition: React.FC<{
         style={{
           background:
             'radial-gradient(circle, rgba(255,214,165,0.95) 0%, rgba(255,179,193,0.75) 40%, rgba(255,248,235,0.4) 65%, transparent 75%)',
-          filter: 'blur(30px)',
+          filter: 'blur(20px)',
           willChange: 'transform, opacity',
         }}
       />

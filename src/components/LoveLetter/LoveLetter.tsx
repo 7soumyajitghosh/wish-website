@@ -210,7 +210,7 @@ export const LoveLetter: React.FC = () => {
             <div 
               ref={flapRef}
               className="absolute top-0 left-0 w-full h-[60%] bg-[#361224] clip-top-flap z-30 shadow-md border-b border-[#d81b46]/30"
-              style={{ transformStyle: 'preserve-3d' }}
+              style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
             >
               {/* Wax Seal */}
               <div 

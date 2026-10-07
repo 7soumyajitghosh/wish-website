@@ -27,9 +27,9 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
     let raf = 0;
     let running = true;
     let visible = true;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    interface S { x: number; y: number; len: number; sp: number; a: number; }
+    interface S { x: number; y: number; len: number; sp: number; }
     let streaks: S[] = [];
     const seed = () => {
       streaks = Array.from({ length: 46 }, () => ({
@@ -37,10 +37,10 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
         y: Math.random() * h,
         len: Math.random() * 120 + 40,
         sp: Math.random() * 7 + 3,
-        a: Math.random() * 0.35 + 0.1,
       }));
     };
     const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       const r = canvas.getBoundingClientRect();
       w = Math.max(1, r.width);
       h = Math.max(1, r.height);
@@ -54,15 +54,18 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
 
     let opacity = 0;
     let last = performance.now();
+    const ensureLoop = () => {
+      if (raf) return;
+      last = performance.now();
+      raf = requestAnimationFrame(loop);
+    };
     const loop = (now: number) => {
+      raf = 0;
       if (!running) return;
-      // Park the RAF when off-screen or fully faded — no wasted frames,
-      // no per-streak gradient churn while invisible.
+      // Fully suspend when off-screen or fully faded — no parked 60fps loop.
       if (!visible || (opacity <= 0.02 && !stateRef.current.active)) {
         opacity = stateRef.current.active ? opacity : 0;
-        ctx.clearRect(0, 0, w, h);
-        last = now;
-        raf = requestAnimationFrame(loop);
+        if (opacity > 0) ctx.clearRect(0, 0, w, h);
         return;
       }
       const dt = Math.min((now - last) / 1000, 0.05);
@@ -73,7 +76,7 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       if (opacity > 0.02) {
         const s = stateRef.current.strength;
         // Single batched path + one alpha (no per-streak gradient objects).
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = Math.max(1, 1.4 * dpr * 0.75);
         ctx.strokeStyle = `rgba(255,214,180,${(0.28 * opacity).toFixed(3)})`;
         ctx.beginPath();
         for (const st of streaks) {
@@ -89,17 +92,24 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       }
       raf = requestAnimationFrame(loop);
     };
+    // Wake the loop when props change (stateRef is updated in the other effect).
+    const wakeId = window.setInterval(() => {
+      if (running && visible && !raf && (stateRef.current.active || opacity > 0.02)) ensureLoop();
+    }, 400);
     raf = requestAnimationFrame(loop);
     const io = new IntersectionObserver(
       ([entry]) => {
         visible = entry.isIntersecting;
+        if (visible) ensureLoop();
       },
       { threshold: 0 }
     );
     io.observe(canvas);
     return () => {
       running = false;
+      window.clearInterval(wakeId);
       cancelAnimationFrame(raf);
+      raf = 0;
       io.disconnect();
       window.removeEventListener('resize', resize);
     };

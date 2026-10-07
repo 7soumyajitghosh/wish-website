@@ -20,13 +20,27 @@ export const CursorGlow: React.FC = () => {
     let ty = y;
     let raf = 0;
     let visible = false;
+    let running = true;
+    let lastMove = 0;
+    let half = 260;
+
+    const measure = () => {
+      half = el.offsetWidth / 2 || 260;
+    };
+    measure();
 
     const onMove = (e: PointerEvent) => {
       tx = e.clientX;
       ty = e.clientY;
+      lastMove = performance.now();
       if (!visible) {
         visible = true;
         el.style.opacity = '1';
+      }
+      // Restart loop on activity after idle park.
+      if (running === false && !document.hidden) {
+        running = true;
+        raf = requestAnimationFrame(loop);
       }
     };
     const onLeave = () => {
@@ -34,22 +48,65 @@ export const CursorGlow: React.FC = () => {
       el.style.opacity = '0';
     };
 
-    const loop = () => {
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const shouldRun = entry.isIntersecting && !document.hidden;
+        if (shouldRun && running === false) {
+          running = true;
+          lastMove = performance.now();
+          raf = requestAnimationFrame(loop);
+        } else if (!entry.isIntersecting) {
+          running = false;
+          cancelAnimationFrame(raf);
+        }
+      },
+      { threshold: 0 }
+    );
+    // Fixed fullscreen glow is always intersecting; gate on idle instead.
+    // Keep IO for correctness if styles change, but rely on idle park below.
+    try { io.observe(el); } catch { /* noop */ }
+
+    const onVis = () => {
       if (document.hidden) {
-        raf = requestAnimationFrame(loop);
+        running = false;
+        cancelAnimationFrame(raf);
+      } else if (performance.now() - lastMove < 3000) {
+        if (running === false) {
+          running = true;
+          raf = requestAnimationFrame(loop);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    const loop = () => {
+      if (!running || document.hidden) {
+        running = false;
+        return;
+      }
+      // Park when mouse idle >3s: no transform writes, no frames.
+      if (performance.now() - lastMove > 3000) {
+        running = false;
         return;
       }
       x += (tx - x) * 0.08;
       y += (ty - y) * 0.08;
-      el.style.transform = `translate3d(${x - 260}px, ${y - 260}px, 0)`;
+      // Skip sub-pixel writes when settled.
+      if (Math.abs(tx - x) > 0.1 || Math.abs(ty - y) > 0.1) {
+        el.style.transform = `translate3d(${x - half}px, ${y - half}px, 0)`;
+      }
       raf = requestAnimationFrame(loop);
     };
+    lastMove = performance.now();
     raf = requestAnimationFrame(loop);
 
     window.addEventListener('pointermove', onMove, { passive: true });
     document.documentElement.addEventListener('pointerleave', onLeave);
     return () => {
+      running = false;
       cancelAnimationFrame(raf);
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pointermove', onMove);
       document.documentElement.removeEventListener('pointerleave', onLeave);
     };

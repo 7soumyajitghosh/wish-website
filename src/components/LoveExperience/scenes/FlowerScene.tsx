@@ -15,6 +15,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
   const petalsMidRef = useRef<SVGGElement>(null);
   const petalsCoreRef = useRef<SVGGElement>(null);
   const firefliesRef = useRef<SVGGElement>(null);
+  const sparkRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
   const fadeTweenRef = useRef<gsap.core.Tween | null>(null);
   const holdCallRef = useRef<ReturnType<typeof gsap.delayedCall> | null>(null);
@@ -117,15 +118,15 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
         { opacity: 1, duration: 1.5, ease: 'power2.out' }
       );
 
-      // 2. Initial spark of life / light beacon
+      // 2. Initial spark of life / light beacon (scoped — no global selector clash on pre-mount)
       tl.fromTo(
-        '.flower-light-spark',
+        sparkRef.current,
         { scale: 0, opacity: 0 },
         { scale: 1.4, opacity: 1, duration: 1.2, ease: 'back.out(2)' }
       );
 
       // Spark drops to earth
-      tl.to('.flower-light-spark', {
+      tl.to(sparkRef.current, {
         y: 80,
         opacity: 0.6,
         duration: 1.0,
@@ -287,7 +288,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       </button>
 
       {/* Originating spark of light */}
-      <div className="flower-light-spark" />
+      <div ref={sparkRef} className="flower-light-spark" />
 
       {/* SVG Authored Botanical Bloom */}
       <svg

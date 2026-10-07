@@ -108,7 +108,7 @@ export const FinalMessage = () => {
             </span>
 
             <Reveal delay={0.1} className="flex flex-col items-center">
-              <h2 className="final-fade-item font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+              <h2 className="font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
                 Somewhere between a beginning and a forever,
                 <br className="hidden md:block" /> love takes flight.
               </h2>

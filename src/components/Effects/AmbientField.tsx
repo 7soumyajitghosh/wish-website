@@ -28,7 +28,7 @@ export const AmbientField: React.FC<{
     let h = 0;
     let raf = 0;
     let running = true;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     interface P {
       x: number; y: number; r: number; a: number;
@@ -52,6 +52,7 @@ export const AmbientField: React.FC<{
     };
 
     const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
       w = Math.max(1, rect.width);
       h = Math.max(1, rect.height);
@@ -61,7 +62,15 @@ export const AmbientField: React.FC<{
       seed();
     };
     resize();
-    window.addEventListener('resize', resize);
+    let resizeRaf = 0;
+    const onResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        resize();
+      });
+    };
+    window.addEventListener('resize', onResize);
 
     const draw = (t: number, dt: number) => {
       ctx.clearRect(0, 0, w, h);
@@ -89,7 +98,10 @@ export const AmbientField: React.FC<{
 
     if (reduced) {
       draw(0, 0);
-      return () => window.removeEventListener('resize', resize);
+      return () => {
+        window.removeEventListener('resize', onResize);
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      };
     }
 
     let last = performance.now();
@@ -126,8 +138,9 @@ export const AmbientField: React.FC<{
     return () => {
       running = false;
       cancelAnimationFrame(raf);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       io.disconnect();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
     };
   }, [density]);
 

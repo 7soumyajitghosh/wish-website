@@ -32,6 +32,7 @@ export const LoveExperience: React.FC = () => {
   const sceneRef = useRef(currentScene);
   sceneRef.current = currentScene;
   const isTransitioningRef = useRef(false);
+  const resolveTlRef = useRef<gsap.core.Timeline | null>(null);
 
   // Kill any in-flight overlay tween on unmount.
   useEffect(() => {
@@ -39,6 +40,8 @@ export const LoveExperience: React.FC = () => {
       if (overlayRef.current) gsap.killTweensOf(overlayRef.current);
       if (sweepRef.current) gsap.killTweensOf(sweepRef.current);
       if (stageRef.current) gsap.killTweensOf(stageRef.current);
+      resolveTlRef.current?.kill();
+      resolveTlRef.current = null;
       isTransitioningRef.current = false;
     };
   }, []);
@@ -85,7 +88,8 @@ export const LoveExperience: React.FC = () => {
         setAnnouncement(SCENE_LABELS[nextScene]);
         // Resolve: veil lifts with a soft upward wipe while the new
         // scene settles forward into focus.
-        gsap.timeline({
+        resolveTlRef.current?.kill();
+        resolveTlRef.current = gsap.timeline({
           defaults: { overwrite: 'auto' },
           onComplete: () => {
             overlay.classList.remove('is-active');
@@ -151,7 +155,7 @@ export const LoveExperience: React.FC = () => {
       </div>
       {/* Active Scene — single transforming stage so outgoing/incoming share
           one continuous scale/blur passage (no white flash, no layout shift) */}
-      <div ref={stageRef} className="love-experience-stage" style={{ willChange: 'transform, opacity, filter' }}>
+      <div ref={stageRef} className="love-experience-stage">
         {renderScene(currentScene, false)}
         {incomingScene && incomingScene !== currentScene && renderScene(incomingScene, true)}
       </div>

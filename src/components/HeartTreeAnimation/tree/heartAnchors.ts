@@ -186,10 +186,8 @@ export function drawHeartShape(
   ctx.rotate(rotation);
   ctx.globalAlpha = clamp01(alpha);
 
-  // Subtle clean botanical shadow for leaf depth, strictly NO neon bloom
-  ctx.shadowColor = 'rgba(20, 5, 10, 0.20)';
-  ctx.shadowBlur = 2.0;
-  ctx.shadowOffsetY = 1.0;
+  // No canvas shadow (shadowBlur forces an offscreen pass per heart × 60fps).
+  // Depth comes from the layered palette, not per-frame shadows.
 
   const s = size;
   const top = s * 0.3;

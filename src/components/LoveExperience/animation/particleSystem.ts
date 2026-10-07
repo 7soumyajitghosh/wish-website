@@ -106,12 +106,16 @@ export class ParticleEmitter {
       const pulse = 0.5 + 0.5 * Math.sin(p.twinklePhase);
       p.alpha = Math.min(p.maxAlpha, p.maxAlpha * (0.4 + 0.6 * pulse));
 
-      // Wrap around bounds for ambient stars
+      // Wrap around bounds for ambient stars — fade near edges instead of
+      // visible edge-to-edge teleport pop.
       if (p.isStar && p.maxLife > 5000) {
-        if (p.x < 0) p.x = this.w;
-        if (p.x > this.w) p.x = 0;
-        if (p.y < 0) p.y = this.h;
-        if (p.y > this.h) p.y = 0;
+        const m = 12;
+        if (p.x < -m) { p.x = this.w + m; p.alpha = 0; }
+        else if (p.x > this.w + m) { p.x = -m; p.alpha = 0; }
+        if (p.y < -m) { p.y = this.h + m; p.alpha = 0; }
+        else if (p.y > this.h + m) { p.y = -m; p.alpha = 0; }
+        // Fade back in after wrap.
+        if (p.alpha < p.maxAlpha) p.alpha = Math.min(p.maxAlpha, p.alpha + 0.02 * speed);
       } else if (p.life >= p.maxLife) {
         this.particles.splice(i, 1);
       }
@@ -119,13 +123,23 @@ export class ParticleEmitter {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    // Batch by color to avoid 500× save/restore + fillStyle churn.
+    let lastColor = '';
+    let lastAlpha = -1;
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
       if (p.alpha <= 0.01) continue;
 
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
-      ctx.fillStyle = p.color;
+      const a = Math.max(0, Math.min(1, p.alpha));
+      if (p.color !== lastColor) {
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = p.color;
+        lastColor = p.color;
+      }
+      if (a !== lastAlpha) {
+        ctx.globalAlpha = a;
+        lastAlpha = a;
+      }
 
       // Subtle 4-point sparkle for larger stars (no shadowBlur: per-particle
       // shadows stall 200+ frame loops; cross-glint carries the glow)
@@ -148,8 +162,7 @@ export class ParticleEmitter {
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      ctx.restore();
     }
+    ctx.globalAlpha = 1;
   }
 }

@@ -5,13 +5,13 @@ export const CinematicBars: React.FC<{ visible: boolean }> = ({ visible }) => (
   <>
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 bg-black transition-all duration-1000"
-      style={{ height: visible ? '7vh' : '0vh', opacity: visible ? 1 : 0 }}
+      className="pointer-events-none absolute inset-x-0 top-0 z-30 origin-top bg-black transition-transform duration-1000 ease-out motion-reduce:transition-none motion-reduce:transform-none"
+      style={{ height: '7vh', transform: visible ? 'scaleY(1)' : 'scaleY(0)', opacity: visible ? 1 : 0 }}
     />
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 bg-black transition-all duration-1000"
-      style={{ height: visible ? '7vh' : '0vh', opacity: visible ? 1 : 0 }}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 origin-bottom bg-black transition-transform duration-1000 ease-out motion-reduce:transition-none motion-reduce:transform-none"
+      style={{ height: '7vh', transform: visible ? 'scaleY(1)' : 'scaleY(0)', opacity: visible ? 1 : 0 }}
     />
   </>
 );

@@ -317,13 +317,16 @@ export function drawTaperedBranch(
   const startW = branch.widthStart;
   const endW = lerp(branch.widthStart, branch.widthEnd, gp);
 
-  const N = branch.level === 0 ? 32 : branch.level === 1 ? 24 : branch.level === 2 ? 14 : 8;
+  // Reduced sample counts (~40% fewer strokes/frame vs original 32/24/14/8).
+  const N = branch.level === 0 ? 20 : branch.level === 1 ? 14 : branch.level === 2 ? 9 : 5;
 
   const pts: { x: number; y: number; w: number }[] = [];
+  const hasWind = windStr > 0.01 || windStr < -0.01;
   for (let i = 0; i <= N; i++) {
     const t = i / N;
     const pt = pointOnCubicBezier(vp0, vp1, vp2, vp3, t);
-    const wx = windDisplace(pt.x, pt.y, baseX, baseY, windStr, time);
+    // Skip 2×sin() per point when there's no wind.
+    const wx = hasWind ? windDisplace(pt.x, pt.y, baseX, baseY, windStr, time) : 0;
     const w = lerp(startW, endW, t);
     pts.push({ x: pt.x + wx, y: pt.y, w });
   }

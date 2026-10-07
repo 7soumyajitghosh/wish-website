@@ -17,22 +17,26 @@ export const Reveal: React.FC<{
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      gsap.set(el, { opacity: 1, y: 0 });
+      return;
+    }
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) {
-      gsap.set(el, { opacity: 1, y: 0, filter: 'blur(0px)' });
+      gsap.set(el, { opacity: 1, y: 0 });
       return;
     }
-    gsap.set(el, { opacity: 0, y, filter: 'blur(6px)' });
+    // Opacity + transform only (no blur filter — non-composited repaint).
+    gsap.set(el, { opacity: 0, y });
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
         gsap.to(el, {
           opacity: 1,
           y: 0,
-          filter: 'blur(0px)',
           duration: 0.9,
           delay,
           ease: 'power3.out',
