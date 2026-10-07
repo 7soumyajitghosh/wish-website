@@ -258,10 +258,11 @@ export function drawRoots(
     const reveal = easeOutCubic(gp);
     const tone = Math.max(0, Math.min(1, root.tone));
 
-    // Earthy matte browns: deep umber → warm topsoil.
-    const r = Math.round(lerp(52, 106, tone));
-    const g = Math.round(lerp(22, 52, tone));
-    const b = Math.round(lerp(16, 32, tone));
+    // Neutral matte earth tones: deep umber-grey → soft topsoil taupe.
+    // Kept desaturated so the roots sit quietly in the soil.
+    const r = Math.round(lerp(46, 118, tone));
+    const g = Math.round(lerp(34, 100, tone));
+    const b = Math.round(lerp(29, 86, tone));
     const alpha = lerp(0.92, 0.82, tone);
     const body = `rgba(${r}, ${g}, ${b}, ${alpha})`;
 
@@ -276,7 +277,7 @@ export function drawRoots(
         { x: root.p1.x, y: root.p1.y - 0.7 },
         root.width * 0.30,
         root.widthEnd * 0.5,
-        'rgba(128, 76, 48, 0.22)',
+        'rgba(150, 135, 118, 0.18)',
         reveal,
         10
       );
@@ -306,7 +307,7 @@ export function drawRoots(
 
     // Hair fibrils: short, darker, drooping with gravity.
     if (root.hairs) {
-      ctx.strokeStyle = `rgba(34, 15, 11, ${0.50 * Math.min(1, reveal * 1.2)})`;
+      ctx.strokeStyle = `rgba(38, 30, 25, ${0.50 * Math.min(1, reveal * 1.2)})`;
       for (const hair of root.hairs) {
         if (reveal < hair.t) continue;
         const hp = rangeProgress(reveal, hair.t, Math.min(1, hair.t + 0.18));
@@ -338,7 +339,7 @@ export function drawRoots(
     if (gp < 1) {
       const capA = 0.55 * (1 - gp * 0.6);
       const tan = tangentOnQuad(root.p0, root.cp, root.p1, reveal);
-      ctx.fillStyle = `rgba(148, 98, 66, ${capA})`;
+      ctx.fillStyle = `rgba(150, 130, 112, ${capA})`;
       ctx.beginPath();
       ctx.ellipse(tip.x, tip.y, Math.max(1.4, root.widthEnd * 2.1), Math.max(1.1, root.widthEnd * 1.5), Math.atan2(tan.y, tan.x), 0, Math.PI * 2);
       ctx.fill();
