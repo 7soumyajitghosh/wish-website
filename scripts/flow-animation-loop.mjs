@@ -25,9 +25,12 @@ class SeededRandom{ constructor(seed){ this.seed=seed%2147483647; if(this.seed<=
 const detach = parseFloat(/DETACH_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const streamPeak = parseFloat(/STREAM_PEAK:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const fadeStart = parseFloat(/FADE_LOOP_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
-const G = { SEED:0.04, ROOTS:0.10, TRUNK:0.20, TRUNK_MID:0.26, PRIMARY:0.32, SECONDARY:0.42, TWIGS:0.52 };
-const B = { BUDS:0.62, B1:0.68, B2:0.74, FULL:0.82 };
-const W = { START:0.84, PEAK:0.90 };
+const numG = (key) => parseFloat(new RegExp(key + ':\\s*([0-9.]+)').exec(readFileSync('src/components/HeartTreeAnimation/animation/growthTimeline.ts','utf8'))[1]);
+const numB = (key) => parseFloat(new RegExp(key + ':\\s*([0-9.]+)').exec(readFileSync('src/components/HeartTreeAnimation/animation/bloomTimeline.ts','utf8'))[1]);
+const numW = (key) => parseFloat(new RegExp(key + ':\\s*([0-9.]+)').exec(readFileSync('src/components/HeartTreeAnimation/animation/windTimeline.ts','utf8'))[1]);
+const G = { SEED:numG('SEED_START'), ROOTS:numG('ROOTS_START'), TRUNK:numG('TRUNK_START'), TRUNK_MID:numG('TRUNK_MID'), PRIMARY:numG('PRIMARY_START'), SECONDARY:numG('SECONDARY_START'), TWIGS:numG('TWIGS_START') };
+const B = { BUDS:numB('BUDS_START'), B1:numB('BLOOM1_START'), B2:numB('BLOOM2_START'), FULL:numB('FULL_BLOOM') };
+const W = { START:numW('WIND_START'), PEAK:numW('WIND_PEAK') };
 function stage(p){
   if(p<G.SEED)return 1; if(p<G.ROOTS)return 2; if(p<G.TRUNK)return 3; if(p<G.TRUNK_MID)return 4;
   if(p<G.PRIMARY)return 5; if(p<G.SECONDARY)return 6; if(p<G.TWIGS)return 7; if(p<B.BUDS)return 8;
@@ -50,9 +53,12 @@ for(let i=0;i<ITERS;i++){
 
   // FLOW-1: stage map monotonic + full 1..16 coverage (checked at end)
   const st = stage(p); seen.add(st);
-  // FLOW-2: STAGE_PROGRESS_MAP strictly ascending
+  // FLOW-2: STAGE_PROGRESS_MAP strictly ascending + every map value must
+  // land inside its own stage per the shared timeline (map/canvas drifted
+  // apart before when StoryContext used a -0.03 fudge factor).
   if(i===0){
     for(let k=1;k<mapVals.length;k++) if(!(mapVals[k]>mapVals[k-1])) iterFails.push(`FLOW: STAGE_PROGRESS_MAP not ascending at ${k}`);
+    for(let s=1;s<=16;s++){ if(stage(mapVals[s-1])!==s) iterFails.push(`FLOW: STAGE_PROGRESS_MAP[${s}]=${mapVals[s-1]} lands in stage ${stage(mapVals[s-1])}, not ${s}`); }
     // FLOW-3: intro state machine legal order present in sources
     for(const s of ['INTRO','SEED_FALLING','SEED_LANDED','WATERING','WATERED','EXPERIENCE_UNLOCKED'])
       if(!introSrc.includes(s)) iterFails.push(`FLOW: intro state ${s} missing`);

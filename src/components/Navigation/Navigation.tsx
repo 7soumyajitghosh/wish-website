@@ -132,6 +132,15 @@ export function Navigation() {
     }
   }, [isOpen]);
 
+  const prefersReducedMotion = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const smoothScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
@@ -139,35 +148,54 @@ export function Navigation() {
     // then scrolls to the requested section.
     if (target === 'body') {
       if (!isExperienceUnlocked) setIntroState('EXPERIENCE_UNLOCKED');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      smoothScrollToTop();
       return;
     }
+    // The landing intro is fully unmounted after its leaf transition, so
+    // #story-experience no longer exists — fall back to the new top page
+    // (#destination at scroll 0) instead of leaving a dead link.
+    const fallbackToTop = () => smoothScrollToTop();
     if (!isExperienceUnlocked) {
+      if (target === '#story-experience') {
+        setIntroState('EXPERIENCE_UNLOCKED');
+        window.setTimeout(fallbackToTop, 400);
+        return;
+      }
       setIntroState('EXPERIENCE_UNLOCKED');
       scrollToSelectorDeferred(target);
       return;
     }
+    if (target === '#story-experience' && !document.querySelector('#story-experience')) {
+      fallbackToTop();
+      return;
+    }
     const element = document.querySelector(target);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      if (prefersReducedMotion()) {
+        (element as HTMLElement).scrollIntoView();
+      } else {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else if (target === '#destination') {
+      fallbackToTop();
     }
   };
 
   return (
     <nav
       ref={navRef}
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out py-4 ${
-        isScrolled 
-          ? 'bg-[#0d0408]/80 backdrop-blur-md shadow-lg' 
-          : 'bg-transparent'
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
+        isScrolled
+          ? 'bg-[#0d0408]/85 backdrop-blur-md shadow-lg py-2.5'
+          : 'bg-transparent py-4'
       }`}
       aria-label="Main Navigation"
     >
       <div className="container mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
-        <a 
-          href="#" 
-          className="text-[#fffdf8] font-serif text-2xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
+        <a
+          href="#destination"
+          className="relative z-50 text-[#fffdf8] font-serif text-2xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
           onClick={(e) => handleSmoothScroll(e, 'body')}
         >
           A Journey of Love
@@ -179,11 +207,11 @@ export function Navigation() {
             <a
               key={link.name}
               href={link.href}
-              className="text-[#fff8eb] font-sans text-sm tracking-widest uppercase relative group overflow-hidden focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
+              className="text-[#fff8eb] font-sans text-sm tracking-widest uppercase relative group overflow-hidden py-2 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
               {link.name}
-              <span className="absolute bottom-0 left-0 w-full h-[1px] bg-[#f5baa4] transform -translate-x-[101%] group-hover:translate-x-0 transition-transform duration-300 ease-out" />
+              <span aria-hidden="true" className="absolute bottom-0 left-0 w-full h-[1px] bg-[#f5baa4] transform -translate-x-[101%] group-hover:translate-x-0 group-focus-within:translate-x-0 group-focus-visible:translate-x-0 transition-transform duration-300 ease-out" />
             </a>
           ))}
         </div>
@@ -195,7 +223,7 @@ export function Navigation() {
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="mobile-menu"
-          aria-label="Toggle navigation menu"
+          aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
         >
           {isOpen ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
@@ -224,14 +252,14 @@ export function Navigation() {
         aria-hidden={!isOpen}
         inert={!isOpen}
       >
-        <div className="flex flex-col items-center space-y-8">
+        <div className="flex flex-col items-center space-y-4">
           {navLinks.map((link, index) => (
             <a
               key={link.name}
               ref={(el) => { linksRef.current[index] = el; }}
               href={link.href}
               tabIndex={isOpen ? 0 : -1}
-              className="text-[#fffdf8] font-serif text-3xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
+              className="text-[#fffdf8] font-serif text-3xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
               {link.name}

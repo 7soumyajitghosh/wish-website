@@ -96,6 +96,11 @@ export function buildHearts(
 
     const rot = isUnder ? rng.symmetric() * 0.35 : rng.symmetric() * 0.85;
     const bloomWave = layer === 2 ? BLOOM_T.BLOOM1_START : (layer === 1 ? BLOOM_T.BLOOM1_START + 0.04 : BLOOM_T.BLOOM2_START);
+    // Keep every heart's bloom window inside its wave and strictly before
+    // FULL_BLOOM (previously +0.05 jitter / +0.09 duration overflowed to
+    // 0.83, blooming past full bloom into the wind stage).
+    const bloomStart = Math.min(bloomWave + rng.range(0, 0.02), BLOOM_T.FULL_BLOOM - 0.03);
+    const bloomEnd = Math.min(bloomStart + 0.05 + rng.range(0, 0.02), BLOOM_T.FULL_BLOOM);
 
     hearts.push({
       branchIndex: branchIdx,
@@ -106,8 +111,8 @@ export function buildHearts(
       color,
       rotation: rot,
       layer,
-      bloomStart: bloomWave + rng.range(0, 0.05),
-      bloomEnd: bloomWave + 0.06 + rng.range(0, 0.03),
+      bloomStart,
+      bloomEnd,
       detachOrder: detachOrderFor(pt.x + offX * s, pt.y + offY * s),
     });
     heartId++;

@@ -59,7 +59,7 @@ export const Journey: React.FC = () => {
     <section 
       id="journey" 
       ref={containerRef}
-      className="section py-24 md:py-32 px-6 md:px-12 w-full relative overflow-hidden bg-gradient-to-b from-[#0d0408] via-[#1a0812] to-[#0d0408] text-[#fffdf8]"
+      className="section px-6 md:px-12 w-full relative overflow-hidden bg-gradient-to-b from-[#0d0408] via-[#1a0812] to-[#0d0408] text-[#fffdf8]"
     >
       <div
         aria-hidden="true"
@@ -68,10 +68,10 @@ export const Journey: React.FC = () => {
       <div className="max-w-5xl mx-auto relative z-10">
         <Reveal className="text-center mb-16">
           <header className="text-center">
-          <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
+          <span className="eyebrow">
             Chronicles of Growth
           </span>
-          <h2 className="font-serif mt-2 mb-4 tracking-wide text-[#fffdf8]" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+          <h2 className="font-serif mt-2 mb-4 tracking-wide text-[#fffdf8] text-balance" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             The Sixteen Milestones
           </h2>
           <div 
@@ -84,31 +84,35 @@ export const Journey: React.FC = () => {
           </header>
         </Reveal>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ol className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 list-none p-0 m-0">
           {STAGE_DESCRIPTIONS.map((stage, index) => (
+            <li key={stage.id} value={stage.id} className="h-full">
             <article
-              key={stage.id}
               ref={(el) => { cardsRef.current[index] = el; }}
-              aria-label={`Stage ${stage.id}: ${stage.title}`}
+              aria-labelledby={`milestone-${stage.id}-title`}
               onPointerMove={spotlightMove}
-              className="spotlight p-5 rounded-2xl transition-colors duration-300 border bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
+              className="spotlight h-full p-5 rounded-2xl border bg-[#190710]/60 border-white/10 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80"
             >
-              <div className="transition-transform duration-300 hover:-translate-y-1.5">
+              <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-sans tracking-widest text-[#f5baa4]">
                   {String(stage.id).padStart(2, '0')}
                 </span>
+                <span className="text-[11px] font-sans tracking-widest uppercase text-[#fff8eb]/50">
+                  {stage.id} / 16
+                </span>
               </div>
-              <h3 className="text-lg font-serif text-[#fffdf8] font-medium mb-1">
+              <h3 id={`milestone-${stage.id}-title`} className="text-lg font-serif text-[#fffdf8] font-medium mb-1">
                 {stage.title}
               </h3>
-              <p className="text-sm font-sans text-[#fff8eb]/85 leading-relaxed">
+              <p className="text-sm font-sans text-[#fff8eb]/90 leading-relaxed min-h-[3.375rem] line-clamp-3">
                 {stage.subtitle}
               </p>
               </div>
             </article>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

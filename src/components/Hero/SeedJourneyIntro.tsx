@@ -70,7 +70,6 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   };
   const [isDragging, setIsDragging] = useState(false);
   const [isWatering, setIsWatering] = useState(false);
-  const [showHelperText, setShowHelperText] = useState(true);
   const [showWater, setShowWater] = useState(false);
 
   // Spout-tip anchored pour: the rose tip sits ~15% across / 68% down the
@@ -235,7 +234,6 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     hasWateredRef.current = true;
     setIsWatering(true);
     setIsDragging(false);
-    setShowHelperText(false);
 
     const potEl = potRef.current;
 
@@ -428,15 +426,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           .water-drop, .water-splash-ring, .seed-soak-pulse { animation: none !important; }
         }
       `}</style>
-      {/* Quiet caption while the one tree reveals its seed */}
-      {(introState === 'SEED_FALLING' || introState === 'SEED_LANDED') && (
-        <p
-          aria-live="polite"
-          className="animate-fade-in pointer-events-none absolute bottom-24 left-1/2 -translate-x-1/2 font-serif italic text-[#ffd6a5]/90 text-lg whitespace-nowrap"
-        >
-          A seed takes root…
-        </p>
-      )}
+      {/* captions removed */}
 
       {/* INTERACTIVE WATERING CAN — outer wrapper owned by React, inner owned by GSAP */}
       {(introState === 'WATERING' || introState === 'SEED_LANDED') && (
@@ -459,21 +449,12 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
           onKeyDown={handleKeyDown}
           tabIndex={0}
           role="button"
-          aria-label="Watering can. Drag near the seed or press Enter to water."
+          aria-label="give some love & care"
           className="cursor-pointer"
           style={{ scale: isDragging ? '1.05' : '1' }}
         >
           {/* Watering Can Visual */}
           <div className="relative group flex flex-col items-center">
-            {/* Interaction hint above the can */}
-            {showHelperText && (
-              <div className="mb-2 px-3 py-1.5 rounded-full bg-[#1c0814]/90 backdrop-blur-md border border-[#a2d2ff]/40 text-[#cfe8ff] text-xs font-sans tracking-wider text-center shadow-lg pointer-events-none motion-safe:animate-pulse">
-                Tap the watering can — or just watch
-                <span className="block text-[10px] text-[#fffdf8]/70">
-                  Drag near the seed, press Enter, or let it happen
-                </span>
-              </div>
-            )}
 
             {/* Watering can SVG — body, top opening, handle, spout + rose head */}
             <div className="w-20 h-20 md:w-24 md:h-24 drop-shadow-[0_4px_16px_rgba(100,181,246,0.45)]">

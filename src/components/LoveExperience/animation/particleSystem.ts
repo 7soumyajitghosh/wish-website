@@ -42,7 +42,7 @@ export class ParticleEmitter {
         vx: (Math.random() - 0.5) * 0.15,
         vy: (Math.random() - 0.5) * 0.15,
         size: 0.8 + Math.random() * 1.8,
-        color: Math.random() > 0.3 ? '#fff5dc' : '#ffd1dc',
+        color: Math.random() > 0.3 ? '#fff8eb' : '#ffb3c1',
         alpha: 0.2 + Math.random() * 0.6,
         maxAlpha: 0.3 + Math.random() * 0.6,
         life: 0,
@@ -55,7 +55,7 @@ export class ParticleEmitter {
   }
 
   spawnBurst(cx: number, cy: number, count = 75) {
-    const colors = ['#fff5dc', '#ffd6a5', '#ff9bb2', '#ff758f', '#ffffff'];
+    const colors = ['#fff8eb', '#ffd6a5', '#ffb3c1', '#ff8fa3', '#ffffff'];
     // Cap total particles: drop oldest burst (non-ambient) particles first.
     const overflow = this.particles.length + count - ParticleEmitter.MAX_PARTICLES;
     if (overflow > 0) {

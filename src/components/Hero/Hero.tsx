@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { SeedJourneyIntro } from './SeedJourneyIntro';
@@ -16,6 +16,9 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   const tweenRef = useRef<gsap.core.Tween | null>(null);
   const mountedRef = useRef(true);
   const begunRef = useRef(false);
+  // Rendered mirror of begunRef so the button can be truly disabled
+  // (not just guarded) for the whole intro transition.
+  const [hasBegun, setHasBegun] = useState(false);
   const waterDoneRef = useRef(false);
   const { introState, startStory } = useStory();
   const glowRef = useRef<HTMLDivElement>(null);
@@ -53,9 +56,11 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
   }, []);
 
   const handleBegin = () => {
-    // One-shot: double-clicks must not restart the intro sequence.
+    // One-shot + locked: double-clicks must not restart the intro sequence.
+    // Button is disabled synchronously (hasBegun) until unmounted.
     if (begunRef.current) return;
     begunRef.current = true;
+    setHasBegun(true);
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -119,7 +124,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{
           background:
-            'linear-gradient(180deg, rgba(13,4,8,0.55) 0%, transparent 35%, transparent 65%, rgba(13,4,8,0.6) 100%)',
+            'linear-gradient(180deg, rgba(168,20,56,0.22) 0%, transparent 32%, transparent 68%, rgba(13,4,8,0.55) 100%)',
         }}
       />
 
@@ -163,7 +168,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
             .heart-chain > span {
               position: absolute; top: 0; left: 0;
               font-size: clamp(1rem, 2.4vw, 1.6rem); line-height: 1;
-              color: #ff6b8d; text-shadow: 0 0 12px rgba(255,77,109,0.95), 0 0 30px rgba(255,77,109,0.55);
+              color: #ff8fa3; text-shadow: 0 0 12px rgba(216,27,70,0.9), 0 0 30px rgba(216,27,70,0.5);
               opacity: 0; animation: heartSlide 2.8s linear infinite;
             }
             @keyframes heartSlide {
@@ -195,12 +200,16 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
 
           <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#f5baa4]/60 to-transparent mb-10" />
 
-          {/* The Begin Action Button */}
+          {/* The Begin Action Button — locked/disabled once clicked until the
+              intro transition finishes (prevents multi-click restarts). */}
           <div className="flex flex-col items-center gap-4">
             <MagneticButton>
               <button
                 onClick={handleBegin}
-                className="btn-primary group relative overflow-hidden font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer"
+                disabled={hasBegun}
+                aria-disabled={hasBegun}
+                aria-busy={hasBegun}
+                className="btn-primary group relative overflow-hidden font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 aria-label="Let's start our journey"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />

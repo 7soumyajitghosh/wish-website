@@ -9,7 +9,7 @@
   height: 100%;
   overflow: hidden;
   user-select: none;
-  background-color: var(--color-bg-deep);
+  background-color: #f3c9cc;
 }
 
 .heart-tree-canvas {

@@ -17,13 +17,13 @@ export const WishSection = () => {
   const [currentWish, setCurrentWish] = useState<Wish | null>(null);
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [, setHasMoved] = useState(false);
+  const hasMovedRef = useRef(false);
   const [flyingHearts, setFlyingHearts] = useState<{ id: string; text: string; startX: number; startY: number }[]>([]);
 
-  const containerRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heartRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Background stars — cached size, IO-gated (no off-screen 60fps).
   useEffect(() => {
@@ -134,11 +134,12 @@ export const WishSection = () => {
     setCurrentWish(newWish);
     setWishText('');
 
-    // Place initial heart in center of screen (no transition on placement)
+    // Place initial heart in center of viewport, clamped so the ~400px
+    // floating card never starts off-screen on short viewports.
     const cx = window.innerWidth / 2;
-    const cy = window.innerHeight * 0.55;
+    const cy = Math.min(window.innerHeight * 0.55, Math.max(220, window.innerHeight - 260));
     setHeartPos({ x: cx, y: cy });
-    setHasMoved(false);
+    hasMovedRef.current = false;
     setIsHoldingWish(true);
   };
 
@@ -157,12 +158,15 @@ export const WishSection = () => {
     setFlyingHearts((prev) => [...prev, flyingItem]);
     setWishCount((prev) => prev + 1);
     setCurrentWish(null);
+    // Return focus so keyboard users land back in the form + hear confirmation.
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }, [isHoldingWish, currentWish]);
 
   const cancelWish = useCallback(() => {
     setIsDragging(false);
     setIsHoldingWish(false);
     setCurrentWish(null);
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }, []);
 
   const applyHeartTransform = (x: number, y: number) => {
@@ -197,7 +201,7 @@ export const WishSection = () => {
       if (!raf) raf = requestAnimationFrame(flush);
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
-      if (Math.hypot(dx, dy) > 10) setHasMoved(true);
+      if (Math.hypot(dx, dy) > 10) hasMovedRef.current = true;
     };
     const onUp = (e: PointerEvent) => {
       if (raf) cancelAnimationFrame(raf);
@@ -226,20 +230,20 @@ export const WishSection = () => {
     const step = 12;
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      setHeartPos((p) => ({ x: p.x - step, y: p.y }));
-      setHasMoved(true);
+      setHeartPos((p) => ({ x: Math.max(80, p.x - step), y: p.y }));
+      hasMovedRef.current = true;
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      setHeartPos((p) => ({ x: p.x + step, y: p.y }));
-      setHasMoved(true);
+      setHeartPos((p) => ({ x: Math.min(window.innerWidth - 80, p.x + step), y: p.y }));
+      hasMovedRef.current = true;
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHeartPos((p) => ({ x: p.x, y: p.y - step }));
-      setHasMoved(true);
+      setHeartPos((p) => ({ x: p.x, y: Math.max(120, p.y - step) }));
+      hasMovedRef.current = true;
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHeartPos((p) => ({ x: p.x, y: p.y + step }));
-      setHasMoved(true);
+      setHeartPos((p) => ({ x: p.x, y: Math.min(window.innerHeight - 120, p.y + step) }));
+      hasMovedRef.current = true;
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       launchWish(heartPos.x, heartPos.y);
@@ -256,8 +260,7 @@ export const WishSection = () => {
   return (
     <section 
       id="make-a-wish" 
-      ref={containerRef}
-      className="section relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0d0408] py-24 md:py-32 select-none"
+      className="section relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0d0408]"
       aria-label="Make a Wish Section"
     >
       {/* Background Star Canvas */}
@@ -276,10 +279,10 @@ export const WishSection = () => {
       <div className="relative z-10 w-full max-w-2xl px-6 flex flex-col items-center">
         <Reveal className="w-full flex flex-col items-center">
           <header className="text-center mb-10">
-          <span className="text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
+          <span className="eyebrow">
             Celestial Whispers
           </span>
-          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>Make a Wish</h2>
+          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>Make a Wish</h2>
           <p className="text-base md:text-lg text-[#fff8eb]/85 font-serif">
             Close your eyes. Give words to your deepest desire.
           </p>
@@ -291,15 +294,23 @@ export const WishSection = () => {
           <Reveal delay={0.12} className="w-full flex flex-col items-center">
           <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-6">
             <div className="w-full relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#ffb3c1] to-[#ffd6a5] rounded-2xl opacity-0 group-focus-within:opacity-15 transition-opacity duration-500 blur-sm pointer-events-none" />
+              <div aria-hidden="true" className="absolute -inset-0.5 bg-gradient-to-r from-[#ffb3c1] to-[#ffd6a5] rounded-2xl opacity-0 group-focus-within:opacity-15 transition-opacity duration-500 blur-sm pointer-events-none" />
+              <label htmlFor="wish-text" className="sr-only">
+                Your wish (up to 150 characters)
+              </label>
               <textarea
+                id="wish-text"
+                ref={textareaRef}
                 value={wishText}
                 onChange={(e) => setWishText(e.target.value)}
                 placeholder="Type your wish here..."
-                className="relative w-full h-32 bg-[#220b17]/50 backdrop-blur-md border border-[#ffb3c1]/30 rounded-2xl p-5 text-[#fffdf8] font-serif text-lg resize-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] focus:border-[#ffb3c1]/70 transition-colors placeholder:text-[#fff8eb]/65 shadow-inner"
-                aria-label="Wish text input"
+                className="relative w-full h-32 bg-[#220b17]/70 backdrop-blur-md border border-[#ffb3c1]/30 rounded-2xl p-5 text-[#fffdf8] font-serif text-lg resize-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] focus:border-[#ffb3c1]/70 transition-colors placeholder:text-[#fff8eb]/85 shadow-inner"
+                aria-describedby="wish-count-hint"
                 maxLength={150}
               />
+              <p id="wish-count-hint" className="mt-2 text-right text-xs font-sans tracking-widest text-[#fff8eb]/70">
+                {wishText.trim().length} / 150
+              </p>
             </div>
 
             <MagneticButton>
@@ -318,17 +329,20 @@ export const WishSection = () => {
 
         {/* Wish Count */}
         <div className="mt-12 text-center flex flex-col items-center gap-4">
-          <p className="text-[#fff8eb]/70 text-sm font-sans tracking-widest uppercase">
-            Wishes released into the stars: {wishCount}
+          <p aria-live="polite" className="text-[#fff8eb]/85 text-sm font-sans tracking-widest uppercase">
+            Wishes released in this visit: {wishCount}
           </p>
           {/* Chapter link — keeps every page connected in one flow. */}
           <button
             type="button"
             onClick={() => {
               const el = document.getElementById('final-message');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              if (el) {
+                const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+              }
             }}
-            className="font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
+            className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
             aria-label="Continue to the final message"
           >
             Continue to the final message →
@@ -340,27 +354,23 @@ export const WishSection = () => {
       {isHoldingWish && currentWish && (
         <div
           ref={heartRef}
-          role="slider"
+          role="group"
           tabIndex={0}
-          aria-label="Wish position. Use arrow keys to move, Enter to launch, Escape to cancel."
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.max(0, Math.min(100, Math.round((heartPos.x / Math.max(1, typeof window !== 'undefined' ? window.innerWidth : 1)) * 100)))}
-          aria-valuetext={`Wish at ${Math.round(heartPos.x)} pixels across, ${Math.round(heartPos.y)} pixels down`}
+          aria-label={`Your wish is ready. Use arrow keys to guide it, Enter to launch, Escape to cancel. Wish: ${currentWish.text}`}
           aria-describedby="wish-drag-help"
           onKeyDown={handleHeartKeyDown}
-          className="fixed left-0 top-0 z-50 flex flex-col items-center select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl"
+          className="fixed left-0 top-0 z-50 flex max-h-[calc(100vh-2rem)] flex-col items-center overflow-y-auto select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl p-1"
           style={{
             transform: `translate(${heartPos.x}px, ${heartPos.y}px) translate(-50%, -50%)`,
           }}
         >
           {/* Pulsing Light Aura (single primary glow) */}
-          <div aria-hidden="true" className="absolute inset-0 w-24 h-24 -translate-x-6 -translate-y-6 bg-[#ff758f] rounded-full blur-xl opacity-60 motion-safe:animate-pulse pointer-events-none" />
+          <div aria-hidden="true" className="absolute inset-0 w-24 h-24 -translate-x-6 -translate-y-6 bg-[#d81b46] rounded-full blur-xl opacity-60 motion-safe:animate-pulse pointer-events-none" />
 
           {/* Heart Icon — the drag handle (touch-none only here) */}
           <div
             onPointerDown={handlePointerDown}
-            className="relative p-4 rounded-full bg-gradient-to-r from-[#d81b46] to-[#ff758f] shadow-[0_0_35px_rgba(255,117,143,0.8)] border-2 border-[#fffdf8] cursor-grab active:cursor-grabbing touch-none"
+            className="relative p-4 rounded-full bg-gradient-to-r from-[#a81438] to-[#d81b46] shadow-[0_0_35px_rgba(216,27,70,0.8)] border-2 border-[#fffdf8] cursor-grab active:cursor-grabbing touch-none"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fffdf8" className="w-10 h-10 drop-shadow-md" aria-hidden="true">
               <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
@@ -370,12 +380,12 @@ export const WishSection = () => {
           {/* User instruction badge */}
           <div className="mt-4 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-center pointer-events-none shadow-lg max-w-[min(80vw,300px)]">
             <p id="wish-drag-help" className="text-sm font-serif text-[#ffd6a5] whitespace-normal break-words">
-              Drag to guide your wish, then release to launch ✨
+              Drag to guide your wish, then release to launch <span aria-hidden="true">✨</span>
             </p>
           </div>
 
           <p className="mt-2 text-[#fffdf8] font-serif text-sm max-w-[200px] text-center drop-shadow-md whitespace-normal break-words">
-            "{currentWish.text}"
+            &ldquo;{currentWish.text}&rdquo;
           </p>
 
           {/* No-drag alternatives: launch in place, or cancel */}
@@ -385,16 +395,16 @@ export const WishSection = () => {
                 type="button"
                 onClick={() => launchWish(heartPos.x, heartPos.y)}
                 aria-label="Launch wish without dragging"
-                className="px-5 py-2 min-h-[44px] rounded-full bg-gradient-to-r from-[#d81b46] to-[#f5baa4] text-[#fffdf8] font-serif text-sm tracking-wide shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,117,143,0.6)] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+                className="btn-primary btn-sm font-serif tracking-wide shadow-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
               >
-                Launch wish ✨
+                Launch wish <span aria-hidden="true">✨</span>
               </button>
             </MagneticButton>
             <button
               type="button"
               onClick={cancelWish}
               aria-label="Cancel wish"
-              className="px-5 py-2 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 hover:scale-[1.03] border border-white/20 text-[#fffdf8] font-serif text-sm tracking-wide transition-colors duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+              className="btn-ghost btn-sm font-serif tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
             >
               Cancel
             </button>

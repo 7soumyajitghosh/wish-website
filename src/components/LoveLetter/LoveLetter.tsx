@@ -117,7 +117,7 @@ export const LoveLetter: React.FC = () => {
   return (
     <section 
       id="love-letter" 
-      className="section relative min-h-screen flex flex-col items-center justify-center py-24 md:py-32 bg-[#0d0408] overflow-hidden select-none"
+      className="section relative min-h-screen flex flex-col items-center justify-center bg-[#0d0408] overflow-hidden"
       ref={containerRef}
       aria-label="Love Letter Section"
     >
@@ -127,7 +127,7 @@ export const LoveLetter: React.FC = () => {
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
         <Reveal delay={0} className="flex flex-col items-center">
         <header className="text-center mb-10 sm:mb-12">
-          <span className="text-xs sm:text-sm uppercase tracking-[0.35em] text-[#f5baa4] font-sans font-medium">
+          <span className="eyebrow">
             A Keepsake of Affection
           </span>
           <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance" style={{ fontSize: 'clamp(1.9rem,5vw + 0.5rem,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
@@ -141,20 +141,9 @@ export const LoveLetter: React.FC = () => {
 
         {/* Envelope Interactive Unit */}
         <div className="relative flex flex-col items-center mb-10">
-          <div 
-            className="relative cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]"
+          <div
+            className={`relative rounded-xl select-none focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-[#ffd6a5] transition-transform duration-300 ${isOpen ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]'}`}
             onClick={isOpen ? undefined : openLetter}
-            onKeyDown={(e) => {
-              if (isOpen) return;
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openLetter();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-expanded={isOpen}
-            aria-label={isOpen ? "Love letter is open" : "Click to open the love letter"}
             style={{ perspective: '1000px', width: 'min(90vw,420px)', aspectRatio: '4 / 3' }}
           >
             {/* Envelope Back */}
@@ -165,29 +154,26 @@ export const LoveLetter: React.FC = () => {
               ref={letterRef}
               className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-6 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5] transition-shadow duration-300 hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
             >
-              <div className="w-full h-full font-serif text-slate-800 flex flex-col text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
-                <div className="letter-line flex justify-between mb-3 italic text-slate-600 border-b border-slate-200 pb-2">
-                  <span className="font-semibold text-slate-800">{content.recipient}</span>
+              <div className="w-full h-full font-serif text-[#3a1d24] flex flex-col text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
+                <div className="letter-line flex justify-between mb-3 italic text-[#6b4a52] border-b border-[#e5d5c5] pb-2">
+                  <span className="font-semibold text-[#3a1d24]">{content.recipient}</span>
                   <span className="text-xs">{content.date}</span>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto space-y-3 mb-3">
                   {content.paragraphs.map((text, i) => (
-                    <p key={i} className="letter-line text-slate-700 leading-relaxed font-serif">
+                    <p key={i} className="letter-line text-[#3a1d24] leading-relaxed font-serif">
                       {text}
                     </p>
                   ))}
                 </div>
                 
-                <div className="letter-line mt-auto pt-2 border-t border-slate-200 flex justify-between items-end">
-                  <button
-                    onClick={(e) => closeLetter(e)}
-                    className="text-xs font-sans uppercase tracking-widest text-[#a81438] hover:text-[#d81b46] font-semibold py-1 px-2 min-h-[44px] rounded hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#a81438]"
-                  >
-                    Close letter
-                  </button>
+                <div className="letter-line mt-auto pt-2 border-t border-[#e5d5c5] flex justify-between items-end">
+                  <span className="text-xs font-sans uppercase tracking-widest text-[#a81438]/70 font-semibold py-1 px-2 select-none" aria-hidden="true">
+                    Sealed with love
+                  </span>
                   <div className="text-right italic">
-                    <p className="text-xs text-slate-500">{content.signOff}</p>
+                    <p className="text-xs text-[#6b4a52]">{content.signOff}</p>
                     <p className="font-medium text-[#a81438]">{content.sender}</p>
                   </div>
                 </div>
@@ -196,9 +182,11 @@ export const LoveLetter: React.FC = () => {
                   <button
                     onClick={(e) => closeLetter(e)}
                     className="letter-line absolute -top-3 -right-3 w-11 h-11 min-w-[44px] min-h-[44px] bg-[#d81b46] text-[#fffdf8] rounded-full flex items-center justify-center shadow-lg hover:bg-[#a81438] transition-colors hover:scale-110 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
-                    aria-label="Close Letter"
+                    aria-label="Close letter"
                   >
-                    ✕
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 )}
               </div>
@@ -209,7 +197,7 @@ export const LoveLetter: React.FC = () => {
               <div className="absolute top-0 left-0 w-1/2 h-full bg-[#1e0915] clip-left-flap border-r border-[#d81b46]/20" />
               <div className="absolute top-0 right-0 w-1/2 h-full bg-[#1e0915] clip-right-flap border-l border-[#d81b46]/20" />
               <div className="absolute bottom-0 left-0 w-full h-[60%] bg-[#2a0e1e] clip-bottom-flap border-t border-[#d81b46]/20 flex items-end justify-center pb-4">
-                <span className={`text-[#f5baa4]/80 text-xs font-serif italic tracking-widest transition-opacity duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
+                <span className={`text-[#f5baa4]/90 text-xs font-serif italic tracking-widest transition-opacity duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
                   Sealed with Care
                 </span>
               </div>
@@ -235,10 +223,14 @@ export const LoveLetter: React.FC = () => {
 
           {/* Primary Action Button Below */}
           <div className="mt-8 flex flex-col items-center gap-4">
+            <p aria-live="polite" className="sr-only">
+              {isOpen ? 'The love letter is open.' : 'The love letter is sealed.'}
+            </p>
             {!isOpen ? (
               <MagneticButton>
               <button
                 onClick={openLetter}
+                aria-expanded={false}
                 className="btn-primary font-serif tracking-wide shadow-[0_0_20px_rgba(216,27,70,0.4)] cursor-pointer transition-all duration-300 hover:shadow-[0_0_28px_rgba(216,27,70,0.55)] hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Open the letter"
               >
@@ -249,6 +241,7 @@ export const LoveLetter: React.FC = () => {
               <MagneticButton>
               <button
                 onClick={(e) => closeLetter(e)}
+                aria-expanded={true}
                 className="btn-ghost font-serif tracking-wide cursor-pointer transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Close letter"
               >
@@ -261,9 +254,12 @@ export const LoveLetter: React.FC = () => {
               type="button"
               onClick={() => {
                 const el = document.getElementById('make-a-wish');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                if (el) {
+                  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+                }
               }}
-              className="font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
+              className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
               aria-label="Continue to Make a Wish"
             >
               Continue to Make a Wish →

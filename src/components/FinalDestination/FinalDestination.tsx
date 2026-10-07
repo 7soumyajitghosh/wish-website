@@ -58,6 +58,7 @@ export const FinalDestination: React.FC = () => {
   const heartsWrapRef = useRef<HTMLDivElement>(null);
   const fairyWrapRef = useRef<HTMLDivElement>(null);
   const scrollRaf = useRef<number>(0);
+  const smallScreenQuery = useRef<MediaQueryList | null>(null);
 
   // Section-relative parallax (clamped; disabled on small screens + reduced motion).
   // Direct DOM writes only — no React state, no re-render jank.
@@ -76,11 +77,12 @@ export const FinalDestination: React.FC = () => {
     };
     const update = () => {
       scrollRaf.current = 0;
-      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-        if (window.matchMedia('(max-width: 768px)').matches) {
-          apply(0);
-          return;
-        }
+      if (!smallScreenQuery.current && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        smallScreenQuery.current = window.matchMedia('(max-width: 768px)');
+      }
+      if (smallScreenQuery.current?.matches) {
+        apply(0);
+        return;
       }
       const section = sectionRef.current;
       if (!section) return;
@@ -379,16 +381,16 @@ export const FinalDestination: React.FC = () => {
         <div aria-hidden="true" className="absolute inset-0 z-[25] pointer-events-none bg-gradient-to-t from-[#0d0408]/60 via-transparent to-[#ffd6a5]/5" />
 
         {/* Text Overlay — opacity-0 only pre-reveal so no-JS/GSAP-fail stays visible */}
-        <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-6 md:px-8 pointer-events-none">
+        <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-6 md:px-8">
           <div ref={textRef} className="max-w-4xl w-full flex flex-col items-center gap-6 px-2 sm:px-4">
             <Reveal delay={0} className="flex flex-col items-center gap-4">
-            <span className={`text-[#f5baa4] uppercase tracking-[0.3em] text-xs sm:text-sm font-semibold ${isVisible ? '' : 'opacity-0'}`}>
+            <span className={`eyebrow ${isVisible ? '' : 'opacity-0'}`}>
               The Destination
             </span>
 
             <h2
               className={`font-serif text-[#fffdf8] drop-shadow-lg text-balance ${isVisible ? '' : 'opacity-0'}`}
-              style={{ fontSize: 'clamp(2.25rem,6vw + 0.5rem,4.5rem)', lineHeight: 'var(--leading-tight,1.05)', fontFamily: '"Playfair Display", Georgia, serif' }}
+              style={{ fontSize: 'clamp(2.25rem,6vw + 0.5rem,4.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}
             >
               Where Love Takes Flight
             </h2>
@@ -400,12 +402,17 @@ export const FinalDestination: React.FC = () => {
             </p>
             </Reveal>
 
-            <Reveal delay={0.16} className={`mt-4 pointer-events-auto ${isVisible ? '' : 'opacity-0'}`}>
-              <MagneticButton className="pointer-events-auto">
+            <Reveal delay={0.16} className={`mt-4 ${isVisible ? '' : 'opacity-0'}`}>
+              <MagneticButton>
               <button
                 onClick={() => {
                   const el = document.getElementById('love-letter');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  if (el) {
+                    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+                  } else {
+                    window.scrollTo({ top: 0 });
+                  }
                 }}
                 className="btn-ghost font-serif text-base tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
                 aria-label="Proceed to the Love Letter"

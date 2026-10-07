@@ -31,6 +31,8 @@ export const MagneticButton: React.FC<{
       if (reducedRef.current === null)
         reducedRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (coarseRef.current || reducedRef.current) return;
+      // Never magnetize a disabled action — the shift implies interactivity.
+      if (el.querySelector(':disabled')) return;
       // Cache rect on enter (no layout read per mousemove); rAF-throttle writes.
       // No CSS transition during the move — a transition on every mousemove
       // lags each write and reads as stutter. Transition only on release.

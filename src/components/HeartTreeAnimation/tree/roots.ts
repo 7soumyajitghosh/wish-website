@@ -170,11 +170,12 @@ export function buildRoots(
 
     // Growth timing: taproot first, feeders last; longer roots get a
     // longer window so tip speed stays roughly constant (no popping).
+    // Clamped to ROOTS_END so roots never bleed into trunk growth at 0.20.
     const startFrac = 0.04 + spec.order * 0.13 + rng.next() * 0.05;
     const durFrac = 0.38 + (len / (96 * s)) * 0.30;
     const growStart = GROWTH_T.ROOTS_START + startFrac * span;
     const growEnd = Math.min(
-      GROWTH_T.ROOTS_END + 0.02,
+      GROWTH_T.ROOTS_END,
       growStart + durFrac * span
     );
 

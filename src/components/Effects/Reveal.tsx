@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 /**
@@ -12,9 +12,9 @@ export const Reveal: React.FC<{
   y?: number;
   as?: 'div' | 'section' | 'span' | 'h2' | 'p';
 }> = ({ children, className = '', delay = 0, y = 28, as = 'div' }) => {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === 'undefined') {
@@ -58,7 +58,7 @@ export const Reveal: React.FC<{
     };
   }, [delay, y]);
 
-  const Tag = as as 'div';
+  const Tag = as as unknown as React.ElementType;
   return (
     <Tag ref={ref} className={className} style={{ willChange: 'transform, opacity' }}>
       {children}

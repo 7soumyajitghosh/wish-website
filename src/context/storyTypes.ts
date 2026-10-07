@@ -68,7 +68,7 @@ export const STAGE_PROGRESS_MAP: Record<number, number> = {
   9: 0.65,   // Tiny Buds
   10: 0.72,  // Hearts Bloom
   11: 0.78,  // More Hearts
-  12: 0.82,  // Full Bloom
+  12: 0.83,  // Full Bloom (safely inside stage 12 window 0.82–0.84, not on the boundary)
   13: 0.88,  // Wind Begins
   14: 0.94,  // Hearts Fly
   15: 0.98,  // Transition

@@ -116,11 +116,10 @@ export const CursorGlow: React.FC = () => {
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none fixed left-0 top-0 z-[55] h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-700"
+      className="pointer-events-none fixed left-0 top-0 z-40 h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-700"
       style={{
         background:
           'radial-gradient(circle, rgba(216,27,70,0.10) 0%, rgba(255,179,193,0.06) 35%, transparent 65%)',
-        willChange: 'transform',
       }}
     />
   );

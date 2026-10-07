@@ -8,9 +8,12 @@ import { AmbientField } from '../Effects/AmbientField';
 import { CinematicBars } from '../Effects/CinematicBars';
 import {
   useStory,
-  STAGE_DESCRIPTIONS,
   STAGE_PROGRESS_MAP,
 } from '../../context/StoryContext';
+import { BLOOM_T } from '../HeartTreeAnimation/animation/bloomTimeline';
+import { WIND_T } from '../HeartTreeAnimation/animation/windTimeline';
+import { FLIGHT_T } from '../HeartTreeAnimation/animation/flightTimeline';
+import { rangeProgress } from '../../animation/bezierUtils';
 
 /**
  * One-way story flow. There is no transition backwards and no scroll-driven
@@ -30,7 +33,15 @@ type FlowPhase =
   | 'leavesTransition'
   | 'destination';
 
-export const CinematicExperience: React.FC = () => {
+export interface CinematicExperienceProps {
+  /** Called once the leaf transition has fully completed and the warm
+   *  reveal finished — parent must unmount this entire component. */
+  onTransitionComplete?: () => void;
+}
+
+export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
+  onTransitionComplete,
+}) => {
   const containerRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const isAutoGrowingRef = useRef(false);
@@ -48,7 +59,6 @@ export const CinematicExperience: React.FC = () => {
   const {
     introState,
     setIntroState,
-    currentStage,
     targetProgress,
     setTargetProgress,
     isFlightUnlocked,
@@ -62,6 +72,19 @@ export const CinematicExperience: React.FC = () => {
   const [phase, setPhaseState] = useState<FlowPhase>('idle');
   const [transitionPlay, setTransitionPlay] = useState(false);
   const quoteCloseRef = useRef<HTMLButtonElement>(null);
+  // One-shot completion guard: onTransitionComplete must fire exactly once
+  // so the parent unmounts this landing page a single time.
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onTransitionComplete);
+  useEffect(() => {
+    onCompleteRef.current = onTransitionComplete;
+  }, [onTransitionComplete]);
+
+  const completeIntro = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onCompleteRef.current?.();
+  }, []);
 
   // Ref mirror of the phase so long-lived GSAP callbacks always read the
   // current state instead of a stale closure.
@@ -181,7 +204,7 @@ export const CinematicExperience: React.FC = () => {
     let lastBroadcastTime = 0;
     const broadcast = () => {
       const now = performance.now();
-      if (now - lastBroadcastTime > 100 || progressObj.p >= 0.819) {
+      if (now - lastBroadcastTime > 100 || progressObj.p >= BLOOM_T.FULL_BLOOM - 0.001) {
         lastBroadcastTime = now;
         setTargetProgress(progressObj.p);
       }
@@ -289,12 +312,12 @@ export const CinematicExperience: React.FC = () => {
     const tl = gsap.timeline({
       onUpdate: () => {
         const now = performance.now();
-        if (now - lastBroadcastTime > 100 || progressObj.p >= 0.99) {
+        if (now - lastBroadcastTime > 100 || progressObj.p >= FLIGHT_T.CYCLE_END - 0.01) {
           lastBroadcastTime = now;
           setTargetProgress(progressObj.p);
         }
         // Fade to black following the trailing leaves off-screen.
-        applyFade((progressObj.p - 0.93) / 0.07);
+        applyFade(rangeProgress(progressObj.p, FLIGHT_T.DETACH_START + 0.03, FLIGHT_T.CYCLE_END));
       },
       onComplete: () => {
         // Leaves have all flown away — hand off to the Destination.
@@ -322,7 +345,11 @@ export const CinematicExperience: React.FC = () => {
     stormTlRef.current = tl;
   }, [applyCam, applyFade, setPhase, setTargetProgress, transitionToDestination]);
 
-  // Clean up every timeline on unmount.
+  // Clean up every timeline + direct DOM tween on unmount. Unmounting is
+  // the actual destruction of the landing page (not opacity/display hacks):
+  // child canvases (HeartTree, AmbientField, WindOverlay) clean their own
+  // RAF/IO/RO/listeners, leaf particle arrays are dropped with their refs,
+  // and temporary transition elements (fade, light veil) go with this tree.
   useEffect(() => {
     return () => {
       autoGrowthTlRef.current?.kill();
@@ -333,15 +360,25 @@ export const CinematicExperience: React.FC = () => {
       stormReadyCallRef.current = null;
       leavesTlRef.current?.kill();
       leavesTlRef.current = null;
+      if (camRef.current) gsap.killTweensOf(camRef.current);
+      if (fadeRef.current) gsap.killTweensOf(fadeRef.current);
+      setActiveTreeQuote(null);
     };
-  }, []);
+  }, [setActiveTreeQuote]);
 
   // External unlock (nav / milestones / Escape) bypasses the cinematic, so
   // kill any orphaned timeline and settle the camera instead of leaving the
-  // tree frozen mid-growth.
+  // tree frozen mid-growth. Never interrupts an in-flight leaf transition:
+  // storm / leavesTransition must run to completion to preserve the leaf
+  // flight path, then the normal LightTransition completion destroys us.
   useEffect(() => {
     if (introState !== 'EXPERIENCE_UNLOCKED') return;
-    if (phaseRef.current === 'destination' || phaseRef.current === 'leavesTransition') return;
+    if (
+      phaseRef.current === 'storm' ||
+      phaseRef.current === 'leavesTransition' ||
+      phaseRef.current === 'destination'
+    )
+      return;
     autoGrowthTlRef.current?.kill();
     autoGrowthTlRef.current = null;
     stormTlRef.current?.kill();
@@ -368,11 +405,40 @@ export const CinematicExperience: React.FC = () => {
   }, []);
 
   // Move focus to the quote's close button when it appears (keyboard/SR users).
+  // Never steal focus during the locked leaf transition.
   useEffect(() => {
     if (activeTreeQuote) {
+      if (phaseRef.current === 'storm' || phaseRef.current === 'leavesTransition') return;
       quoteCloseRef.current?.focus();
     }
   }, [activeTreeQuote]);
+
+  // Bypass path (Escape / nav unlock without leaves): the leaf timeline never
+  // ran, so there is no LightTransition to signal completion. Settle under a
+  // tick, scroll to the new page, then destroy this landing component.
+  useEffect(() => {
+    if (introState !== 'EXPERIENCE_UNLOCKED') return;
+    if (phaseRef.current !== 'destination') return;
+    if (transitionPlay) return;
+    if (completedRef.current) return;
+    // Leaf path already completed via LightTransition — guard above prevents
+    // a second call, this only fires for the bypass path.
+    if (hasStormedRef.current) return;
+    const t = window.setTimeout(() => {
+      const destEl = document.getElementById('destination');
+      if (destEl) destEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+      completeIntro();
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [introState, phase, transitionPlay, completeIntro]);
+
+  const handleLightDone = useCallback(() => {
+    setTransitionPlay(false);
+    // Leaf transition reached its final state and the new page is revealed:
+    // destroy the entire landing page (parent unmounts us, running all
+    // cleanup above — never opacity/visibility/display hacks).
+    completeIntro();
+  }, [completeIntro]);
 
   const handleTreeInteract = useCallback((event: TreeInteractionEvent) => {
     setActiveTreeQuote(event);
@@ -382,11 +448,12 @@ export const CinematicExperience: React.FC = () => {
     setUserWind(strength);
   }, []);
 
-  const currentInfo = STAGE_DESCRIPTIONS.find((s) => s.id === currentStage) || STAGE_DESCRIPTIONS[0];
-
   const isGrowing = phase === 'growing';
   const isStorming = phase === 'storm';
   const isLeavesTransition = phase === 'leavesTransition';
+  // Locked during the leaf flight: no canvas drag, no quote interaction,
+  // no CTA re-click — the leaves follow their intended path untouched.
+  const isTransitionLocked = isStorming || isLeavesTransition;
   const barsVisible =
     introState !== 'EXPERIENCE_UNLOCKED' || isGrowing || isStorming || isLeavesTransition;
 
@@ -396,29 +463,32 @@ export const CinematicExperience: React.FC = () => {
       ref={containerRef}
       className="relative w-full h-screen h-[100svh] bg-[#0d0408] text-[#fffdf8]"
       aria-label="Interactive Story Experience"
+      aria-busy={isTransitionLocked}
     >
-      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(30,41,59,0.55) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
+      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(42,14,30,0.65) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
         className="sticky top-0 w-full h-screen h-[100svh] overflow-hidden flex flex-col justify-between select-none"
       >
-        {/* Screen-reader stage announcements */}
-        <div className="sr-only" aria-live="polite">
-          Stage {currentStage} of 16: {currentInfo.title}
-        </div>
+        {/* Screen-reader stage announcements removed */}
 
-        {/* Heart Tree Canvas — camera wrapper (environmental zoom only) */}
+        {/* Heart Tree Canvas — camera wrapper (environmental zoom only).
+            Locked (pointer-events-none + inert canvas) during leaf flight so
+            drag-wind can't perturb the intended leaf path. */}
         <div
           ref={camRef}
-          className="absolute inset-0 z-0 will-change-transform"
+          className={`absolute inset-0 z-0 will-change-transform ${isTransitionLocked ? 'pointer-events-none' : ''}`}
           style={{ transformOrigin: '46% 73%' }}
+          aria-hidden={isTransitionLocked}
         >
-          <HeartTreeAnimation
-            targetProgress={targetProgress}
-            onTreeInteract={handleTreeInteract}
-            onWindChange={handleWindChange}
-          />
+          <div className="h-full w-full" inert={isTransitionLocked}>
+            <HeartTreeAnimation
+              targetProgress={targetProgress}
+              onTreeInteract={isTransitionLocked ? undefined : handleTreeInteract}
+              onWindChange={handleWindChange}
+            />
+          </div>
         </div>
 
         {/* Ambient Vignette Overlay */}
@@ -429,10 +499,10 @@ export const CinematicExperience: React.FC = () => {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[4] transition-opacity duration-1000"
           style={{
-            opacity: targetProgress > 0.6 ? 1 : 0,
+            opacity: targetProgress > BLOOM_T.BUDS_START ? 1 : 0,
             background:
-              targetProgress >= 0.9
-                ? 'radial-gradient(ellipse at 50% 30%, rgba(60,40,140,0.22) 0%, transparent 60%)'
+              targetProgress >= WIND_T.WIND_PEAK
+                ? 'radial-gradient(ellipse at 50% 30%, rgba(168,20,56,0.24) 0%, transparent 60%)'
                 : 'radial-gradient(ellipse at 50% 35%, rgba(216,27,70,0.16) 0%, transparent 60%)',
           }}
         />
@@ -483,50 +553,42 @@ export const CinematicExperience: React.FC = () => {
           </button>
         )}
 
-        {/* Growth focus caption — spotlights the seed/roots beat in close-up,
-            then yields to the wide growth. Keyed by stage so it cross-fades. */}
-        {isGrowing && currentStage <= 5 && (
-          <div
-            key={currentStage}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-20 md:top-24 z-30 -translate-x-1/2 text-center animate-fade-in"
-          >
-            <p className="font-sans text-[11px] md:text-xs uppercase tracking-[0.35em] text-[#ffd6a5]/85">
-              {currentStage <= 2 ? 'It begins with a seed' : currentStage === 3 ? 'Roots of devotion' : 'Reaching for the light'}
-            </p>
-            <p className="mt-2 font-serif italic text-lg md:text-2xl text-[#fffdf8]/95 drop-shadow-lg">
-              {currentInfo.title} — {currentInfo.subtitle}
-            </p>
-          </div>
-        )}
+        {/* Growth focus captions removed */}
 
-        {/* THE single CTA after the tree is fully grown */}
+        {/* THE single CTA after the tree is fully grown.
+            One-shot + locked: hasStormedRef guard prevents re-entry, and the
+            CTA unmounts the moment the leaf flight starts so it cannot be
+            clicked multiple times during the transition. */}
         {phase === 'stormReady' && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-3 animate-fade-in">
             <button
               type="button"
               onClick={startStorm}
-              className="btn-primary font-serif shadow-[0_0_30px_rgba(100,181,246,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 cursor-pointer"
+              className="btn-primary font-serif shadow-[0_0_30px_rgba(216,27,70,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               aria-label="Let the Storm Begin"
             >
               Let the Storm Begin →
             </button>
-            <span className="text-sm font-sans tracking-widest uppercase text-[#cfe8ff]/85">
+            <span className="text-sm font-sans tracking-widest uppercase text-[#ffd6a5]/90">
               The wind will carry every leaf
             </span>
           </div>
         )}
 
-        {/* ================= FLOATING TREE REFLECTION QUOTE ================= */}
+        {/* ================= FLOATING TREE REFLECTION QUOTE =================
+            Kept visible during the locked leaf flight (no visual pop) but
+            fully non-interactive via inert + pointer-events-none. */}
         {activeTreeQuote && (
           <div
             role="status"
             aria-live="polite"
-            onMouseEnter={pauseTreeQuote}
-            onMouseLeave={resumeTreeQuote}
-            onFocus={pauseTreeQuote}
-            onBlur={resumeTreeQuote}
-            className="absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm max-h-[60vh] overflow-y-auto p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter pointer-events-auto"
+            inert={isTransitionLocked}
+            aria-hidden={isTransitionLocked}
+            onMouseEnter={isTransitionLocked ? undefined : pauseTreeQuote}
+            onMouseLeave={isTransitionLocked ? undefined : resumeTreeQuote}
+            onFocus={isTransitionLocked ? undefined : pauseTreeQuote}
+            onBlur={isTransitionLocked ? undefined : resumeTreeQuote}
+            className={`absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm max-h-[60vh] overflow-y-auto p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter ${isTransitionLocked ? 'pointer-events-none' : 'pointer-events-auto'}`}
             style={{
               left: `${typeof window !== 'undefined'
                 ? Math.max(12, Math.min(activeTreeQuote.x - 120, window.innerWidth - Math.min(320, window.innerWidth - 24) - 12))
@@ -547,7 +609,7 @@ export const CinematicExperience: React.FC = () => {
               <button
                 ref={quoteCloseRef}
                 onClick={() => setActiveTreeQuote(null)}
-                className="text-white/50 hover:text-white text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
+                className="text-[#fff8eb]/70 hover:text-[#fffdf8] text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
                 aria-label="Dismiss message"
               >
                 ✕
@@ -559,8 +621,9 @@ export const CinematicExperience: React.FC = () => {
           </div>
         )}
 
-        {/* Premium cinematic transition into the Destination */}
-        <LightTransition play={transitionPlay} onDone={() => setTransitionPlay(false)} />
+        {/* Premium cinematic transition into the Destination.
+            When it completes, the landing page is destroyed (unmounted). */}
+        <LightTransition play={transitionPlay} onDone={handleLightDone} />
       </div>
     </section>
   );

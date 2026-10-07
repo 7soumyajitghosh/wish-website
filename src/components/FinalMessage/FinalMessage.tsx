@@ -10,7 +10,9 @@ export const FinalMessage = () => {
   const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   const { isFinalUnlocked, unlockFinal } = useStory();
-  const [unlocked, setUnlocked] = useState(isFinalUnlocked);
+  const [localUnlocked, setLocalUnlocked] = useState(isFinalUnlocked);
+  const unlocked = isFinalUnlocked || localUnlocked;
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Kill any running reveal timeline on unmount.
   useEffect(() => {
@@ -54,15 +56,17 @@ export const FinalMessage = () => {
 
   const handleTakeFinalStep = () => {
     if (unlocked) return;
-    setUnlocked(true);
+    setLocalUnlocked(true);
     unlockFinal();
+    // Move focus to the revealed message so screen readers announce it.
+    requestAnimationFrame(() => headingRef.current?.focus());
   };
 
   return (
     <section
       id="final-message"
       ref={sectionRef}
-      className="section relative flex flex-col items-center justify-center min-h-[85vh] bg-[#0d0408] px-6 py-24 md:py-32 overflow-hidden select-none"
+      className="section relative flex flex-col items-center justify-center min-h-screen bg-[#0d0408] px-6 overflow-hidden"
       aria-label="Final Message"
     >
       {/* Subtle Vignette (single primary glow) */}
@@ -76,16 +80,16 @@ export const FinalMessage = () => {
       <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto text-center">
         {!unlocked ? (
           /* The 'One last thing...' Gated Prompt */
-          <div className="flex flex-col items-center gap-6 animate-fade-in">
-            <span className="text-sm uppercase tracking-[0.4em] text-[#f5baa4] font-sans font-medium">
+          <div className="flex flex-col items-center gap-6">
+            <span className="eyebrow">
               The Journey's Crest
             </span>
             <Reveal className="flex flex-col items-center">
-              <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+              <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide text-balance" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
                 One last thing...
               </h2>
             </Reveal>
-            <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent my-2" />
+            <div aria-hidden="true" className="w-20 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent my-2" />
             <p className="text-base font-serif text-[#fff8eb]/85 max-w-md">
               Before you step away, there is a quiet truth waiting to be unveiled.
             </p>
@@ -102,20 +106,20 @@ export const FinalMessage = () => {
           </div>
         ) : (
           /* The Grand Revealed Message */
-          <div ref={messageCardRef} className="flex flex-col items-center">
-            <span className="final-fade-item text-sm uppercase tracking-[0.4em] text-[#f5baa4] font-sans font-medium mb-8">
+          <div ref={messageCardRef} className="flex flex-col items-center" aria-live="polite">
+            <span className="final-fade-item eyebrow mb-8">
               Forever Remembered
             </span>
 
             <Reveal delay={0.1} className="flex flex-col items-center">
-              <h2 className="font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+              <h2 ref={headingRef} tabIndex={-1} className="font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl text-balance focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
                 Somewhere between a beginning and a forever,
                 <br className="hidden md:block" /> love takes flight.
               </h2>
             </Reveal>
 
             <div className="final-fade-item flex flex-col items-center space-y-6 mb-10">
-              <div className="w-28 h-[1px] bg-[#ffd6a5] opacity-70" />
+              <div aria-hidden="true" className="w-20 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent" />
               
               <div className="p-3 rounded-full bg-[#d81b46]/20 border border-[#d81b46]/40 shadow-[0_0_20px_rgba(216,27,70,0.5)]">
                 <svg
@@ -138,12 +142,15 @@ export const FinalMessage = () => {
               type="button"
               onClick={() => {
                 const el = document.getElementById('journey');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                if (el) {
+                  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+                }
               }}
-              className="final-fade-item font-serif italic text-sm tracking-wide text-[#f5baa4]/80 hover:text-[#f5baa4] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded"
-              aria-label="Revisit the sixteen milestones"
+              className="final-fade-item font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
+              aria-label="Explore the sixteen milestones"
             >
-              Revisit the sixteen milestones →
+              Explore the sixteen milestones →
             </button>
           </div>
         )}

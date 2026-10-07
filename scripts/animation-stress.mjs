@@ -16,17 +16,21 @@ const flightSrc = readFileSync('src/components/HeartTreeAnimation/animation/flig
 const detach = parseFloat(/DETACH_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const streamPeak = parseFloat(/STREAM_PEAK:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const fadeStart = parseFloat(/FADE_LOOP_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
-const growthSrc = readFileSync('src/components/HeartTreeAnimation/animation/growthTimeline.ts','utf8');
 const destSrc = readFileSync('src/components/FinalDestination/FinalDestination.tsx','utf8');
 const tops = [...destSrc.matchAll(/top:\s*([0-9.]+)/g)].map(m=>parseFloat(m[1]));
 
-const GROWTH_T = { SEED_START:0.04, ROOTS_START:0.10, TRUNK_START:0.20, TRUNK_MID:0.26, PRIMARY_START:0.32, SECONDARY_START:0.42, TWIGS_START:0.52 };
-const BLOOM_T = { BUDS_START:0.62, BLOOM1_START:0.68, BLOOM2_START:0.74, FULL_BLOOM:0.82 };
-const WIND_T = { WIND_START:0.84, WIND_PEAK:0.90 };
+const num = (src, key) => parseFloat(new RegExp(key + ':\\s*([0-9.]+)').exec(src)[1]);
+const growthSrc = readFileSync('src/components/HeartTreeAnimation/animation/growthTimeline.ts','utf8');
+const bloomSrcLive = readFileSync('src/components/HeartTreeAnimation/animation/bloomTimeline.ts','utf8');
+const windSrcLive = readFileSync('src/components/HeartTreeAnimation/animation/windTimeline.ts','utf8');
+const GROWTH_T = { SEED_START:num(growthSrc,'SEED_START'), ROOTS_START:num(growthSrc,'ROOTS_START'), TRUNK_START:num(growthSrc,'TRUNK_START'), TRUNK_MID:num(growthSrc,'TRUNK_MID'), PRIMARY_START:num(growthSrc,'PRIMARY_START'), SECONDARY_START:num(growthSrc,'SECONDARY_START'), TWIGS_START:num(growthSrc,'TWIGS_START') };
+const BLOOM_T = { BUDS_START:num(bloomSrcLive,'BUDS_START'), BLOOM1_START:num(bloomSrcLive,'BLOOM1_START'), BLOOM2_START:num(bloomSrcLive,'BLOOM2_START'), FULL_BLOOM:num(bloomSrcLive,'FULL_BLOOM') };
+const WIND_T = { WIND_START:num(windSrcLive,'WIND_START'), WIND_PEAK:num(windSrcLive,'WIND_PEAK') };
 const FLIGHT_T = { DETACH_START:detach, STREAM_PEAK:streamPeak, FADE_LOOP_START:fadeStart, CYCLE_END:1.0 };
 
-// Current (buggy-order) stage mapper copied from HeartTreeAnimation.tsx
-function getStageBuggy(p){
+// Stage mapper mirrors the shared getStageFromProgress in
+// src/components/HeartTreeAnimation/animation/growthTimeline.ts
+function getStageFromTimeline(p){
   if (p < GROWTH_T.SEED_START) return 1;
   if (p < GROWTH_T.ROOTS_START) return 2;
   if (p < GROWTH_T.TRUNK_START) return 3;
@@ -51,6 +55,17 @@ let stageSeen = new Set();
 let prevStage = 0;
 let monotonicViolations = 0;
 
+// Mirrors getTimelineSpeed in growthTimeline.ts (same live constants):
+// 1.0x stages 1-3, 1.5x stages 4-14, back to 1.0x for 15-16.
+function timelineSpeed(p){
+  if(p<GROWTH_T.TRUNK_START) return 1.0;
+  const rampUp = 1.0+(1.5-1.0)*rangeProgress(p,GROWTH_T.TRUNK_START,GROWTH_T.TRUNK_START+0.03);
+  if(p<FLIGHT_T.FADE_LOOP_START) return rampUp;
+  return 1.5+(1.0-1.5)*rangeProgress(p,FLIGHT_T.FADE_LOOP_START,FLIGHT_T.FADE_LOOP_START+0.03);
+}
+let prevSpeed = timelineSpeed(0);
+let maxSpeedJump = 0;
+
 for(let i=0;i<ITERS;i++){
   const p = i/(ITERS-1); // 0..1 sweep, 250 steps
   // 1. rangeProgress sanity at every step
@@ -63,7 +78,7 @@ for(let i=0;i<ITERS;i++){
     const v=f(clamp01(p)); if(!Number.isFinite(v)) fails.push(`iter ${i} easing NaN`);
   }
   // 3. stage mapping
-  const st = getStageBuggy(p);
+  const st = getStageFromTimeline(p);
   stageSeen.add(st);
   if(st<prevStage) monotonicViolations++;
   prevStage=st;
@@ -77,9 +92,18 @@ for(let i=0;i<ITERS;i++){
   let px=100,py=200,vx=3,vy=-1,sr=0;
   const speed=1; sr=Math.min(1,sr+0.008*speed); vx+=0.02*speed;
   if(![px+vx,py+vy,sr].every(Number.isFinite)) fails.push(`iter ${i} flight NaN`);
+  // 7. timeline speed: finite, in [1.0,1.5], continuous (no visual jumps)
+  const spd = timelineSpeed(p);
+  if(!Number.isFinite(spd)||spd<1.0-1e-9||spd>1.5+1e-9) fails.push(`iter ${i} speed out of range ${spd}`);
+  maxSpeedJump = Math.max(maxSpeedJump, Math.abs(spd-prevSpeed));
+  prevSpeed = spd;
 }
 
 // Global checks (not per-iter)
+if(timelineSpeed(0)!==1.0) fails.push(`SPEED BUG: speed(0)=${timelineSpeed(0)} !== 1.0 (seed must be calm)`);
+if(timelineSpeed(0.5)!==1.5) fails.push(`SPEED BUG: speed(0.5)=${timelineSpeed(0.5)} !== 1.5 (growth must run fast)`);
+if(timelineSpeed(1.0)!==1.0) fails.push(`SPEED BUG: speed(1)=${timelineSpeed(1.0)} !== 1.0 (finale must settle)`);
+if(maxSpeedJump>0.15) fails.push(`SPEED BUG: max per-step speed jump ${maxSpeedJump.toFixed(4)} -> visual jump risk`);
 if(detach < BLOOM_T.FULL_BLOOM) fails.push(`ORDER BUG: DETACH_START(${detach}) < FULL_BLOOM(${BLOOM_T.FULL_BLOOM}) -> hearts detach mid-bloom`);
 if(detach < WIND_T.WIND_PEAK) fails.push(`ORDER BUG: DETACH_START(${detach}) < WIND_PEAK(${WIND_T.WIND_PEAK}) -> detach before gale peaks`);
 if(!(detach<streamPeak&&streamPeak<=1&&fadeStart<1)) fails.push(`FLIGHT timeline not ascending`);

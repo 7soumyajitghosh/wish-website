@@ -154,6 +154,11 @@ export function buildBranches(
 
   primarySpecs.forEach((spec, i) => {
     const idx = branches.length;
+    // Fit the 5-branch cascade inside PRIMARY_START..PRIMARY_END so the last
+    // primary finishes exactly at PRIMARY_END (previously +i*0.018/0.012
+    // overflowed to 0.488, bleeding deep into secondary growth).
+    // Branch duration 0.08, stagger step (0.12 - 0.08) / 4 = 0.01.
+    const pStart = GROWTH_T.PRIMARY_START + i * 0.01;
     branches.push({
       p0: spec.startPt,
       p1: spec.cp1,
@@ -162,8 +167,8 @@ export function buildBranches(
       widthStart: spec.widthStart,
       widthEnd: spec.widthEnd,
       level: 1,
-      growStart: GROWTH_T.PRIMARY_START + i * 0.018,
-      growEnd: GROWTH_T.PRIMARY_END + i * 0.012,
+      growStart: pStart,
+      growEnd: pStart + 0.08,
     });
     primaryEnds.push({
       pt: spec.endPt,
@@ -227,7 +232,11 @@ export function buildBranches(
     const widthStart = pBranch.widthEnd * cfg.widthRatio;
     const widthEnd = widthStart * 0.52;
     const idx = branches.length;
-    const delay = si * 0.004;
+    // Fit the 21-branch cascade inside SECONDARY_START..SECONDARY_END.
+    // Branch duration 0.09, stagger step (0.12 - 0.09) / 20 = 0.0015, so the
+    // last secondary finishes exactly at SECONDARY_END (previously si*0.004
+    // overflowed to 0.62, colliding with buds at 0.62).
+    const delay = si * 0.0015;
 
     branches.push({
       p0: originPt,
@@ -238,7 +247,7 @@ export function buildBranches(
       widthEnd,
       level: 2,
       growStart: GROWTH_T.SECONDARY_START + delay,
-      growEnd: GROWTH_T.SECONDARY_END + delay,
+      growEnd: GROWTH_T.SECONDARY_START + 0.09 + delay,
     });
 
     secondaryEnds.push({
@@ -277,7 +286,11 @@ export function buildBranches(
         y: originPt.y + Math.sin(angle) * (len * 0.82),
       };
 
-      const delay = (si * 3 + ti) * 0.002;
+      // Fit the 63-twig cascade inside TWIGS_START..TWIGS_END so the last
+      // twig finishes exactly at TWIGS_END (previously *0.002 overflowed to
+      // 0.744, growing twigs through buds at 0.62 and bloom at 0.68).
+      // Twig duration 0.07, stagger step (span - 0.07) / 62.
+      const delay = (si * 3 + ti) * ((GROWTH_T.TWIGS_END - GROWTH_T.TWIGS_START - 0.07) / 62);
       const idx = branches.length;
 
       branches.push({
@@ -289,7 +302,7 @@ export function buildBranches(
         widthEnd: 0.9 * s,
         level: 3,
         growStart: GROWTH_T.TWIGS_START + delay,
-        growEnd: GROWTH_T.TWIGS_END + delay,
+        growEnd: GROWTH_T.TWIGS_START + 0.07 + delay,
       });
 
       twigEnds.push({ pt: endPt, branchIdx: idx, angle });

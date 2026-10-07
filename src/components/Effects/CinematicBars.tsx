@@ -19,7 +19,7 @@ export const CinematicBars: React.FC<{ visible: boolean }> = ({ visible }) => (
 /** Chapter caption — automatic cinematic subtitle for the current beat. */
 export const SceneCaption: React.FC<{ kicker: string; title: string }> = ({ kicker, title }) => (
   <div className="pointer-events-none absolute left-1/2 top-[11%] z-30 -translate-x-1/2 text-center px-6">
-    <p className="font-sans text-[11px] font-medium uppercase tracking-[0.4em] text-[#f5baa4]/80">
+    <p className="font-sans text-[11px] font-medium uppercase tracking-[0.4em] text-[#f5baa4]">
       {kicker}
     </p>
     <p className="mt-1 font-serif italic text-[#fffdf8]/95 text-lg md:text-xl drop-shadow-[0_0_16px_rgba(255,179,193,0.45)]">

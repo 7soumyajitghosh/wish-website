@@ -30,7 +30,7 @@ const FloatingHeart = ({ style, hiddenOnMobile }: { style: React.CSSProperties; 
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
-    className={`absolute text-rose-400/40 ${hiddenOnMobile ? 'hidden sm:block' : ''}`}
+    className={`absolute text-[#ffb3c1]/40 ${hiddenOnMobile ? 'hidden sm:block' : ''}`}
     style={style}
   >
     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -236,16 +236,16 @@ export const FullBloom: React.FC = () => {
               {/* Trunk */}
               <path
                 d="M95 240 Q100 200 90 150 Q95 100 100 80 Q105 100 110 150 Q100 200 105 240 Z"
-                fill="#fffdf8"
-                opacity="0.8"
+                fill="#ffeeda"
+                opacity="0.85"
               />
 
               {/* Branches */}
-              <path d="M100 150 Q70 120 40 100" stroke="#fffdf8" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
-              <path d="M100 130 Q130 100 160 80" stroke="#fffdf8" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
-              <path d="M100 100 Q80 70 60 50" stroke="#fffdf8" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-              <path d="M100 90 Q120 60 140 40" stroke="#fffdf8" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-              <path d="M100 80 Q100 50 100 20" stroke="#fffdf8" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+              <path d="M100 150 Q70 120 40 100" stroke="#ffeeda" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              <path d="M100 130 Q130 100 160 80" stroke="#ffeeda" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              <path d="M100 100 Q80 70 60 50" stroke="#ffeeda" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+              <path d="M100 90 Q120 60 140 40" stroke="#ffeeda" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+              <path d="M100 80 Q100 50 100 20" stroke="#ffeeda" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
 
               {/* Heart Leaves */}
               <g fill="#d81b46">

@@ -280,8 +280,8 @@
   position: absolute;
   width: min(88vw, 410px);
   max-height: min(78vh, 560px);
-  background: #fbf7ef;
-  color: #2b1218;
+  background: #fdfaf2;
+  color: #3a1d24;
   border-radius: 4px;
   padding: clamp(20px, 4vw, 36px) clamp(22px, 5vw, 40px);
   box-sizing: border-box;
@@ -315,7 +315,7 @@
 .letter-date {
   font-size: 0.8rem;
   font-style: italic;
-  color: #7d5b63;
+  color: #6b4a52;
 }
 
 .letter-body {
@@ -328,7 +328,7 @@
   font-family: var(--font-serif);
   font-size: clamp(0.92rem, 1.8vw, 1.05rem);
   line-height: 1.65;
-  color: #33151c;
+  color: #3a1d24;
   margin: 0;
   text-align: justify;
 }
@@ -342,7 +342,7 @@
 .letter-signoff {
   font-style: italic;
   font-size: 0.9rem;
-  color: #7d5b63;
+  color: #6b4a52;
   margin: 0;
 }
 

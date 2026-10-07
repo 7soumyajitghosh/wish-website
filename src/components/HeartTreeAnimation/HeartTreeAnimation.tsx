@@ -4,15 +4,16 @@ import {
   clamp01,
   SeededRandom,
 } from '../../animation/bezierUtils';
-import { GROWTH_T, getTimelineSpeed } from './animation/growthTimeline';
+import { GROWTH_T, getTimelineSpeed, getStageFromProgress, BASE_CYCLE_DURATION } from './animation/growthTimeline';
 import { BLOOM_T } from './animation/bloomTimeline';
-import { WIND_T, getWindStrength } from './animation/windTimeline';
+import { getWindStrength } from './animation/windTimeline';
 import {
   FLIGHT_T,
   type FlyingHeartParticle,
   updateFlyingHearts,
 } from './animation/flightTimeline';
 import { type TreeData, buildTree } from './tree/treeGeometry';
+import { STAGE_PROGRESS_MAP } from '../../context/storyTypes';
 import { drawRoots } from './tree/roots';
 import { drawAllBranches } from './tree/branches';
 import {
@@ -102,35 +103,24 @@ const HEART_QUOTES = [
 /** Max in-flight heart particles; oldest are dropped when exceeded. */
 const MAX_PARTICLES = 400;
 
+/**
+ * Exact photo background (the pink-sky / dark-soil reference image).
+ * Save the image as `public/images/tree-bg.jpg` — it is painted cover-fit
+ * with its horizon pinned to the tree's ground line, so the scene matches
+ * the photo pixel-for-pixel. Until the file exists, the procedural pink
+ * fallback painted below shows instead.
+ */
+const BG_PHOTO_SRC = `${import.meta.env.BASE_URL}images/tree-bg.jpg`;
+/** Horizon line position inside the photo, as a fraction of its height. */
+const BG_PHOTO_HORIZON = 0.725;
+
 /** Shared RNG for ambient embers (avoids per-frame allocation). */
 const emberRng = new SeededRandom(1234567);
 
-/** Map progress [0,1] to stage number [1..16] (thresholds must ascend:
- * seed 0.04 < roots 0.10 < trunk 0.20/0.26 < primary 0.32 < secondary 0.42
- * < twigs 0.52 < buds 0.62 < bloom1 0.68 < bloom2 0.74 < full 0.82
- * < wind 0.84 < detach 0.90 < fade 0.97 < end 1.0) */
-function getStageFromProgress(p: number): number {
-  if (p < GROWTH_T.SEED_START) return 1;
-  if (p < GROWTH_T.ROOTS_START) return 2;
-  if (p < GROWTH_T.TRUNK_START) return 3;
-  if (p < GROWTH_T.TRUNK_MID) return 4;
-  if (p < GROWTH_T.PRIMARY_START) return 5;
-  if (p < GROWTH_T.SECONDARY_START) return 6;
-  if (p < GROWTH_T.TWIGS_START) return 7;
-  if (p < BLOOM_T.BUDS_START) return 8;
-  if (p < BLOOM_T.BLOOM1_START) return 9;
-  if (p < BLOOM_T.BLOOM2_START) return 10;
-  if (p < BLOOM_T.FULL_BLOOM) return 11;
-  if (p < WIND_T.WIND_START) return 12;
-  if (p < FLIGHT_T.DETACH_START) return 13;
-  if (p < FLIGHT_T.FADE_LOOP_START) return 14;
-  if (p < FLIGHT_T.CYCLE_END) return 15;
-  return 16;
-}
-
+/** Stage mapping lives in animation/growthTimeline.ts (single source of truth). */
 export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimationProps>(({
-  targetProgress = 0.02,
-  initialProgress = 0.02,
+  targetProgress = STAGE_PROGRESS_MAP[1],
+  initialProgress = STAGE_PROGRESS_MAP[1],
   autoPlay = false,
   loop = false,
   onComplete,
@@ -174,6 +164,22 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   // viewport + several ambient canvases otherwise burn frames forever).
   const visibleRef = useRef(true);
   const bgCacheRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
+  const bgPhotoRef = useRef<HTMLImageElement | null>(null);
+
+  // Load the exact photo background; bust the cached backdrop once ready
+  // (the render loop repaints it on the next frame — no reload needed).
+  useEffect(() => {
+    const img = new Image();
+    img.src = BG_PHOTO_SRC;
+    img.onload = () => {
+      if (!mountedRef.current) return;
+      bgPhotoRef.current = img;
+      bgCacheRef.current = null;
+    };
+    return () => {
+      img.onload = null;
+    };
+  }, []);
 
   // Mouse & Touch interaction state
   const pointerRef = useRef({
@@ -251,13 +257,13 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   // Ambient drifting petals
   const ambientPetalsRef = useRef<AmbientPetal[]>([
     { speed: 18, xRatio: 0.1, yOffset: 30, size: 4.5, color: '#ffb3c1' },
-    { speed: 25, xRatio: 0.25, yOffset: 65, size: 5.5, color: '#ffa4b6' },
-    { speed: 20, xRatio: 0.45, yOffset: 40, size: 4.8, color: '#ff758f' },
+    { speed: 25, xRatio: 0.25, yOffset: 65, size: 5.5, color: '#ff8fa3' },
+    { speed: 20, xRatio: 0.45, yOffset: 40, size: 4.8, color: '#f5baa4' },
     { speed: 28, xRatio: 0.65, yOffset: 85, size: 5.8, color: '#ffb3c1' },
-    { speed: 22, xRatio: 0.8, yOffset: 50, size: 4.2, color: '#ffa4b6' },
-    { speed: 19, xRatio: 0.95, yOffset: 70, size: 5.0, color: '#ff758f' },
+    { speed: 22, xRatio: 0.8, yOffset: 50, size: 4.2, color: '#ff8fa3' },
+    { speed: 19, xRatio: 0.95, yOffset: 70, size: 5.0, color: '#f5baa4' },
     { speed: 26, xRatio: 0.35, yOffset: 95, size: 5.2, color: '#ffb3c1' },
-    { speed: 21, xRatio: 0.55, yOffset: 25, size: 4.6, color: '#ffa4b6' },
+    { speed: 21, xRatio: 0.55, yOffset: 25, size: 4.6, color: '#ff8fa3' },
   ]);
 
   // Handle container resize & canvas scaling.
@@ -508,7 +514,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // Legacy autoplay: advance target toward 1 over time
       if (autoPlayRef.current && targetProgressRef.current < 1) {
         const speed = getTimelineSpeed(progressRef.current);
-        targetProgressRef.current = Math.min(1, targetProgressRef.current + dt * speed * 0.05);
+        targetProgressRef.current = Math.min(1, targetProgressRef.current + (dt * speed) / BASE_CYCLE_DURATION);
       }
 
       // Smooth inertia interpolation toward user target progress
@@ -526,8 +532,8 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // Completion / loop handling (guarded so onComplete fires once per run)
       if (progressRef.current >= 1) {
         if (loopRef.current) {
-          progressRef.current = 0;
-          targetProgressRef.current = autoPlayRef.current ? 0.02 : targetProgressRef.current;
+          progressRef.current = STAGE_PROGRESS_MAP[1];
+          targetProgressRef.current = autoPlayRef.current ? STAGE_PROGRESS_MAP[1] : targetProgressRef.current;
           completedRef.current = false;
           detachedRef.current.clear();
           particlesRef.current = [];
@@ -536,7 +542,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
           emitProgressThrottled(1);
           onCompleteRef.current?.();
         }
-      } else if (progressRef.current < 0.99) {
+      } else if (progressRef.current < FLIGHT_T.CYCLE_END - 0.01) {
         // Allow re-completion if progress is driven back and forward again
         completedRef.current = false;
       }
@@ -600,23 +606,25 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // Update in-flight particles
       updateFlyingHearts(particlesRef.current, dt, time, w, groundY);
 
-      // Background embers (shared RNG instance, no per-frame allocation)
+      // Background embers (shared RNG instance, no per-frame allocation).
+      // Spawn chance scales with dt so ember density matches at 60Hz/120Hz
+      // (a fixed per-frame chance would spawn 2x faster at 120Hz).
+      const speedFactor = dt * 60;
       const rng = emberRng;
-      if (embersRef.current.length < 24 && rng.next() < 0.3) {
+      if (embersRef.current.length < 24 && rng.next() < 0.3 * speedFactor) {
         embersRef.current.push({
           x: rng.range(0, w),
           y: groundY - rng.range(0, h * 0.55),
           vx: 0.3 + rng.next() * 0.7,
           vy: -0.2 - rng.next() * 0.5,
           size: 1.2 + rng.next() * 2.2,
-          color: rng.next() > 0.4 ? '#ffd166' : '#ff758f',
+          color: rng.next() > 0.4 ? '#ffd6a5' : '#ff8fa3',
           alpha: 0.2 + rng.next() * 0.5,
           life: 0,
           maxLife: 160 + rng.next() * 140,
         });
       }
 
-      const speedFactor = dt * 60;
       for (let i = embersRef.current.length - 1; i >= 0; i--) {
         const emb = embersRef.current[i];
         emb.x += (emb.vx + (windStr > 0 ? windStr * 0.15 : 0)) * speedFactor;
@@ -642,89 +650,116 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
         const b = bg.getContext('2d');
         if (b) {
           b.scale(dpr, dpr);
-          // A. Sky Gradient
+          // A. Soft pink sky (matches reference: dusty pink top melting
+          // into near-white pink at the horizon).
           const skyGrd = b.createLinearGradient(0, 0, 0, groundY);
-          skyGrd.addColorStop(0.0, '#ba8b9d');
-          skyGrd.addColorStop(0.25, '#d99dae');
-          skyGrd.addColorStop(0.55, '#f5baa4');
-          skyGrd.addColorStop(0.82, '#fdd8b0');
-          skyGrd.addColorStop(1.0, '#fff5e3');
+          skyGrd.addColorStop(0.0, '#e9b3b8');
+          skyGrd.addColorStop(0.45, '#f3c9cc');
+          skyGrd.addColorStop(0.78, '#f9dfe0');
+          skyGrd.addColorStop(1.0, '#fdeeea');
           b.fillStyle = skyGrd;
-          b.fillRect(0, 0, w, groundY);
+          b.fillRect(0, 0, w, groundY + 2);
+          // Paint sky behind the soil band too so no dark seam shows.
+          b.fillRect(0, groundY, w, h - groundY);
 
-          // B. Horizon Sun Glow & Sun Disk
-          const sunX = baseX - w * 0.02;
-          const sunY = groundY - 10;
-          const sunR = Math.max(w, h) * 0.38;
-          const sunGrd = b.createRadialGradient(sunX, sunY, 6, sunX, sunY, sunR);
-          sunGrd.addColorStop(0, 'rgba(255, 250, 230, 0.96)');
-          sunGrd.addColorStop(0.08, 'rgba(255, 230, 180, 0.75)');
-          sunGrd.addColorStop(0.24, 'rgba(255, 185, 140, 0.40)');
-          sunGrd.addColorStop(0.55, 'rgba(235, 145, 155, 0.15)');
-          sunGrd.addColorStop(1, 'rgba(200, 130, 150, 0)');
-          b.fillStyle = sunGrd;
-          b.fillRect(0, 0, w, groundY + 12);
+          // B. Two soft wispy clouds, like the reference (left + right).
+          const drawSoftCloud = (cx: number, cy: number, s: number, alpha: number) => {
+            b.save();
+            // Wide faint halo for the hazy photo feel.
+            b.globalAlpha = alpha * 0.28;
+            b.fillStyle = '#ffffff';
+            b.beginPath();
+            b.ellipse(cx, cy, 95 * s, 30 * s, 0, 0, Math.PI * 2);
+            b.fill();
+            // Puffy core built from overlapping ellipses.
+            b.globalAlpha = alpha;
+            b.beginPath();
+            b.ellipse(cx, cy, 62 * s, 20 * s, 0, 0, Math.PI * 2);
+            b.ellipse(cx - 38 * s, cy + 6 * s, 34 * s, 14 * s, 0, 0, Math.PI * 2);
+            b.ellipse(cx + 38 * s, cy + 6 * s, 36 * s, 15 * s, 0, 0, Math.PI * 2);
+            b.ellipse(cx - 12 * s, cy - 12 * s, 30 * s, 15 * s, 0, 0, Math.PI * 2);
+            b.ellipse(cx + 18 * s, cy - 10 * s, 28 * s, 14 * s, 0, 0, Math.PI * 2);
+            b.fill();
+            // Faint pink shade under the belly.
+            b.globalAlpha = alpha * 0.3;
+            b.fillStyle = '#f0bcbe';
+            b.beginPath();
+            b.ellipse(cx + 4 * s, cy + 13 * s, 52 * s, 9 * s, 0, 0, Math.PI * 2);
+            b.fill();
+            b.restore();
+          };
+          const cloudS = Math.min(w / 900, 1.5) + 0.35;
+          drawSoftCloud(w * 0.1, groundY * 0.38, 0.95 * cloudS, 0.9);
+          drawSoftCloud(w * 0.88, groundY * 0.48, 1.05 * cloudS, 0.9);
 
-          const diskGrd = b.createRadialGradient(sunX, sunY, 0, sunX, sunY, 18);
-          diskGrd.addColorStop(0, 'rgba(255, 255, 248, 0.98)');
-          diskGrd.addColorStop(0.45, 'rgba(255, 240, 205, 0.85)');
-          diskGrd.addColorStop(1, 'rgba(255, 220, 170, 0)');
-          b.fillStyle = diskGrd;
+          // C. Dark soil band with a rough clumpy horizon (like the photo).
+          // Flat field silhouette — no hills, no sun, clean horizon.
+          const soilTop = (x: number) =>
+            groundY + 4 + Math.sin(x * 0.02) * 3 + Math.sin(x * 0.055 + 1.7) * 2.2;
           b.beginPath();
-          b.arc(sunX, sunY, 18, 0, Math.PI * 2);
-          b.fill();
-
-          // C. Distant Mountain Ridges
-          b.fillStyle = 'rgba(195, 138, 152, 0.38)';
-          b.beginPath();
-          b.moveTo(0, groundY);
-          b.bezierCurveTo(w * 0.2, groundY - 45, w * 0.45, groundY - 20, w * 0.7, groundY - 55);
-          b.bezierCurveTo(w * 0.85, groundY - 70, w * 0.95, groundY - 35, w * 1.05, groundY - 40);
-          b.lineTo(w, groundY);
-          b.closePath();
-          b.fill();
-
-          b.fillStyle = 'rgba(182, 114, 126, 0.52)';
-          b.beginPath();
-          b.moveTo(0, groundY);
-          b.bezierCurveTo(w * 0.25, groundY - 25, w * 0.55, groundY - 48, w * 0.8, groundY - 28);
-          b.bezierCurveTo(w * 0.9, groundY - 18, w * 0.98, groundY - 30, w * 1.05, groundY - 22);
-          b.lineTo(w, groundY);
-          b.closePath();
-          b.fill();
-
-          // D. Foreground Earth Mound
-          b.beginPath();
-          b.moveTo(0, groundY + 12);
-          b.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
-          b.lineTo(w, groundY + 18);
+          b.moveTo(0, h);
+          b.lineTo(0, soilTop(0));
+          for (let x = 0; x <= w + 8; x += 8) b.lineTo(x, soilTop(x));
           b.lineTo(w, h);
-          b.lineTo(0, h);
           b.closePath();
 
-          const groundGrd = b.createLinearGradient(0, groundY - 15, 0, h);
-          groundGrd.addColorStop(0.0, '#e58058');
-          groundGrd.addColorStop(0.02, '#a5442e');
-          groundGrd.addColorStop(0.08, '#3c1b15');
-          groundGrd.addColorStop(0.35, '#200e0c');
-          groundGrd.addColorStop(1.0, '#100706');
+          const groundGrd = b.createLinearGradient(0, groundY, 0, h);
+          groundGrd.addColorStop(0.0, '#332920');
+          groundGrd.addColorStop(0.18, '#241c16');
+          groundGrd.addColorStop(0.55, '#161110');
+          groundGrd.addColorStop(1.0, '#0c0908');
           b.fillStyle = groundGrd;
           b.fill();
 
-          // Soft rim line
+          // Clods & stones: layered speckles for the ploughed-earth texture.
+          const lumpCols = ['#3d322a', '#4d4034', '#241c16', '#5b4c3e', '#2e2520'];
+          let li = 0;
+          for (let lx = 0; lx < w + 12; lx += 11) {
+            const depth = ((lx * 7919) % 100) / 100; // 0..1 deterministic
+            const ly = soilTop(lx) + 4 + depth * (h - groundY - 10);
+            if (ly > h - 2) continue;
+            const lw = 3 + ((lx * 31) % 7);
+            const lh = 2.5 + ((lx * 17) % 5);
+            b.fillStyle = lumpCols[li++ % lumpCols.length];
+            b.globalAlpha = 0.9;
+            b.beginPath();
+            b.ellipse(lx, ly, lw, lh, 0, 0, Math.PI * 2);
+            b.fill();
+          }
+          // Tiny pale pebbles scattered like the reference.
+          b.globalAlpha = 0.8;
+          for (let px = 6; px < w; px += 41) {
+            const py = soilTop(px) + 8 + ((px * 131) % 30);
+            if (py > h - 3) continue;
+            b.fillStyle = (px % 82 === 0) ? '#8a7a68' : '#6e6154';
+            b.beginPath();
+            b.arc(px, py, 1.3, 0, Math.PI * 2);
+            b.fill();
+          }
+          b.globalAlpha = 1;
+
+          // Crisp horizon edge kissed by the pale sky.
           b.beginPath();
-          b.moveTo(0, groundY + 12);
-          b.bezierCurveTo(w * 0.28, groundY - 14, w * 0.65, groundY - 10, w * 1.05, groundY + 18);
-          b.strokeStyle = 'rgba(255, 180, 130, 0.42)';
-          b.lineWidth = 1.8;
+          b.moveTo(0, soilTop(0));
+          for (let x = 0; x <= w + 8; x += 8) b.lineTo(x, soilTop(x));
+          b.strokeStyle = 'rgba(255, 225, 220, 0.28)';
+          b.lineWidth = 1.2;
           b.stroke();
 
-          // Fine soil marks (static)
-          b.fillStyle = '#220e0b';
-          for (let gx = -10; gx < w + 20; gx += 14) {
-            const hOff = Math.sin(gx * 0.05) * 4 + Math.cos(gx * 0.12) * 3;
-            const gy = groundY - 6 + Math.sin((gx / w) * Math.PI) * -8;
-            b.fillRect(gx, gy, 1.8, 5 + hOff);
+          // D. Exact photo finish — paints the real reference image over
+          // the procedural fallback (cover-fit, photo horizon pinned to
+          // the tree's ground line). This is what makes it 100% the same.
+          const photo = bgPhotoRef.current;
+          if (photo && photo.complete && photo.naturalWidth > 0) {
+            const iw = photo.naturalWidth;
+            const ih = photo.naturalHeight;
+            const s = Math.max(w / iw, h / ih);
+            const dw = iw * s;
+            const dh = ih * s;
+            const dx = Math.max(w - dw, Math.min(0, (w - dw) / 2));
+            let dy = groundY - BG_PHOTO_HORIZON * dh;
+            dy = Math.max(h - dh, Math.min(0, dy));
+            b.drawImage(photo, dx, dy, dw, dh);
           }
         }
         bgCacheRef.current = { key: bgKey, canvas: bg };

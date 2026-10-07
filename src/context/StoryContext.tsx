@@ -6,6 +6,7 @@ import {
   type IntroState,
   STAGE_PROGRESS_MAP,
 } from './storyTypes';
+import { getStageFromProgress } from '../components/HeartTreeAnimation/animation/growthTimeline';
 
 export * from './storyTypes';
 
@@ -16,7 +17,7 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isExperienceUnlocked = introState === 'EXPERIENCE_UNLOCKED';
   const [isStarted, setIsStarted] = useState(false);
   const [currentStage, setCurrentStage] = useState(1);
-  const [targetProgress, setTargetProgressState] = useState(0.02);
+  const [targetProgress, setTargetProgressState] = useState(STAGE_PROGRESS_MAP[1]);
   const [isBloomUnlocked, setIsBloomUnlocked] = useState(false);
   const [isFlightUnlocked, setIsFlightUnlocked] = useState(false);
   const [activeTreeQuote, setActiveTreeQuote] = useState<TreeQuote | null>(null);
@@ -49,14 +50,10 @@ export const StoryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const clamped = Math.max(0, Math.min(1, p));
     setTargetProgressState(clamped);
 
-    let stage = 1;
-    for (let s = 16; s >= 1; s--) {
-      if (clamped >= (STAGE_PROGRESS_MAP[s] - 0.03)) {
-        stage = s;
-        break;
-      }
-    }
-    setCurrentStage(stage);
+    // Single source of truth: derive the stage from the actual tree
+    // timeline (previously STAGE_PROGRESS_MAP[s] - 0.03 disagreed with the
+    // canvas stage mapper, so captions/stages drifted from visuals).
+    setCurrentStage(getStageFromProgress(clamped));
   }, []);
 
   const jumpToStage = useCallback((stage: number) => {

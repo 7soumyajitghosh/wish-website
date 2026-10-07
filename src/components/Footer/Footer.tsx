@@ -1,6 +1,15 @@
 export const Footer = () => {
+  const year = new Date().getFullYear();
+  const scrollToTop = () => {
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  };
+
   return (
-    <footer className="relative bg-[#0d0408] py-12 px-6 flex flex-col items-center justify-center text-center overflow-hidden">
+    <footer className="relative bg-[#0d0408] pt-12 pb-10 px-6 flex flex-col items-center justify-center text-center overflow-hidden">
       {/* Subtle top border gradient */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#ffb3c1] to-transparent opacity-30" aria-hidden="true"></div>
       {/* Decorative ambient glow */}
@@ -23,9 +32,9 @@ export const Footer = () => {
       {/* Giant editorial type (decorative, Dribbble-style footer moment) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none font-serif italic leading-none text-transparent"
+        className="pointer-events-none select-none font-serif italic leading-none text-transparent whitespace-nowrap max-w-full overflow-hidden"
         style={{
-          fontSize: 'clamp(3.5rem,13vw,11rem)',
+          fontSize: 'clamp(2.75rem,10vw,8rem)',
           WebkitTextStroke: '1px rgba(255,179,193,0.28)',
         }}
       >
@@ -33,9 +42,9 @@ export const Footer = () => {
       </div>
 
       <div className="relative z-10 flex flex-col items-center space-y-4 mt-6">
-        <h3 className="text-xl md:text-2xl font-serif text-[#fff8eb] tracking-wide">
+        <p className="text-xl md:text-2xl font-serif text-[#fff8eb] tracking-wide">
           A Journey of Love
-        </h3>
+        </p>
         
         <p className="flex items-center space-x-2 text-sm text-[#fff8eb]/85">
           <span>Made with</span>
@@ -51,8 +60,17 @@ export const Footer = () => {
           <span>Love</span>
         </p>
 
-        <p className="text-sm text-[#fff8eb]/85 mt-8">
-          &copy; 2026 A Journey of Love. All rights reserved.
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-3 py-2 min-h-[44px]"
+          aria-label="Back to top"
+        >
+          Back to the beginning ↑
+        </button>
+
+        <p className="text-sm text-[#fff8eb]/85 mt-2">
+          &copy; {year} A Journey of Love. All rights reserved.
         </p>
       </div>
     </footer>
