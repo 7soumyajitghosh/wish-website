@@ -590,6 +590,12 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
           }
         });
       }
+      // Mobile GPUs choke on hundreds of overlapping heart draws: cap
+      // in-flight particles tighter on small screens.
+      const particleCap = layout.isMobile ? 160 : MAX_PARTICLES;
+      if (particlesRef.current.length > particleCap) {
+        particlesRef.current.splice(0, particlesRef.current.length - particleCap);
+      }
 
       // Update in-flight particles
       updateFlyingHearts(particlesRef.current, dt, time, w, groundY);
@@ -736,36 +742,116 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
         drawHeartShape(ctx, px, py, ptl.size, ptl.color, rot, 0.45);
       });
 
-      // F. Tiny Magical Seed (Stages 1–3)
+      // F. The Seed — hero of stages 1–3. Larger, breathing glow with
+      // expanding rings, ground light + rising sparks so the camera
+      // close-up has something to hold on. Swells before roots, then
+      // yields as the trunk takes over.
       if (p >= GROWTH_T.SEED_START && p < GROWTH_T.TRUNK_MID) {
         const appear = rangeProgress(p, GROWTH_T.SEED_START, GROWTH_T.SEED_START + 0.02);
+        const swell = 1 + rangeProgress(p, GROWTH_T.SEED_START + 0.02, GROWTH_T.ROOTS_START) * 0.35;
         const fadeOut = 1 - rangeProgress(p, GROWTH_T.ROOTS_START, GROWTH_T.TRUNK_MID);
         const seedAlpha = Math.min(appear, fadeOut);
 
         if (seedAlpha > 0) {
-          const pulse = 1 + Math.sin(rangeProgress(p, GROWTH_T.SEED_START, GROWTH_T.ROOTS_START) * Math.PI) * 0.1;
-          const coreSize = 3.6 * pulse * scale;
-          const haloR = 8 * pulse * scale;
+          const breathe = 1 + Math.sin(time * 3.2) * 0.09 + Math.sin(rangeProgress(p, GROWTH_T.SEED_START, GROWTH_T.ROOTS_START) * Math.PI) * 0.12;
+          const pulse = breathe * swell;
+          const seedX = baseX;
+          const seedY = baseY - 4 * scale;
+          const coreSize = 7.2 * pulse * scale;
+          const haloR = 30 * pulse * scale;
 
-          const seedGrd = ctx.createRadialGradient(baseX, baseY - 2 * scale, 0.5, baseX, baseY - 2 * scale, haloR);
-          seedGrd.addColorStop(0, `rgba(255, 245, 215, ${0.28 * seedAlpha})`);
-          seedGrd.addColorStop(0.35, `rgba(255, 195, 135, ${0.08 * seedAlpha})`);
-          seedGrd.addColorStop(1, 'rgba(255, 195, 135, 0)');
-
+          // Wide ground light pooling around the seed.
           ctx.save();
-          ctx.fillStyle = seedGrd;
+          ctx.globalAlpha = seedAlpha;
+          const poolGrd = ctx.createRadialGradient(seedX, seedY + 4 * scale, 0, seedX, seedY + 4 * scale, 52 * scale);
+          poolGrd.addColorStop(0, `rgba(255, 214, 160, ${0.34 * seedAlpha})`);
+          poolGrd.addColorStop(0.5, `rgba(255, 170, 130, ${0.14 * seedAlpha})`);
+          poolGrd.addColorStop(1, 'rgba(255, 170, 130, 0)');
+          ctx.fillStyle = poolGrd;
           ctx.beginPath();
-          ctx.arc(baseX, baseY - 2 * scale, haloR, 0, Math.PI * 2);
+          ctx.ellipse(seedX, seedY + 4 * scale, 52 * scale, 14 * scale, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          drawHeartShape(ctx, baseX, baseY - 3.5 * scale, coreSize, '#fff5dc', 0, seedAlpha);
+          // Halo.
+          const seedGrd = ctx.createRadialGradient(seedX, seedY, 0.5, seedX, seedY, haloR);
+          seedGrd.addColorStop(0, `rgba(255, 248, 222, ${0.55 * seedAlpha})`);
+          seedGrd.addColorStop(0.3, `rgba(255, 205, 150, ${0.28 * seedAlpha})`);
+          seedGrd.addColorStop(0.65, `rgba(255, 160, 140, ${0.10 * seedAlpha})`);
+          seedGrd.addColorStop(1, 'rgba(255, 160, 140, 0)');
+          ctx.fillStyle = seedGrd;
+          ctx.beginPath();
+          ctx.arc(seedX, seedY, haloR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Two expanding ripple rings (phase-offset by time).
+          for (let r = 0; r < 2; r++) {
+            const cycle = (time * 0.55 + r * 0.5) % 1;
+            const ringR = (6 + cycle * 30) * scale;
+            const ringA = (1 - cycle) * 0.4 * seedAlpha;
+            if (ringA <= 0.01) continue;
+            ctx.strokeStyle = `rgba(255, 226, 185, ${ringA})`;
+            ctx.lineWidth = Math.max(1, 2.2 * scale * (1 - cycle * 0.6));
+            ctx.beginPath();
+            ctx.ellipse(seedX, seedY + 3 * scale, ringR, ringR * 0.38, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Rising sparks around the seed.
+          for (let s = 0; s < 7; s++) {
+            const t = (time * 0.5 + s / 7) % 1;
+            const sx = seedX + Math.sin(s * 2.4 + time * 1.6) * (10 + s * 2.2) * scale;
+            const sy = seedY - t * 44 * scale;
+            const sa = (1 - t) * 0.85 * seedAlpha;
+            if (sa <= 0.02) continue;
+            ctx.fillStyle = `rgba(255, 240, 210, ${sa})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, (1.1 + (1 - t) * 1.1) * scale, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Seed body: warm pink aura heart + bright core heart.
+          drawHeartShape(ctx, seedX, seedY, coreSize * 1.45, '#ff8fa3', 0, 0.5 * seedAlpha);
+          drawHeartShape(ctx, seedX, seedY - 1 * scale, coreSize, '#fff5dc', 0, seedAlpha);
+          ctx.restore();
+        }
+      }
+
+      // F2. Soil response — cracks + mound glow while roots push out.
+      // Runs through the whole roots window so the ground feels alive.
+      if (p >= GROWTH_T.SEED_START && p < GROWTH_T.TRUNK_START) {
+        const crackP = rangeProgress(p, GROWTH_T.ROOTS_START, GROWTH_T.TRUNK_START);
+        if (crackP > 0) {
+          ctx.save();
+          const n = 5;
+          for (let i = 0; i < n; i++) {
+            const ang = Math.PI * (0.12 + (i / (n - 1)) * 0.76);
+            const len = (14 + (i % 3) * 9) * scale * (0.3 + 0.7 * crackP);
+            const x0 = baseX + Math.cos(ang) * 6 * scale;
+            const y0 = baseY + 2 * scale;
+            const x1 = baseX + Math.cos(ang) * (6 * scale + len);
+            const y1 = y0 + Math.sin(ang) * len * 0.28 + 3 * scale * crackP;
+            ctx.strokeStyle = `rgba(30, 12, 9, ${0.65 * crackP})`;
+            ctx.lineWidth = Math.max(1, 2 * scale * (1 - (i / n) * 0.4));
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.quadraticCurveTo((x0 + x1) / 2, y0 + 2 * scale, x1, y1);
+            ctx.stroke();
+            // Faint warm edge on the crack lip.
+            ctx.strokeStyle = `rgba(255, 190, 140, ${0.22 * crackP})`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0 - 1);
+            ctx.lineTo(x1, y1 - 1);
+            ctx.stroke();
+          }
           ctx.restore();
         }
       }
 
       // G. Roots (Stage 3)
       if (p >= GROWTH_T.ROOTS_START) {
-        drawRoots(ctx, p, tree.roots);
+        drawRoots(ctx, p, tree.roots, time);
       }
 
       // H. Trunk & Branches (Stages 4–8)

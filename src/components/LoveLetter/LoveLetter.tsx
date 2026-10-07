@@ -47,6 +47,15 @@ export const LoveLetter: React.FC = () => {
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Fixed pixel travel overflows small screens (letter is min(90vw,420px)
+    // wide; scale 1.15 * 90vw = 103vw). Scale travel to the viewport.
+    const smallScreen =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(max-width: 640px)').matches;
+    const riseY = smallScreen ? -110 : -160;
+    const restY = smallScreen ? -48 : -70;
+    const restScale = smallScreen ? 1.04 : 1.15;
     const lines = containerRef.current?.querySelectorAll('.letter-line');
 
     killEnvelopeTweens();
@@ -55,13 +64,13 @@ export const LoveLetter: React.FC = () => {
 
     tl.to(sealRef.current, { scale: 1.4, opacity: 0, duration: reduced ? 0 : 0.35, ease: 'power2.inOut', overwrite: 'auto' })
       .to(flapRef.current, { rotateX: 180, transformOrigin: 'top', duration: reduced ? 0 : 0.55, ease: 'power2.inOut', overwrite: 'auto' }, reduced ? 0 : '-=0.15')
-      .to(letterRef.current, { y: -160, duration: reduced ? 0 : 0.7, ease: 'power3.out', overwrite: 'auto' })
+      .to(letterRef.current, { y: riseY, duration: reduced ? 0 : 0.7, ease: 'power3.out', overwrite: 'auto' })
       .call(() => {
         if (letterRef.current) gsap.set(letterRef.current, { zIndex: 30 });
       })
       .to(letterRef.current, {
-        scale: 1.15,
-        y: -70,
+        scale: restScale,
+        y: restY,
         duration: reduced ? 0 : 0.5,
         ease: 'power2.out',
         overwrite: 'auto',

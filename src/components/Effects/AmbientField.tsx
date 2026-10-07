@@ -28,7 +28,10 @@ export const AmbientField: React.FC<{
     let h = 0;
     let raf = 0;
     let running = true;
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Small screens get a lower DPR cap: a full-width radial gradient +
+    // per-particle fills each frame at dpr 2+ drops frames on mobile GPUs.
+    const dprCap = () => (Math.min(window.innerWidth || 1024, 768) <= 768 ? 1.5 : 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, dprCap());
 
     interface P {
       x: number; y: number; r: number; a: number;
@@ -52,7 +55,7 @@ export const AmbientField: React.FC<{
     };
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, dprCap());
       const rect = canvas.getBoundingClientRect();
       w = Math.max(1, rect.width);
       h = Math.max(1, rect.height);

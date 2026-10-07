@@ -433,6 +433,11 @@ const SoaringWishItem = ({
     const el = elRef.current;
     if (!el) return;
 
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     gsap.fromTo(
       el,
       {
@@ -450,7 +455,7 @@ const SoaringWishItem = ({
         yPercent: -50,
         scale: 0.25,
         opacity: 0,
-        duration: 4.5,
+        duration: reduced ? 0 : 4.5,
         ease: 'power2.in',
         overwrite: 'auto',
         onComplete: () => onDoneRef.current(itemId),

@@ -15,6 +15,9 @@ export const LightTransition: React.FC<{
   const glowRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(onDone);
   const playedRef = useRef(false);
+  // 60vmin blurred glow scaled every frame: blur(20px) repaints heavily on
+  // mobile GPUs, so use a cheaper blur on small screens.
+  const glowBlur = typeof window !== 'undefined' && window.innerWidth <= 768 ? 8 : 20;
   useEffect(() => {
     doneRef.current = onDone;
   }, [onDone]);
@@ -80,7 +83,7 @@ export const LightTransition: React.FC<{
         style={{
           background:
             'radial-gradient(circle, rgba(255,214,165,0.95) 0%, rgba(255,179,193,0.75) 40%, rgba(255,248,235,0.4) 65%, transparent 75%)',
-          filter: 'blur(20px)',
+          filter: `blur(${glowBlur}px)`,
           willChange: 'transform, opacity',
         }}
       />

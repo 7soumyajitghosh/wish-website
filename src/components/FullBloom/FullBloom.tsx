@@ -26,11 +26,11 @@ const STATIC_HEARTS: FloatingHeartConfig[] = [
   { size: 19, left: 95, duration: 21, delay: 5.0 },
 ];
 
-const FloatingHeart = ({ style }: { style: React.CSSProperties }) => (
+const FloatingHeart = ({ style, hiddenOnMobile }: { style: React.CSSProperties; hiddenOnMobile?: boolean }) => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
-    className="absolute text-rose-400/40"
+    className={`absolute text-rose-400/40 ${hiddenOnMobile ? 'hidden sm:block' : ''}`}
     style={style}
   >
     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -45,13 +45,19 @@ export const FullBloom: React.FC = () => {
   const heartsRef = useRef<HTMLDivElement>(null);
   const rafId = useRef<number>(0);
 
-  // Parallax effect (rAF-throttled; skipped when reduced motion is preferred)
+  // Parallax effect (rAF-throttled; skipped on mobile / reduced motion —
+  // a per-scroll transform write janks low-end mobile scrolling)
   useEffect(() => {
     const reduced =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
+    const coarse =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      (window.matchMedia('(pointer: coarse)').matches ||
+        window.matchMedia('(max-width: 768px)').matches);
+    if (reduced || coarse) return;
     const update = () => {
       rafId.current = 0;
       if (!sectionRef.current || !treeContainerRef.current) return;
@@ -195,6 +201,7 @@ export const FullBloom: React.FC = () => {
         {STATIC_HEARTS.map((h, i) => (
           <FloatingHeart
             key={i}
+            hiddenOnMobile={i % 2 === 1}
             style={{
               width: `${h.size}px`,
               height: `${h.size}px`,

@@ -50,7 +50,15 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       seed();
     };
     resize();
-    window.addEventListener('resize', resize);
+    let resizeRaf = 0;
+    const onResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        resize();
+      });
+    };
+    window.addEventListener('resize', onResize);
 
     let opacity = 0;
     let last = performance.now();
@@ -111,7 +119,7 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       cancelAnimationFrame(raf);
       raf = 0;
       io.disconnect();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
 

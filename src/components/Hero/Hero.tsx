@@ -173,6 +173,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
               100% { opacity: 0; transform: translate(108vw, -14px) scale(1.15); }
             }
             @media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } .heart-chain { display: none; } }
+            @media (max-width: 768px) { .heart-chain { display: none; } }
           `}</style>
           <h1 className="relative font-serif text-[#fffdf8] tracking-wide mb-6 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 1.14 }}>
             <span className="hero-line"><span>Where Love</span></span>

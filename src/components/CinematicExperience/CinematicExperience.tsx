@@ -138,11 +138,13 @@ export const CinematicExperience: React.FC = () => {
         setIntroState('EXPERIENCE_UNLOCKED');
       })
       .call(() => {
-        // Fully covered by black — move instantly to Destination
+        // Fully covered by black — jump instantly to Destination.
+        // Single instant jump: with `scroll-behavior: smooth` on html, a
+        // scrollIntoView + window.scrollTo pair queues two smooth scrolls
+        // (visible jank). behavior:'auto' jumps under the black cover.
         const destEl = document.getElementById('destination');
         if (destEl) {
-          destEl.scrollIntoView();
-          window.scrollTo(0, destEl.offsetTop);
+          destEl.scrollIntoView({ behavior: 'auto', block: 'start' });
         }
       }, undefined, '+=0.05')
       .call(() => {
@@ -208,11 +210,20 @@ export const CinematicExperience: React.FC = () => {
     });
 
     // Roots in close-up → camera pulls back → trunk, branches, leaves.
-    tl.to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 2.8, ease: 'power2.out' })
-      .to({}, { duration: 0.6 })
+    // Roots get an extended hold + slight push-in so the seed/roots
+    // beat reads as its own moment before the wide reveal.
+    tl.to(progressObj, { p: STAGE_PROGRESS_MAP[3], duration: 4.4, ease: 'power2.out' })
+      .to(camObj, {
+        z: 1.58,
+        duration: 4.4,
+        ease: 'sine.inOut',
+        overwrite: 'auto',
+        onUpdate: () => applyCam(camObj.z),
+      }, '<')
+      .to({}, { duration: 1.0 })
       .to(camObj, {
         z: 1.0,
-        duration: 3.2,
+        duration: 3.6,
         ease: 'power2.inOut',
         overwrite: 'auto',
         onUpdate: () => applyCam(camObj.z),
@@ -383,14 +394,14 @@ export const CinematicExperience: React.FC = () => {
     <section
       id="story-experience"
       ref={containerRef}
-      className="relative w-full h-[100svh] bg-[#0d0408] text-[#fffdf8]"
+      className="relative w-full h-screen h-[100svh] bg-[#0d0408] text-[#fffdf8]"
       aria-label="Interactive Story Experience"
     >
       <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(30,41,59,0.55) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
         ref={stickyRef}
-        className="sticky top-0 w-full h-[100svh] overflow-hidden flex flex-col justify-between select-none"
+        className="sticky top-0 w-full h-screen h-[100svh] overflow-hidden flex flex-col justify-between select-none"
       >
         {/* Screen-reader stage announcements */}
         <div className="sr-only" aria-live="polite">
@@ -472,6 +483,23 @@ export const CinematicExperience: React.FC = () => {
           </button>
         )}
 
+        {/* Growth focus caption — spotlights the seed/roots beat in close-up,
+            then yields to the wide growth. Keyed by stage so it cross-fades. */}
+        {isGrowing && currentStage <= 5 && (
+          <div
+            key={currentStage}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-20 md:top-24 z-30 -translate-x-1/2 text-center animate-fade-in"
+          >
+            <p className="font-sans text-[11px] md:text-xs uppercase tracking-[0.35em] text-[#ffd6a5]/85">
+              {currentStage <= 2 ? 'It begins with a seed' : currentStage === 3 ? 'Roots of devotion' : 'Reaching for the light'}
+            </p>
+            <p className="mt-2 font-serif italic text-lg md:text-2xl text-[#fffdf8]/95 drop-shadow-lg">
+              {currentInfo.title} — {currentInfo.subtitle}
+            </p>
+          </div>
+        )}
+
         {/* THE single CTA after the tree is fully grown */}
         {phase === 'stormReady' && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-3 animate-fade-in">
@@ -500,7 +528,10 @@ export const CinematicExperience: React.FC = () => {
             onBlur={resumeTreeQuote}
             className="absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm max-h-[60vh] overflow-y-auto p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter pointer-events-auto"
             style={{
-              left: `clamp(12px, ${Math.min(Math.max(activeTreeQuote.x - 120, 20), typeof window !== 'undefined' ? Math.max(window.innerWidth - 340, 12) : 20)}px, calc(100vw - 17rem))`,
+              left: `${typeof window !== 'undefined'
+                ? Math.max(12, Math.min(activeTreeQuote.x - 120, window.innerWidth - Math.min(320, window.innerWidth - 24) - 12))
+                : 12}px`,
+              width: 'min(20rem, calc(100vw - 2.5rem))',
               top: `${Math.max(activeTreeQuote.y - 90, 40)}px`,
             }}
           >

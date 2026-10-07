@@ -32,6 +32,9 @@ export const MagneticButton: React.FC<{
         reducedRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (coarseRef.current || reducedRef.current) return;
       // Cache rect on enter (no layout read per mousemove); rAF-throttle writes.
+      // No CSS transition during the move — a transition on every mousemove
+      // lags each write and reads as stutter. Transition only on release.
+      if (el.style.transition !== 'none') el.style.transition = 'none';
       if (!rectRef.current) rectRef.current = el.getBoundingClientRect();
       const rect = rectRef.current;
       const dx = e.clientX - (rect.left + rect.width / 2);

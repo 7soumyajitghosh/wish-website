@@ -209,11 +209,18 @@ export function Navigation() {
         </button>
       </div>
 
-      {/* Mobile Menu Panel */}
+      {/* Mobile Menu Panel — hidden (not just off-screen) when closed so it
+          skips paint + never intercepts touches */}
       <div
         ref={menuRef}
         id="mobile-menu"
         className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden"
+        style={{
+          visibility: isOpen ? 'visible' : 'hidden',
+          // Delay hiding until the GSAP slide-out (~0.4s) finishes so the
+          // close animation still plays; hidden afterwards skips paint.
+          transition: isOpen ? 'visibility 0s' : 'visibility 0s linear 0.45s',
+        }}
         aria-hidden={!isOpen}
         inert={!isOpen}
       >

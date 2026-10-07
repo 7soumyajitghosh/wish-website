@@ -206,7 +206,7 @@ export const FinalDestination: React.FC = () => {
           className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none"
           style={{ transform: 'translateX(-50%)' }}
         >
-          <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
+          <div className="reveal-element w-full h-full">
           <div className="absolute inset-0 bg-[#d81b46] rounded-full blur-[60px] opacity-40 mix-blend-screen" />
           <svg viewBox="0 0 100 100" className="w-full h-full text-[#ffb3c1] drop-shadow-[0_0_30px_rgba(255,179,193,0.9)] opacity-90 transition-opacity duration-700 hover:opacity-100">
             <path d="M50 85 C 0 50, 0 10, 50 35 C 100 10, 100 50, 50 85 Z" fill="currentColor" />
@@ -220,7 +220,7 @@ export const FinalDestination: React.FC = () => {
           aria-hidden="true"
           className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none"
         >
-          <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
             <path d="M-10 10 Q 50 20, 80 50 T 150 70 M 30 30 Q 70 80, 100 120" fill="none" stroke="#0a0306" strokeWidth="6" strokeLinecap="round" />
             <circle cx="50" cy="20" r="4" fill="#f5baa4" opacity="0.9" />
@@ -240,7 +240,7 @@ export const FinalDestination: React.FC = () => {
           className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none"
           style={{ transform: 'scaleX(-1)' }}
         >
-          <div className="reveal-element w-full h-full transition-opacity duration-700 hover:opacity-100">
+          <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
             <path d="M-10 20 Q 60 10, 90 60 T 160 80 M 40 40 Q 80 90, 110 130" fill="none" stroke="#0a0306" strokeWidth="6" strokeLinecap="round" />
             <circle cx="60" cy="10" r="4" fill="#f5baa4" opacity="0.9" />
@@ -336,7 +336,7 @@ export const FinalDestination: React.FC = () => {
             <div
               key={`heart-${i}`}
               data-float-heart
-              className="absolute text-[#ffb3c1]"
+              className={`absolute text-[#ffb3c1] ${i % 2 === 1 ? 'hidden sm:block' : ''}`}
               style={{
                 left: `${h.left}%`,
                 top: `${h.top}%`,
@@ -361,7 +361,7 @@ export const FinalDestination: React.FC = () => {
             <div
               key={`light-${i}`}
               data-fairy-light
-              className="absolute bg-[#ffd6a5] rounded-full motion-safe:animate-pulse transition-transform duration-500 hover:scale-150"
+              className={`absolute bg-[#ffd6a5] rounded-full motion-safe:animate-pulse transition-transform duration-500 hover:scale-150 ${i % 2 === 1 ? 'hidden sm:block' : ''}`}
               style={{
                 left: `${l.left}%`,
                 top: `${l.top}%`,
