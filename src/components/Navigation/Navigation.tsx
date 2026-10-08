@@ -209,6 +209,7 @@ export function Navigation() {
   };
 
   return (
+    <>
     <nav
       ref={navRef}
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
@@ -229,7 +230,7 @@ export function Navigation() {
         </a>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex space-x-8">
+        <div className="hidden xl:flex space-x-8">
           {navLinks.map((link) => (
             <a
               key={link.name}
@@ -246,7 +247,7 @@ export function Navigation() {
         {/* Mobile Toggle Button */}
         <button
           ref={toggleRef}
-          className="md:hidden text-[#fffdf8] z-50 relative p-2 min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-md"
+          className="xl:hidden text-[#fffdf8] z-50 relative p-2 min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-md"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="mobile-menu"
@@ -264,12 +265,14 @@ export function Navigation() {
         </button>
       </div>
 
+    </nav>
+
       {/* Mobile Menu Panel — hidden (not just off-screen) when closed so it
           skips paint + never intercepts touches */}
       <div
         ref={menuRef}
         id="mobile-menu"
-        className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden overflow-y-auto py-24 px-4"
+        className="fixed inset-0 h-[100dvh] bg-[#14070e] z-40 flex flex-col justify-center items-center xl:hidden overflow-y-auto py-24 px-4"
         style={{
           visibility: isOpen ? 'visible' : 'hidden',
           // Delay hiding until the GSAP slide-out (~0.4s) finishes so the
@@ -294,6 +297,6 @@ export function Navigation() {
           ))}
         </div>
       </div>
-    </nav>
+    </>
   );
 }

@@ -39,8 +39,8 @@ A breathtaking, cinematic interactive web experience inspired by the 16-stage jo
 
 - **HTML5 Canvas & Procedural Art:** 60 FPS organic tree growth, cubic Bézier branch curvature, dynamic radial sunset lighting, and particle wind physics.
 - **Web Audio API Sound Engine:** Procedurally synthesized musical chimes, heartbeat pulses, blooming bells, and ambient breeze (zero external audio file dependencies).
-- **Interactive Story HUD:** Timeline scrubber with 16 clickable stage markers, speed controls (0.5x, 1x, 1.5x, 2x), play/pause, and fullscreen mode.
-- **Visual QA Reference Inspector:** Built-in modal allowing side-by-side verification against the full 16-panel reference storyboard.
+- **One-way interactive story:** Start the journey, water the seed, watch the tree grow, and trigger the wind transition. Navigation lets visitors skip to later sections.
+- **Sixteen-milestone gallery:** A read-only summary of the journey's chapters.
 - **Responsive & Retina Ready:** Optimized for desktop, tablet, and mobile portrait/landscape screens with `devicePixelRatio` crispness.
 - **Tech Stack:** React 19, TypeScript, Vite, Tailwind CSS, GSAP (Procedural Canvas art & inline SVG icons, zero bloated icon/confetti dependencies).
 
