@@ -70,9 +70,13 @@ export const TicTacToe = () => {
   };
 
   const play = (i: number) => {
-    if (boardRef.current[i] || winnerOf(boardRef.current)) return;
-    const next = [...boardRef.current];
+    const current = boardRef.current;
+    const youCount = current.filter((m) => m === 'YOU').length;
+    const cupidCount = current.filter((m) => m === 'CUPID').length;
+    if (current[i] || winnerOf(current) || youCount !== cupidCount) return;
+    const next = [...current];
     next[i] = 'YOU';
+    boardRef.current = next;
     setBoard(next);
     countResult(next);
   };
@@ -96,6 +100,7 @@ export const TicTacToe = () => {
         if (winnerOf(latest)) return;
         const next = [...latest];
         next[cupidMove(next)] = 'CUPID';
+        boardRef.current = next;
         setBoard(next);
         countResult(next);
       }, 450);
@@ -105,7 +110,9 @@ export const TicTacToe = () => {
 
   const reset = () => {
     talliedKeyRef.current = null;
-    setBoard(Array(9).fill(null));
+    const empty: Mark[] = Array(9).fill(null);
+    boardRef.current = empty;
+    setBoard(empty);
   };
 
   const status =
@@ -118,6 +125,10 @@ export const TicTacToe = () => {
           : board.filter((m) => m === 'YOU').length > board.filter((m) => m === 'CUPID').length
             ? 'Cupid is thinking…'
             : 'Your move — place a heart.';
+
+  const isYourTurn =
+    board.filter((m) => m === 'YOU').length ===
+    board.filter((m) => m === 'CUPID').length;
 
   return (
     <div>
@@ -136,7 +147,7 @@ export const TicTacToe = () => {
             key={i}
             type="button"
             onClick={() => play(i)}
-            disabled={!!mark || over}
+            disabled={!!mark || over || !isYourTurn}
             aria-label={mark ? `${EMOJI[mark]} at position ${i + 1}` : `Empty square ${i + 1}`}
             className={`aspect-square min-h-[64px] rounded-2xl border text-2xl sm:text-3xl transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] ${
               mark

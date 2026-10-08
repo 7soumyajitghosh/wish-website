@@ -22,6 +22,9 @@ export const WishSection = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heartRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isHoldingWish) heartRef.current?.focus({ preventScroll: true });
+  }, [isHoldingWish]);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const focusRafRef = useRef(0);

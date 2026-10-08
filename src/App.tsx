@@ -150,6 +150,8 @@ const AppContent = () => {
   // target element exists before scrolling/focusing — up to 4s on slow
   // networks instead of wrongly falling back to scroll-to-top.
   const hasScrolledRef = useRef(false);
+  const scrollCancelRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => scrollCancelRef.current?.(), []);
   useEffect(() => {
     if (!isExperienceUnlocked || introAlive) return;
     if (hasScrolledRef.current) return;
@@ -163,8 +165,7 @@ const AppContent = () => {
         ? 'destination'
         : consumeTarget.replace(/^#/, '');
 
-    const cancel = scrollToIdWhenReady(targetId, { timeoutMs: 4000 });
-    return cancel;
+    scrollCancelRef.current = scrollToIdWhenReady(targetId, { timeoutMs: 4000 });
   }, [isExperienceUnlocked, introAlive, pendingTarget, setPendingTarget]);
 
   // Keep the overflow-hidden intro gate escapable via keyboard.
@@ -193,7 +194,19 @@ const AppContent = () => {
         </Suspense>
       ) : (
       <>
-      <a href="#main-content" className="skip-link">
+      <a
+        href="#destination"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          if (!isExperienceUnlocked || introAlive) {
+            setPendingTarget('#destination');
+            setIntroState('EXPERIENCE_UNLOCKED');
+          } else {
+            scrollToIdWhenReady('destination', { timeoutMs: 4000 });
+          }
+        }}
+      >
         Skip to story
       </a>
       {/* Single h1 for the whole page — the destination headline renders it visually. */}
