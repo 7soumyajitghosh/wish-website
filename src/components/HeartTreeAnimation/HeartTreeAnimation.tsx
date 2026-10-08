@@ -597,13 +597,6 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       const time = now * 0.001;
       const tree = treeRef.current;
       const layout = layoutRef.current;
-      // TEMP debug readout for the storm lab (removed before ship).
-      (window as unknown as { __treedbg?: unknown }).__treedbg = {
-        p: +p.toFixed(4),
-        detached: detachedRef.current.size,
-        hearts: tree ? tree.hearts.length : -1,
-        flying: particlesRef.current.length,
-      };
 
       if (!tree || layout.w === 0) {
         rafRef.current = requestAnimationFrame(loop);

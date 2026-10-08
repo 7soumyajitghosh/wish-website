@@ -322,13 +322,12 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     });
 
     // Gale: a slow, barely-there push-in while the leaves detach and fly.
-    // (The per-tick shudder is applied in the timeline onUpdate above, so
-    // this tween carries no onUpdate of its own — the two never fight.)
     tl.to(camObj, {
       z: 1.06,
       duration: 6.5,
       ease: 'power1.inOut',
       overwrite: 'auto',
+      onUpdate: () => applyCam(camObj.z),
     })
       .to(
         progressObj,
