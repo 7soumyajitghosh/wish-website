@@ -29,6 +29,13 @@ export interface StoryContextType {
   isStarted: boolean;
   startStory: () => void;
 
+  // Section requested while the intro gate was still locked. App consumes
+  // it after the landing page unmounts so the scroll lands correctly
+  // (scrolling before unmount measures layout with the 100vh intro still
+  // present, then the unmount shifts everything by a viewport).
+  pendingTarget: string | null;
+  setPendingTarget: (target: string | null) => void;
+
   // Progression state
   currentStage: number;
   targetProgress: number;

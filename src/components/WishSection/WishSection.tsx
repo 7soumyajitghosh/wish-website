@@ -276,14 +276,14 @@ export const WishSection = () => {
         className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_60%_45%_at_50%_38%,rgba(216,27,70,0.14),transparent_70%)]"
       />
 
-      <div className="relative z-10 w-full max-w-2xl px-6 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-2xl px-4 sm:px-6 flex flex-col items-center">
         <Reveal className="w-full flex flex-col items-center">
-          <header className="text-center mb-10">
+          <header className="text-center mb-8 sm:mb-10 px-1">
           <span className="eyebrow">
             Celestial Whispers
           </span>
-          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>Make a Wish</h2>
-          <p className="text-base md:text-lg text-[#fff8eb]/85 font-serif">
+          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance break-words" style={{ fontSize: 'clamp(1.75rem,8vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>Make a Wish</h2>
+          <p className="font-serif text-[#fff8eb]/85 text-base md:text-lg">
             Close your eyes. Give words to your deepest desire.
           </p>
           </header>
@@ -304,7 +304,7 @@ export const WishSection = () => {
                 value={wishText}
                 onChange={(e) => setWishText(e.target.value)}
                 placeholder="Type your wish here..."
-                className="relative w-full h-32 bg-[#220b17]/70 backdrop-blur-md border border-[#ffb3c1]/30 rounded-2xl p-5 text-[#fffdf8] font-serif text-lg resize-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] focus:border-[#ffb3c1]/70 transition-colors placeholder:text-[#fff8eb]/85 shadow-inner"
+                className="relative w-full h-28 sm:h-32 bg-[#220b17]/70 backdrop-blur-md border border-[#ffb3c1]/30 rounded-2xl p-4 sm:p-5 text-[#fffdf8] font-serif resize-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5] focus:border-[#ffb3c1]/70 transition-colors placeholder:text-[#fff8eb]/85 shadow-inner text-base sm:text-lg"
                 aria-describedby="wish-count-hint"
                 maxLength={150}
               />
@@ -359,7 +359,7 @@ export const WishSection = () => {
           aria-label={`Your wish is ready. Use arrow keys to guide it, Enter to launch, Escape to cancel. Wish: ${currentWish.text}`}
           aria-describedby="wish-drag-help"
           onKeyDown={handleHeartKeyDown}
-          className="fixed left-0 top-0 z-50 flex max-h-[calc(100vh-2rem)] flex-col items-center overflow-y-auto select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl p-1"
+          className="fixed left-0 top-0 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[320px] flex-col items-center overflow-y-auto select-none focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-2xl p-2 text-center"
           style={{
             transform: `translate(${heartPos.x}px, ${heartPos.y}px) translate(-50%, -50%)`,
           }}
@@ -378,18 +378,18 @@ export const WishSection = () => {
           </div>
 
           {/* User instruction badge */}
-          <div className="mt-4 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-center pointer-events-none shadow-lg max-w-[min(80vw,300px)]">
+          <div className="mt-4 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-center pointer-events-none shadow-lg w-full max-w-[280px]">
             <p id="wish-drag-help" className="text-sm font-serif text-[#ffd6a5] whitespace-normal break-words">
               Drag to guide your wish, then release to launch <span aria-hidden="true">✨</span>
             </p>
           </div>
 
-          <p className="mt-2 text-[#fffdf8] font-serif text-sm max-w-[200px] text-center drop-shadow-md whitespace-normal break-words">
+          <p className="mt-2 text-[#fffdf8] font-serif text-sm w-full max-w-[280px] text-center drop-shadow-md whitespace-normal break-words">
             &ldquo;{currentWish.text}&rdquo;
           </p>
 
           {/* No-drag alternatives: launch in place, or cancel */}
-          <div className="mt-3 flex items-center gap-2 pointer-events-auto">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 pointer-events-auto w-full">
             <MagneticButton strength={4}>
               <button
                 type="button"

@@ -125,12 +125,12 @@ export const LoveLetter: React.FC = () => {
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#ffd6a5]/5 via-transparent to-[#0d0408]/50" />
       
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 flex flex-col items-center">
-        <Reveal delay={0} className="flex flex-col items-center">
-        <header className="text-center mb-10 sm:mb-12">
+        <Reveal delay={0} className="flex flex-col items-center w-full">
+        <header className="text-center mb-8 sm:mb-12 px-2">
           <span className="eyebrow">
             A Keepsake of Affection
           </span>
-          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance" style={{ fontSize: 'clamp(1.9rem,5vw + 0.5rem,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+          <h2 className="font-serif text-[#fffdf8] mt-2 mb-3 text-balance break-words" style={{ fontSize: 'clamp(1.75rem,8vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
             The Love Letter
           </h2>
           <p className="text-sm sm:text-base font-sans text-[#fff8eb]/85">
@@ -140,7 +140,7 @@ export const LoveLetter: React.FC = () => {
         </Reveal>
 
         {/* Envelope Interactive Unit */}
-        <div className="relative flex flex-col items-center mb-10">
+        <div className="relative flex flex-col items-center mb-10 w-full px-2">
           <div
             className={`relative rounded-xl select-none focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-[#ffd6a5] transition-transform duration-300 ${isOpen ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]'}`}
             onClick={isOpen ? undefined : openLetter}
@@ -152,24 +152,24 @@ export const LoveLetter: React.FC = () => {
             {/* Letter Paper */}
             <div 
               ref={letterRef}
-              className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-6 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5] transition-shadow duration-300 hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
+              className="absolute bottom-2 left-3 right-3 top-2 bg-[#fdfaf2] rounded-lg p-4 sm:p-8 shadow-2xl flex flex-col z-10 border border-[#e5d5c5] transition-shadow duration-300 hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffd6a5]"
             >
-              <div className="w-full h-full font-serif text-[#3a1d24] flex flex-col text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
-                <div className="letter-line flex justify-between mb-3 italic text-[#6b4a52] border-b border-[#e5d5c5] pb-2">
-                  <span className="font-semibold text-[#3a1d24]">{content.recipient}</span>
-                  <span className="text-xs">{content.date}</span>
+              <div className="w-full h-full font-serif text-[#3a1d24] flex flex-col text-sm sm:text-base" style={{ lineHeight: 'var(--leading-relaxed,1.7)' }}>
+                <div className="letter-line flex justify-between items-baseline gap-2 mb-2 sm:mb-3 italic text-[#6b4a52] border-b border-[#e5d5c5] pb-2">
+                  <span className="font-semibold text-[#3a1d24] text-sm sm:text-base">{content.recipient}</span>
+                  <span className="text-[11px] sm:text-xs shrink-0">{content.date}</span>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto space-y-3 mb-3">
+                <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 mb-2 sm:mb-3">
                   {content.paragraphs.map((text, i) => (
-                    <p key={i} className="letter-line text-[#3a1d24] leading-relaxed font-serif">
+                    <p key={i} className="letter-line text-[#3a1d24] leading-relaxed font-serif text-sm sm:text-base">
                       {text}
                     </p>
                   ))}
                 </div>
                 
                 <div className="letter-line mt-auto pt-2 border-t border-[#e5d5c5] flex justify-between items-end">
-                  <span className="text-xs font-sans uppercase tracking-widest text-[#a81438]/70 font-semibold py-1 px-2 select-none" aria-hidden="true">
+                  <span className="text-xs font-sans uppercase tracking-widest text-[#a81438] font-semibold py-1 px-2 select-none" aria-hidden="true">
                     Sealed with love
                   </span>
                   <div className="text-right italic">
@@ -197,7 +197,7 @@ export const LoveLetter: React.FC = () => {
               <div className="absolute top-0 left-0 w-1/2 h-full bg-[#1e0915] clip-left-flap border-r border-[#d81b46]/20" />
               <div className="absolute top-0 right-0 w-1/2 h-full bg-[#1e0915] clip-right-flap border-l border-[#d81b46]/20" />
               <div className="absolute bottom-0 left-0 w-full h-[60%] bg-[#2a0e1e] clip-bottom-flap border-t border-[#d81b46]/20 flex items-end justify-center pb-4">
-                <span className={`text-[#f5baa4]/90 text-xs font-serif italic tracking-widest transition-opacity duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
+                <span className={`text-[#f5baa4] text-xs font-serif italic tracking-widest transition-opacity duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`}>
                   Sealed with Care
                 </span>
               </div>
@@ -267,14 +267,7 @@ export const LoveLetter: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      {/* Clip paths */}
-      <style>{`
-        .clip-left-flap { clip-path: polygon(0 0, 100% 50%, 0 100%); }
-        .clip-right-flap { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
-        .clip-bottom-flap { clip-path: polygon(0 100%, 50% 0, 100% 100%); }
-        .clip-top-flap { clip-path: polygon(0 0, 100% 0, 50% 100%); }
-      `}</style>
+
     </section>
   );
 };

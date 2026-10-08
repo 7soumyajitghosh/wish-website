@@ -7,6 +7,7 @@ class SoundManager {
   private isMuted: boolean = true; // Default muted — no autoplay
   private ambientGain: GainNode | null = null;
   private isAmbientPlaying: boolean = false;
+  private ambientNodes: OscillatorNode[] = [];
 
   private initContext() {
     if (!this.ctx) {
@@ -52,6 +53,7 @@ class SoundManager {
 
       // Chord frequencies: C3, G3, B3, E4 (peaceful, romantic Cmaj7/9)
       const freqs = [130.81, 196.00, 246.94, 329.63, 392.00];
+      const created: OscillatorNode[] = [];
       freqs.forEach((f, i) => {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -74,14 +76,59 @@ class SoundManager {
         lfo.connect(lfoGain);
         lfoGain.connect(gain.gain);
         lfo.start();
+        created.push(lfo);
 
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(master);
         osc.start();
+        created.push(osc);
       });
+      this.ambientNodes = created;
     } catch {
-      // Audio context might fail before interaction
+      // Audio context might fail before interaction — intentional silent fallback.
+      this.isAmbientPlaying = false;
+    }
+  }
+
+  /** Stop the ambient drone and release all ambient nodes. */
+  public stopAmbient() {
+    try {
+      for (const node of this.ambientNodes) {
+        try {
+          node.stop();
+        } catch {
+          /* already stopped */
+        }
+        try {
+          node.disconnect();
+        } catch {
+          /* already disconnected */
+        }
+      }
+    } finally {
+      this.ambientNodes = [];
+      if (this.ambientGain) {
+        try {
+          this.ambientGain.disconnect();
+        } catch {
+          /* already disconnected */
+        }
+        this.ambientGain = null;
+      }
+      this.isAmbientPlaying = false;
+    }
+  }
+
+  /** Fully release the AudioContext (call on page teardown if needed). */
+  public dispose() {
+    this.stopAmbient();
+    if (this.ctx) {
+      const ctx = this.ctx;
+      this.ctx = null;
+      void ctx.close().catch(() => {
+        /* intentional: context may already be closed */
+      });
     }
   }
 

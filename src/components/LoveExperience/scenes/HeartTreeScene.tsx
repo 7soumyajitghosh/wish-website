@@ -6,7 +6,6 @@ interface HeartTreeSceneProps {
 }
 
 export const HeartTreeScene: React.FC<HeartTreeSceneProps> = ({ onComplete }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const onCompleteRef = useRef(onComplete);
   const completedRef = useRef(false);
 
@@ -33,7 +32,7 @@ export const HeartTreeScene: React.FC<HeartTreeSceneProps> = ({ onComplete }) =>
   };
 
   return (
-    <div ref={containerRef} className="heart-tree-scene">
+    <div className="heart-tree-scene">
       <HeartTreeAnimation
         autoPlay={true}
         loop={false}

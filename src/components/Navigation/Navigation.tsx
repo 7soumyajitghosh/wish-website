@@ -1,18 +1,18 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
-import { scrollToSelectorDeferred } from '../../utils/storyNav';
 
 const navLinks = [
   { name: 'Story', href: '#story-experience' },
   { name: 'Destination', href: '#destination' },
   { name: 'Love Letter', href: '#love-letter' },
   { name: 'Make a Wish', href: '#make-a-wish' },
+  { name: 'Play & Puzzles', href: '#playground' },
   { name: 'Milestones', href: '#journey' },
 ];
 
 export function Navigation() {
-  const { isExperienceUnlocked, setIntroState } = useStory();
+  const { isExperienceUnlocked, setIntroState, setPendingTarget } = useStory();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -144,10 +144,16 @@ export function Navigation() {
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
     e.preventDefault();
     setIsOpen(false);
-    // The intro gate is escapable: clicking a link unlocks the experience and
-    // then scrolls to the requested section.
+    // The intro gate is escapable: clicking a link unlocks the experience.
+    // While locked, never scroll here — the 100vh intro is still mounted so
+    // any measurement is off by a viewport after it unmounts. Stash the
+    // target and let App scroll once the landing page is destroyed.
     if (target === 'body') {
-      if (!isExperienceUnlocked) setIntroState('EXPERIENCE_UNLOCKED');
+      if (!isExperienceUnlocked) {
+        setPendingTarget('top');
+        setIntroState('EXPERIENCE_UNLOCKED');
+        return;
+      }
       smoothScrollToTop();
       return;
     }
@@ -156,13 +162,8 @@ export function Navigation() {
     // (#destination at scroll 0) instead of leaving a dead link.
     const fallbackToTop = () => smoothScrollToTop();
     if (!isExperienceUnlocked) {
-      if (target === '#story-experience') {
-        setIntroState('EXPERIENCE_UNLOCKED');
-        window.setTimeout(fallbackToTop, 400);
-        return;
-      }
+      setPendingTarget(target);
       setIntroState('EXPERIENCE_UNLOCKED');
-      scrollToSelectorDeferred(target);
       return;
     }
     if (target === '#story-experience' && !document.querySelector('#story-experience')) {
@@ -191,11 +192,11 @@ export function Navigation() {
       }`}
       aria-label="Main Navigation"
     >
-      <div className="container mx-auto px-6 flex justify-between items-center">
+      <div className="container mx-auto px-4 sm:px-6 flex justify-between items-center">
         {/* Logo */}
         <a
           href="#destination"
-          className="relative z-50 text-[#fffdf8] font-serif text-2xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
+          className="relative z-50 text-[#fffdf8] font-serif tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm truncate max-w-[62vw] sm:max-w-none text-lg sm:text-2xl"
           onClick={(e) => handleSmoothScroll(e, 'body')}
         >
           A Journey of Love
@@ -242,7 +243,7 @@ export function Navigation() {
       <div
         ref={menuRef}
         id="mobile-menu"
-        className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden"
+        className="fixed inset-0 bg-[#14070e] z-40 flex flex-col justify-center items-center md:hidden overflow-y-auto py-24 px-4"
         style={{
           visibility: isOpen ? 'visible' : 'hidden',
           // Delay hiding until the GSAP slide-out (~0.4s) finishes so the
@@ -252,14 +253,14 @@ export function Navigation() {
         aria-hidden={!isOpen}
         inert={!isOpen}
       >
-        <div className="flex flex-col items-center space-y-4">
+        <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
           {navLinks.map((link, index) => (
             <a
               key={link.name}
               ref={(el) => { linksRef.current[index] = el; }}
               href={link.href}
               tabIndex={isOpen ? 0 : -1}
-              className="text-[#fffdf8] font-serif text-3xl tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center"
+              className="text-[#fffdf8] font-serif tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center text-center text-2xl sm:text-3xl"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
               {link.name}

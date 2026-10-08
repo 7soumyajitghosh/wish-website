@@ -217,7 +217,14 @@ export function getHeartWorldPos(
   if (!branch) return { x: 0, y: 0 };
   const pt = pointOnCubicBezier(branch.p0, branch.p1, branch.p2, branch.p3, heart.branchT);
   const wx = windDisplace(pt.x + heart.offsetX, pt.y + heart.offsetY, baseX, baseY, windStr, time);
-  return { x: pt.x + heart.offsetX + wx, y: pt.y + heart.offsetY };
+  // Leaves ride their branches: a small lift in phase with the same slow
+  // sway, so foliage never floats free of its twig. Calm air barely stirs.
+  const lift =
+    windStr <= 0
+      ? Math.sin(time * 1.1 + heart.rotation * 4) * 0.5
+      : Math.sin(time * 0.85 + pt.x * 0.0016 + heart.rotation * 2) *
+        Math.min(2.4, windStr * 0.09);
+  return { x: pt.x + heart.offsetX + wx, y: pt.y + heart.offsetY + lift };
 }
 
 export function drawBudsAndHearts(
@@ -269,7 +276,19 @@ export function drawBudsAndHearts(
       alpha *= 1.0;
     }
 
-    const wobble = Math.sin(time * 1.8 + idx * 0.7) * 0.04;
-    drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + wobble, alpha);
+    // Leaves pivot on their stems: rotation does the talking, with the
+    // twist growing as the wind rises. In a true gale the outer leaves
+    // flash edge-on as they turn — a shimmer, not a slide.
+    const windAbs = Math.abs(windStr);
+    const twist =
+      Math.sin(time * 2.2 + idx * 1.3) * (0.05 + Math.min(0.42, windAbs * 0.017)) +
+      Math.sin(time * 3.7 + idx * 2.1) * (0.015 + Math.min(0.14, windAbs * 0.006));
+    if (heart.layer >= 1 && windAbs > 6 && idx % 3 === 0) {
+      const turn = Math.cos(time * 3.1 + idx * 0.9);
+      const narrow = 0.55 + 0.45 * Math.abs(turn);
+      drawHeartShape(ctx, pos.x, pos.y, size * narrow, heart.color, heart.rotation + twist, alpha);
+    } else {
+      drawHeartShape(ctx, pos.x, pos.y, size, heart.color, heart.rotation + twist, alpha);
+    }
   });
 }

@@ -152,35 +152,14 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
       {introState === 'INTRO' && (
         <div
           ref={contentRef}
-          className="relative z-20 flex flex-col items-center text-center px-6 max-w-4xl mx-auto w-full select-none"
+          className="relative z-20 flex flex-col items-center text-center px-4 sm:px-6 max-w-4xl mx-auto w-full select-none"
         >
-          <div ref={titleRef} className="flex flex-col items-center" style={{ transform: 'translate3d(0px, 0px, 0)' }}>
-          <p className="text-sm font-sans font-medium uppercase tracking-[0.35em] text-[#f5baa4] mb-6 drop-shadow-md">
+          <div ref={titleRef} className="flex flex-col items-center w-full" style={{ transform: 'translate3d(0px, 0px, 0)' }}>
+          <p className="font-sans font-medium uppercase text-[#f5baa4] mb-4 sm:mb-6 drop-shadow-md text-xs sm:text-sm tracking-[0.25em] sm:tracking-[0.35em] px-2">
             A Journey of Love
           </p>
 
-          <style>{`
-            .hero-line { display: block; overflow: hidden; padding-bottom: 0.16em; margin-bottom: -0.16em; }
-            .hero-line > span { display: block; animation: heroRise 1s cubic-bezier(0.22,1,0.36,1) both; }
-            .hero-line:nth-child(2) > span { animation-delay: 0.14s; }
-            @keyframes heroRise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
-            .heart-chain { position: absolute; inset-inline: 0; top: 50%; height: 0; pointer-events: none; }
-            .heart-chain > span {
-              position: absolute; top: 0; left: 0;
-              font-size: clamp(1rem, 2.4vw, 1.6rem); line-height: 1;
-              color: #ff8fa3; text-shadow: 0 0 12px rgba(216,27,70,0.9), 0 0 30px rgba(216,27,70,0.5);
-              opacity: 0; animation: heartSlide 2.8s linear infinite;
-            }
-            @keyframes heartSlide {
-              0% { opacity: 0; transform: translate(-8vw, 10px) scale(0.7); }
-              15% { opacity: 1; }
-              80% { opacity: 1; }
-              100% { opacity: 0; transform: translate(108vw, -14px) scale(1.15); }
-            }
-            @media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } .heart-chain { display: none; } }
-            @media (max-width: 768px) { .heart-chain { display: none; } }
-          `}</style>
-          <h1 className="relative font-serif text-[#fffdf8] tracking-wide mb-6 drop-shadow-2xl" style={{ fontSize: 'clamp(3rem,8vw,7rem)', lineHeight: 1.14 }}>
+          <h1 className="relative font-serif text-[#fffdf8] tracking-wide mb-4 sm:mb-6 drop-shadow-2xl text-balance break-words px-2" style={{ fontSize: 'clamp(2.4rem,11vw,7rem)', lineHeight: 1.14 }}>
             <span className="hero-line"><span>Where Love</span></span>
             <span className="hero-line"><span>Takes Flight</span></span>
             <span aria-hidden="true" className="heart-chain">
@@ -194,22 +173,22 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
             </span>
           </h1>
 
-          <p className="font-serif italic text-[#ffd6a5]/90 text-lg md:text-xl mb-8 max-w-xl leading-relaxed">
+          <p className="font-serif italic text-[#ffd6a5] mb-6 sm:mb-8 max-w-xl leading-relaxed px-4 text-base sm:text-lg md:text-xl">
             Something beautiful is about to begin…
           </p>
 
-          <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#f5baa4]/60 to-transparent mb-10" />
+          <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#f5baa4]/60 to-transparent mb-8 sm:mb-10" />
 
           {/* The Begin Action Button — locked/disabled once clicked until the
               intro transition finishes (prevents multi-click restarts). */}
-          <div className="flex flex-col items-center gap-4">
-            <MagneticButton>
+          <div className="flex flex-col items-center gap-4 w-full px-4">
+            <MagneticButton className="max-w-full">
               <button
                 onClick={handleBegin}
                 disabled={hasBegun}
                 aria-disabled={hasBegun}
                 aria-busy={hasBegun}
-                className="btn-primary group relative overflow-hidden font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="btn-primary group relative overflow-hidden font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed max-w-[calc(100vw-3rem)]"
                 aria-label="Let's start our journey"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />

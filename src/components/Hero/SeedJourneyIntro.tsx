@@ -59,7 +59,13 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
 
   // Dragging offset for watering pot — ref-driven transform during drag
   // (no per-mousemove React re-render); committed to state on release.
-  const restingPotPos = { x: baseX + 130, y: seedLandingY - 150 };
+  // Mobile clamp: resting pos must keep the whole can on-screen
+  // (baseX + 130 overflowed 320–360px viewports → horizontal scroll).
+  const canSize = isMobile ? 80 : 96;
+  const restingPotPos = {
+    x: Math.min(baseX + 130, Math.max(16, dims.w - canSize - 16)),
+    y: seedLandingY - 150,
+  };
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const potWrapRef = useRef<HTMLDivElement>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -75,7 +81,6 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   // Spout-tip anchored pour: the rose tip sits ~15% across / 68% down the
   // can SVG, so snap the can to place the TIP directly over the seed and let
   // drops fall straight down (no diagonal drift).
-  const canSize = isMobile ? 80 : 96;
   const spoutOff = { x: canSize * 0.15, y: canSize * 0.68 };
   const seedPos = { x: baseX, y: seedLandingY };
   // Outer-wrapper position that puts the spout tip exactly over the seed.
@@ -131,13 +136,11 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
   // Droplet window: reveal once the can has slid over the seed (CSS 0.5s
   // slide), then hide before the can fades so water never pours from an
   // invisible can. Reduced motion: splash only, no falling drops.
+  // No synchronous setState for the reduced-motion path here (cascading
+  // render) — the reduced splash is committed directly in triggerWatering.
   useEffect(() => {
-    if (!isWatering) return;
+    if (!isWatering || isReduced) return;
     const timers: number[] = [];
-    if (isReduced) {
-      setShowWater(true);
-      return;
-    }
     timers.push(
       window.setTimeout(() => {
         if (mountedRef.current) setShowWater(true);
@@ -234,6 +237,14 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     hasWateredRef.current = true;
     setIsWatering(true);
     setIsDragging(false);
+    // Reduced motion: splash renders immediately (no droplet timers).
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setShowWater(true);
+    }
 
     const potEl = potRef.current;
 
@@ -381,51 +392,6 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
 
   return (
     <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center overflow-hidden z-20 select-none">
-      <style>{`
-        @keyframes water-drop-fall {
-          0% { transform: translateY(0) scale(0.45); opacity: 0; }
-          15% { opacity: 1; }
-          85% { opacity: 1; }
-          100% { transform: translateY(var(--fall, 48px)) scale(1); opacity: 0; }
-        }
-        @keyframes water-stream-flow {
-          0% { opacity: 0; }
-          20% { opacity: 0.55; }
-          80% { opacity: 0.55; }
-          100% { opacity: 0; }
-        }
-        @keyframes water-splash-ring {
-          0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0.9; }
-          100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
-        }
-        @keyframes seed-soak-pulse {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.45; }
-          50% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; }
-        }
-        .water-drop {
-          position: absolute;
-          top: 0;
-          width: 7px;
-          height: 11px;
-          background: linear-gradient(180deg, #eaf9ff 0%, #a2d2ff 45%, #4aa8ff 100%);
-          border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
-          box-shadow: 0 0 8px rgba(162, 210, 255, 0.9), inset -1px -1px 2px rgba(255,255,255,0.7);
-          animation: water-drop-fall 0.85s cubic-bezier(0.45, 0, 0.7, 0.4) infinite;
-        }
-        .water-drop::after {
-          content: "";
-          position: absolute;
-          left: 1.5px;
-          top: 2px;
-          width: 2px;
-          height: 3.5px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.9);
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .water-drop, .water-splash-ring, .seed-soak-pulse { animation: none !important; }
-        }
-      `}</style>
       {/* captions removed */}
 
       {/* INTERACTIVE WATERING CAN — outer wrapper owned by React, inner owned by GSAP */}

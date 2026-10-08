@@ -22,6 +22,10 @@ export function getWindStrength(p: number): number {
 
 /**
  * Calculates harmonic lateral wind displacement for branches and foliage.
+ *
+ * A real gale bends the tree first and sways it second: a steady downwind
+ * lean (quadratic with height, so tips travel while the trunk holds) plus a
+ * slow sway around that lean. Gusts arrive over seconds, not frames.
  */
 export function windDisplace(
   x: number,
@@ -34,9 +38,16 @@ export function windDisplace(
   if (windStr <= 0) return 0;
   const dx = Math.abs(x - baseX);
   const dy = Math.max(0, baseY - y);
-  const dist = (dx + dy * 0.5) / 250;
-  const osc =
-    Math.sin(time * 2.5 + y * 0.008 + x * 0.003) * 0.65 +
-    Math.sin(time * 1.3 + y * 0.012) * 0.35;
-  return windStr * dist * osc;
+  // Normalized reach: 0 at the roots, ~1+ at the outer crown.
+  const reach = (dx + dy * 0.6) / 230;
+  const bend = reach * reach * 0.9 + reach * 0.25;
+  // Slow gust envelope — swells roll through every ~7–12s.
+  const gust =
+    0.75 + 0.25 * Math.sin(time * 0.5 + baseX * 0.0015) + 0.12 * Math.sin(time * 0.9 + 1.7);
+  // Persistent lean downwind + slow sway around it (periods ~7s and ~12s).
+  const lean = 0.6;
+  const sway =
+    Math.sin(time * 0.85 + y * 0.004 + x * 0.0016) * 0.28 +
+    Math.sin(time * 0.5 + y * 0.006 + 0.8) * 0.12;
+  return windStr * bend * (lean + sway) * gust;
 }

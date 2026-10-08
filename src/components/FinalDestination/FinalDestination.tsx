@@ -205,7 +205,7 @@ export const FinalDestination: React.FC = () => {
         <div
           ref={sunRef}
           aria-hidden="true"
-          className="absolute left-1/2 top-[10%] w-64 h-64 sm:w-96 sm:h-96 z-0 pointer-events-none"
+          className="absolute left-1/2 top-[14%] sm:top-[10%] w-48 h-48 sm:w-96 sm:h-96 z-0 pointer-events-none"
           style={{ transform: 'translateX(-50%)' }}
         >
           <div className="reveal-element w-full h-full">
@@ -220,7 +220,7 @@ export const FinalDestination: React.FC = () => {
         <div
           ref={branchLRef}
           aria-hidden="true"
-          className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none"
+          className="absolute top-0 left-0 w-40 h-40 sm:w-96 sm:h-96 origin-top-left z-10 pointer-events-none"
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 200" className="w-full h-full opacity-80">
@@ -239,7 +239,7 @@ export const FinalDestination: React.FC = () => {
         <div
           ref={branchRRef}
           aria-hidden="true"
-          className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none"
+          className="absolute top-0 right-0 w-40 h-40 sm:w-96 sm:h-96 origin-top-right z-10 pointer-events-none"
           style={{ transform: 'scaleX(-1)' }}
         >
           <div className="reveal-element w-full h-full">
@@ -270,7 +270,7 @@ export const FinalDestination: React.FC = () => {
         <div
           ref={lampRef}
           aria-hidden="true"
-          className="absolute bottom-0 left-[10%] sm:left-[20%] w-32 h-64 sm:w-48 sm:h-96 z-20 pointer-events-none"
+          className="absolute bottom-0 left-[2%] sm:left-[20%] w-20 h-40 sm:w-48 sm:h-96 z-20 pointer-events-none"
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 100 300" className="w-full h-full">
@@ -301,7 +301,7 @@ export const FinalDestination: React.FC = () => {
         <div
           ref={benchRef}
           aria-hidden="true"
-          className="absolute bottom-10 right-[10%] sm:right-[20%] w-48 h-32 sm:w-64 sm:h-48 z-20 pointer-events-none"
+          className="absolute bottom-6 sm:bottom-10 right-[2%] sm:right-[20%] w-32 h-20 sm:w-64 sm:h-48 z-20 pointer-events-none"
         >
           <div className="reveal-element w-full h-full">
           <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl">
@@ -381,29 +381,29 @@ export const FinalDestination: React.FC = () => {
         <div aria-hidden="true" className="absolute inset-0 z-[25] pointer-events-none bg-gradient-to-t from-[#0d0408]/60 via-transparent to-[#ffd6a5]/5" />
 
         {/* Text Overlay — opacity-0 only pre-reveal so no-JS/GSAP-fail stays visible */}
-        <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-6 md:px-8">
-          <div ref={textRef} className="max-w-4xl w-full flex flex-col items-center gap-6 px-2 sm:px-4">
-            <Reveal delay={0} className="flex flex-col items-center gap-4">
+        <div className="absolute inset-0 z-30 flex flex-col justify-center items-center text-center px-4 sm:px-6 md:px-8 pt-10 sm:pt-0 pb-36 sm:pb-0">
+          <div ref={textRef} className="max-w-4xl w-full flex flex-col items-center gap-5 sm:gap-6 px-2 sm:px-4">
+            <Reveal delay={0} className="flex flex-col items-center gap-4 w-full">
             <span className={`eyebrow ${isVisible ? '' : 'opacity-0'}`}>
               The Destination
             </span>
 
             <h2
-              className={`font-serif text-[#fffdf8] drop-shadow-lg text-balance ${isVisible ? '' : 'opacity-0'}`}
-              style={{ fontSize: 'clamp(2.25rem,6vw + 0.5rem,4.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}
+              className={`font-serif text-[#fffdf8] drop-shadow-lg text-balance break-words px-1 ${isVisible ? '' : 'opacity-0'}`}
+              style={{ fontSize: 'clamp(2rem,9vw,4.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}
             >
               Where Love Takes Flight
             </h2>
             </Reveal>
 
-            <Reveal delay={0.08} className="flex flex-col items-center">
-            <p className={`text-[#fff8eb] text-base sm:text-xl md:text-2xl font-normal max-w-2xl drop-shadow-md leading-relaxed text-balance ${isVisible ? '' : 'opacity-0'}`}>
+            <Reveal delay={0.08} className="flex flex-col items-center w-full">
+            <p className={`text-[#fff8eb] font-normal max-w-2xl drop-shadow-md leading-relaxed text-balance px-2 text-base sm:text-xl md:text-2xl ${isVisible ? '' : 'opacity-0'}`}>
               Every seed of kindness planted with love blossoms into an eternal garden of dreams.
             </p>
             </Reveal>
 
-            <Reveal delay={0.16} className={`mt-4 ${isVisible ? '' : 'opacity-0'}`}>
-              <MagneticButton>
+            <Reveal delay={0.16} className={`mt-2 sm:mt-4 w-full flex justify-center ${isVisible ? '' : 'opacity-0'}`}>
+              <MagneticButton className="max-w-full">
               <button
                 onClick={() => {
                   const el = document.getElementById('love-letter');
@@ -414,7 +414,7 @@ export const FinalDestination: React.FC = () => {
                     window.scrollTo({ top: 0 });
                   }
                 }}
-                className="btn-ghost font-serif text-base tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5]"
+                className="btn-ghost font-serif tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] text-sm sm:text-base"
                 aria-label="Proceed to the Love Letter"
               >
                 A letter awaits upon the bench →
@@ -425,15 +425,7 @@ export const FinalDestination: React.FC = () => {
         </div>
 
       </div>
-      
-      <style>{`
-        @keyframes floatUpDestination {
-          0% { transform: translateY(0) scale(0.5); opacity: 0; }
-          10% { opacity: 0.5; }
-          90% { opacity: 0.5; }
-          100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
-        }
-      `}</style>
+
     </section>
   );
 };

@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 // ---- inline copies of pure logic (mirrors src, so harness runs without TS build) ----
 function clamp01(v){ return Math.max(0, Math.min(1, v)); }
 function rangeProgress(t,start,end){ if(end<=start) return t>=start?1:0; return clamp01((t-start)/(end-start)); }
-function lerp(a,b,t){ return a+(b-a)*t; }
 function easeOrganicBloom(t){ if(t<=0) return 0; if(t>=1) return 1; if(t<0.4) return (t/0.4)*0.7; if(t<0.75) return 0.7+((t-0.4)/0.35)*0.35; return 1.05-((t-0.75)/0.25)*0.05; }
 function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
 class SeededRandom{ constructor(seed){ this.seed=seed%2147483647; if(this.seed<=0) this.seed+=2147483646; } next(){ this.seed=(this.seed*16807)%2147483647; return (this.seed-1)/2147483646; } range(mn,mx){ return mn+this.next()*(mx-mn);} symmetric(){ return this.next()*2-1; } }

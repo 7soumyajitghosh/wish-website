@@ -1,16 +1,34 @@
-import { useCallback, useEffect, useState, Component, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, Component, type ReactNode, lazy, Suspense } from 'react';
 import { Navigation } from './components/Navigation/Navigation';
 import { CinematicExperience } from './components/CinematicExperience/CinematicExperience';
-import { FinalDestination } from './components/FinalDestination/FinalDestination';
-import { LoveLetter } from './components/LoveLetter/LoveLetter';
-import { WishSection } from './components/WishSection/WishSection';
-import { FinalMessage } from './components/FinalMessage/FinalMessage';
-import { Journey } from './components/Journey/Journey';
 import { Footer } from './components/Footer/Footer';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
+import { StormLab } from './components/Debug/StormLab';
 import { StoryProvider, useStory } from './context/StoryContext';
 import { CursorGlow } from './components/Effects/CursorGlow';
 import { Marquee } from './components/Effects/Marquee';
+
+// Below-fold sections are code-split: the intro (CinematicExperience) stays
+// in the initial bundle while the story sections load in parallel chunks.
+// This keeps the initial JS small (was a single 420kB bundle).
+const FinalDestination = lazy(() =>
+  import('./components/FinalDestination/FinalDestination').then((m) => ({ default: m.FinalDestination }))
+);
+const LoveLetter = lazy(() =>
+  import('./components/LoveLetter/LoveLetter').then((m) => ({ default: m.LoveLetter }))
+);
+const WishSection = lazy(() =>
+  import('./components/WishSection/WishSection').then((m) => ({ default: m.WishSection }))
+);
+const FinalMessage = lazy(() =>
+  import('./components/FinalMessage/FinalMessage').then((m) => ({ default: m.FinalMessage }))
+);
+const Journey = lazy(() =>
+  import('./components/Journey/Journey').then((m) => ({ default: m.Journey }))
+);
+const Playground = lazy(() =>
+  import('./components/Playground/Playground').then((m) => ({ default: m.Playground }))
+);
 
 /** Isolates a crashing cinematic canvas so the story stays readable. */
 class SectionErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -49,7 +67,7 @@ const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const AppContent = () => {
-  const { isExperienceUnlocked, setIntroState } = useStory();
+  const { isExperienceUnlocked, setIntroState, pendingTarget, setPendingTarget } = useStory();
   // Landing intro lives only for the intro experience. Once the leaf
   // transition finishes (signalled via onTransitionComplete), the entire
   // CinematicExperience is unmounted — never merely hidden.
@@ -81,16 +99,67 @@ const AppContent = () => {
 
   // Focus moves to the new page only after the old landing page is gone.
   // During the covered leaf transition we deliberately do not steal focus.
+  // A nav link clicked while locked stashes its target in pendingTarget;
+  // scrolling here (after unmount) lands correctly since the 100vh intro
+  // is already out of the layout. Scrolling earlier would be off by exactly
+  // the removed intro height.
+  // Runs once per unlock: the consumed flag prevents the pendingTarget=null
+  // clearing pass from re-triggering a scroll-to-top over the target section.
+  // Single-scroll contract: CinematicExperience never scrolls mid-transition,
+  // so this is the ONLY programmatic scroll after the storm — one jump, no
+  // double. Below-fold sections are code-split, so we retry a few frames
+  // until the target element exists before scrolling/focusing.
+  const hasScrolledRef = useRef(false);
   useEffect(() => {
-    if (isExperienceUnlocked && !introAlive) {
-      window.scrollTo(0, 0);
-      const el = document.getElementById('destination');
-      if (el) {
-        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
-        (el as HTMLElement).focus({ preventScroll: true });
+    if (!isExperienceUnlocked || introAlive) return;
+    if (hasScrolledRef.current) return;
+    hasScrolledRef.current = true;
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior: ScrollBehavior = reduced ? 'auto' : 'smooth';
+
+    const consumeTarget = pendingTarget;
+    if (consumeTarget) setPendingTarget(null);
+
+    const targetId =
+      !consumeTarget || consumeTarget === 'top' || consumeTarget === '#story-experience'
+        ? 'destination'
+        : consumeTarget.replace(/^#/, '');
+
+    const scrollAndFocus = (el: Element | null) => {
+      if (el) el.scrollIntoView({ behavior });
+      else window.scrollTo(0, 0);
+      const focusEl = (el ?? document.getElementById('destination')) as HTMLElement | null;
+      if (focusEl) {
+        if (!focusEl.hasAttribute('tabindex')) focusEl.setAttribute('tabindex', '-1');
+        focusEl.focus({ preventScroll: true });
       }
-    }
-  }, [isExperienceUnlocked, introAlive]);
+    };
+
+    // Two rAFs let the unmounted layout settle; then wait for the lazy chunk.
+    let attempts = 0;
+    let raf1 = 0;
+    let raf2 = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(targetId) ?? document.querySelector(`#${CSS.escape(targetId)}`);
+      if (el || attempts >= 10) {
+        scrollAndFocus(el);
+        return;
+      }
+      attempts += 1;
+      requestAnimationFrame(tryScroll);
+    };
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(tryScroll);
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isExperienceUnlocked, introAlive, pendingTarget, setPendingTarget]);
 
   // Keep the overflow-hidden intro gate escapable via keyboard.
   useEffect(() => {
@@ -104,6 +173,11 @@ const AppContent = () => {
 
   return (
     <div className={`grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8] ${scrollLocked ? 'overflow-hidden max-h-screen' : ''}`}>
+      {/* TEMPORARY dev-only storm test-stage (?stormlab). Removed before ship. */}
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('stormlab') ? (
+        <StormLab />
+      ) : (
+      <>
       <a href="#main-content" className="skip-link">
         Skip to story
       </a>
@@ -123,34 +197,43 @@ const AppContent = () => {
         {/* Locked sections: hidden from keyboard/AT until the intro unlocks
             AND the landing page is destroyed. */}
         <div inert={!isExperienceUnlocked || introAlive}>
-          {/* The Final Destination: Where Love Takes Flight */}
-          <FinalDestination />
+          <Suspense fallback={null}>
+            {/* The Final Destination: Where Love Takes Flight */}
+            <FinalDestination />
 
-          <StoryDivider label="and the story continues…" />
+            <StoryDivider label="and the story continues…" />
 
-          {/* User-Controlled Love Letter */}
-          <LoveLetter />
+            {/* User-Controlled Love Letter */}
+            <LoveLetter />
 
-          <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
+            <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
 
-          {/* Draggable Wish Release */}
-          <WishSection />
+            {/* Draggable Wish Release */}
+            <WishSection />
 
-          <StoryDivider label="sealed with love" />
+            <StoryDivider label="sealed with love" />
 
-          {/* Final Revealed Message */}
-          <FinalMessage />
+            {/* Final Revealed Message */}
+            <FinalMessage />
 
-          <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
+            <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
 
-          <StoryDivider />
+            <StoryDivider label="play a little" />
 
-          {/* Complete Interactive Milestones Explorer */}
-          <Journey />
+            {/* Games & puzzles playground */}
+            <Playground />
+
+            <StoryDivider />
+
+            {/* Complete Interactive Milestones Explorer */}
+            <Journey />
+          </Suspense>
         </div>
       </main>
       <Footer />
       <SoundToggle />
+      </>
+      )}
     </div>
   );
 };

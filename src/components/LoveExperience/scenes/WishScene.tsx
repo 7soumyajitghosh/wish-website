@@ -13,6 +13,7 @@ export const WishScene: React.FC = () => {
   const [hasWished, setHasWished] = useState(false);
   const emitterRef = useRef<ParticleEmitter>(new ParticleEmitter());
   const rafRef = useRef<number | null>(null);
+  const parkTimeoutRef = useRef<number | null>(null);
   const wishTlRef = useRef<gsap.core.Timeline | null>(null);
   const mountedRef = useRef(true);
   const wishedRef = useRef(false);
@@ -28,15 +29,19 @@ export const WishScene: React.FC = () => {
   }, []);
 
   // Setup canvas and particle animation loop — IO-gated + hidden-tab safe.
+  // Canvas is sized from its own container (not window dims) and RAF vs
+  // timeout ids live in separate refs (never conflated).
   useEffect(() => {
     const canvas = canvasRef.current;
+    const container = containerRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const handleResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const rect = (container ?? canvas).getBoundingClientRect();
+      const w = Math.max(1, rect.width || window.innerWidth);
+      const h = Math.max(1, rect.height || window.innerHeight);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = w * dpr;
       canvas.height = h * dpr;
@@ -55,10 +60,11 @@ export const WishScene: React.FC = () => {
       rafRef.current = null;
       if (!visible || document.hidden) {
         // Poll slowly while hidden instead of burning 60fps.
-        rafRef.current = window.setTimeout(() => {
+        parkTimeoutRef.current = window.setTimeout(() => {
+          parkTimeoutRef.current = null;
           rafRef.current = requestAnimationFrame(render);
           lastTime = performance.now();
-        }, 500) as unknown as number;
+        }, 500);
         return;
       }
       const dt = Math.min((now - lastTime) / 1000, 0.05);
@@ -93,11 +99,14 @@ export const WishScene: React.FC = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
       gate.disconnect();
-      if (rafRef.current) {
+      if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
-        window.clearTimeout(rafRef.current);
+        rafRef.current = null;
       }
-      rafRef.current = null;
+      if (parkTimeoutRef.current !== null) {
+        window.clearTimeout(parkTimeoutRef.current);
+        parkTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -298,12 +307,13 @@ export const WishScene: React.FC = () => {
           </div>
         )}
 
-        {/* Final Message Reveal */}
-        <div ref={finaleRef} className="wish-finale-container">
+        {/* Final Message Reveal — hidden from AT until the wish is released
+            (previously only opacity:0, so SR users heard it early). */}
+        <div ref={finaleRef} className="wish-finale-container" aria-hidden={!hasWished} inert={!hasWished}>
           <h2 className="finale-header finale-reveal-item">{wish.finalHeader}</h2>
           <div className="finale-body">
-            {wish.finalMessage.map((line, idx) => (
-              <p key={idx} className="finale-line finale-reveal-item">
+            {wish.finalMessage.map((line) => (
+              <p key={line} className="finale-line finale-reveal-item">
                 {line}
               </p>
             ))}

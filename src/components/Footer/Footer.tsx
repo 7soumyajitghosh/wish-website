@@ -1,5 +1,8 @@
+import { useState } from 'react';
+
 export const Footer = () => {
-  const year = new Date().getFullYear();
+  // Impure Date() must not run during render (react/purity) — freeze once.
+  const [year] = useState(() => new Date().getFullYear());
   const scrollToTop = () => {
     const reduced =
       typeof window !== 'undefined' &&
@@ -9,7 +12,7 @@ export const Footer = () => {
   };
 
   return (
-    <footer className="relative bg-[#0d0408] pt-12 pb-10 px-6 flex flex-col items-center justify-center text-center overflow-hidden">
+    <footer className="relative bg-[#0d0408] pt-12 pb-24 sm:pb-10 px-4 sm:px-6 flex flex-col items-center justify-center text-center overflow-hidden">
       {/* Subtle top border gradient */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#ffb3c1] to-transparent opacity-30" aria-hidden="true"></div>
       {/* Decorative ambient glow */}
@@ -32,9 +35,9 @@ export const Footer = () => {
       {/* Giant editorial type (decorative, Dribbble-style footer moment) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none font-serif italic leading-none text-transparent whitespace-nowrap max-w-full overflow-hidden"
+        className="pointer-events-none select-none font-serif italic leading-tight text-transparent w-full px-4 text-balance break-words sm:whitespace-nowrap sm:leading-none sm:max-w-full sm:overflow-hidden"
         style={{
-          fontSize: 'clamp(2.75rem,10vw,8rem)',
+          fontSize: 'clamp(2rem,9vw,8rem)',
           WebkitTextStroke: '1px rgba(255,179,193,0.28)',
         }}
       >

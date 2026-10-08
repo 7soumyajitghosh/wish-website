@@ -27,11 +27,11 @@ export const Marquee: React.FC<{
 
   if (!words || words.length === 0) return null;
 
-  const row = () => (
+  const row = (keyPrefix: string) => (
     <div aria-hidden="true" className="flex shrink-0 items-center">
-      {words.map((w, i) => (
-        <span key={i} className="flex items-center">
-          <span className="mx-6 font-serif italic text-lg md:text-xl text-[#f5baa4]/85 whitespace-nowrap">
+      {words.map((w) => (
+        <span key={`${keyPrefix}-${w}`} className="flex items-center">
+          <span className="mx-6 font-serif italic text-lg md:text-xl text-[#f5baa4] whitespace-nowrap">
             {w}
           </span>
           <svg className="h-3 w-3 shrink-0 text-[#d81b46]/80" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -43,15 +43,10 @@ export const Marquee: React.FC<{
   );
 
   return (
-    <div ref={ref} aria-hidden="true" className={`group relative overflow-hidden py-5 ${className}`}>      <style>{`
-        .marquee-track { display: flex; width: max-content; animation: marqueeSlide 28s linear infinite; will-change: transform; }
-        .group:hover .marquee-track, .group:focus-within .marquee-track { animation-play-state: paused; }
-        @keyframes marqueeSlide { to { transform: translate3d(-50%, 0, 0); } }
-        @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
-      `}</style>
+    <div ref={ref} aria-hidden="true" className={`group relative overflow-hidden py-5 ${className}`}>
       <div className="marquee-track">
-        {row()}
-        {row()}
+        {row('a')}
+        {row('b')}
       </div>
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0d0408] to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0d0408] to-transparent" />

@@ -13,12 +13,22 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   const sealRef = useRef<HTMLDivElement>(null);
   const letterRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [canProceed, setCanProceed] = useState(false);
+  // Initialize from reduced-motion preference so the reduced path never needs
+  // a synchronous setState inside the entrance effect (cascading render).
+  const [canProceed, setCanProceed] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
   const hasContinuedRef = useRef(false);
   const continueTlRef = useRef<gsap.core.Tween | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       continueTlRef.current?.kill();
       continueTlRef.current = null;
     };
@@ -27,7 +37,7 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
   // Fallback: allow proceeding even if the GSAP reveal chain fails.
   useEffect(() => {
     const t = window.setTimeout(() => {
-      setCanProceed(true);
+      if (mountedRef.current) setCanProceed(true);
     }, 15000);
     return () => window.clearTimeout(t);
   }, []);
@@ -39,6 +49,7 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Reduced motion: jump to end state, no staged choreography.
+    // canProceed is already true via the lazy initializer — no setState here.
     if (reduced) {
       gsap.set(containerRef.current, { opacity: 1 });
       gsap.set(envelopeRef.current, { y: 0, scale: 0.92, opacity: 0.15 });
@@ -50,7 +61,6 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
       }
       const items = contentRef.current?.querySelectorAll('.letter-text-item');
       if (items) gsap.set(items, { opacity: 1, y: 0, filter: 'blur(0px)' });
-      setCanProceed(true);
       return;
     }
 
@@ -158,7 +168,7 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
             stagger: 0.35,
             ease: 'power2.out',
             onComplete: () => {
-              setCanProceed(true);
+              if (mountedRef.current) setCanProceed(true);
             },
           },
           '-=0.4'
@@ -234,8 +244,8 @@ export const LoveLetterScene: React.FC<LoveLetterSceneProps> = ({ onComplete }) 
             </div>
 
             <div className="letter-body">
-              {loveLetter.paragraphs.map((p, idx) => (
-                <p key={idx} className="letter-paragraph letter-text-item">
+              {loveLetter.paragraphs.map((p) => (
+                <p key={p.slice(0, 48)} className="letter-paragraph letter-text-item">
                   {p}
                 </p>
               ))}

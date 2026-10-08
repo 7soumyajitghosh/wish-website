@@ -42,8 +42,6 @@ export interface CinematicExperienceProps {
 export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   onTransitionComplete,
 }) => {
-  const containerRef = useRef<HTMLElement>(null);
-  const stickyRef = useRef<HTMLDivElement>(null);
   const isAutoGrowingRef = useRef(false);
   const autoGrowthTlRef = useRef<gsap.core.Timeline | null>(null);
   const stormTlRef = useRef<gsap.core.Timeline | null>(null);
@@ -52,6 +50,11 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   // One-shot guards: growth can only ever run once, storm only once.
   const hasGrownRef = useRef(false);
   const hasStormedRef = useRef(false);
+  // Leaves → destination transition must also run exactly once: the storm
+  // onComplete is the only caller, but a recreated/resumed timeline must
+  // never replay the unlock + light-transition sequence (double scroll,
+  // double LightTransition play = the "page loads twice" jump).
+  const hasTransitionedRef = useRef(false);
   // Camera (zoom) + black fade are applied straight to the DOM (no re-renders).
   const camRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
@@ -61,7 +64,6 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     setIntroState,
     targetProgress,
     setTargetProgress,
-    isFlightUnlocked,
     activeTreeQuote,
     setActiveTreeQuote,
     pauseTreeQuote,
@@ -94,13 +96,6 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     setPhaseState(next);
   }, []);
 
-  // Refs mirror unlock flags so the long-lived GSAP onUpdate never closes
-  // over stale state.
-  const unlockFlightRef = useRef(isFlightUnlocked);
-  useEffect(() => {
-    unlockFlightRef.current = isFlightUnlocked;
-  }, [isFlightUnlocked]);
-
   // Intro close-up: when the seed beat starts, push the ONE camera toward
   // the tree base so the canvas seed carries the moment. Killed on sight
   // by growth / external unlock so tweens never fight (no jump).
@@ -124,26 +119,36 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     };
   }, [introState]);
 
-  // Camera zoom (direct DOM write — GPU transform, no re-renders).
+  // Camera zoom + gentle gale sway (direct DOM write — GPU transform, no re-renders).
   // Origin sits at the tree base (~46% x, ~73% y, matching the canvas layout).
-  const applyCam = useCallback((z: number) => {
+  const applyCam = useCallback((z: number, swayX = 0, swayY = 0) => {
     const el = camRef.current;
-    if (el) el.style.transform = `scale(${z})`;
+    if (el) el.style.transform = `scale(${z}) translate(${swayX}px, ${swayY}px)`;
   }, []);
 
-  // Black fade that follows the trailing leaves (direct DOM write).
+  // Soft warm veil that follows the trailing leaves (direct DOM write).
+  // Capped well below full black so the tree stays visible — this is a
+  // luminous dusk cover, never a blackout.
   const applyFade = useCallback((o: number) => {
     const el = fadeRef.current;
-    if (el) el.style.opacity = String(Math.max(0, Math.min(1, o)));
+    if (el) el.style.opacity = String(Math.max(0, Math.min(0.55, o * 0.55)));
   }, []);
 
   // ---------------------------------------------------------------------
   // LEAVES → DESTINATION
   // Runs only after the storm has fully completed, so nothing is still
   // animating when we move. The black fade covers the cut, then the warm
-  // light transition lifts to reveal the Destination. No scroll required.
+  // light transition lifts to reveal the Destination.
+  // Single-scroll contract: this timeline NEVER scrolls. The intro is still
+  // 100vh tall while it runs, so any scrollIntoView here lands ~one viewport
+  // too low; after unmount the layout collapses and App must scroll again —
+  // that pre-scroll + post-unmount correction is the visible double jump.
+  // Instead we stay put under cover and App performs the one post-unmount
+  // scroll once the layout is final.
   // ---------------------------------------------------------------------
   const transitionToDestination = useCallback(() => {
+    if (hasTransitionedRef.current) return;
+    hasTransitionedRef.current = true;
     setPhase('leavesTransition');
 
     const fadeEl = fadeRef.current;
@@ -155,20 +160,10 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     });
     leavesTlRef.current = tl;
 
-    tl.to(fadeEl, { opacity: 1, duration: 0.45, ease: 'power2.in' })
+    tl.to(fadeEl, { opacity: 0.6, duration: 0.45, ease: 'power2.in' })
       .call(() => {
         // Unlock first so body can scroll and destination is accessible
         setIntroState('EXPERIENCE_UNLOCKED');
-      })
-      .call(() => {
-        // Fully covered by black — jump instantly to Destination.
-        // Single instant jump: with `scroll-behavior: smooth` on html, a
-        // scrollIntoView + window.scrollTo pair queues two smooth scrolls
-        // (visible jank). behavior:'auto' jumps under the black cover.
-        const destEl = document.getElementById('destination');
-        if (destEl) {
-          destEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-        }
       }, undefined, '+=0.05')
       .call(() => {
         setTransitionPlay(true);
@@ -316,8 +311,17 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
           lastBroadcastTime = now;
           setTargetProgress(progressObj.p);
         }
-        // Fade to black following the trailing leaves off-screen.
+        // Soft dusk veil following the trailing leaves — never a blackout.
         applyFade(rangeProgress(progressObj.p, FLIGHT_T.DETACH_START + 0.03, FLIGHT_T.CYCLE_END));
+        // Faint handheld shudder in the gale (skipped for reduced motion).
+        if (!prefersReducedMotion) {
+          const tt = now * 0.001;
+          applyCam(
+            camObj.z,
+            Math.sin(tt * 13.7) * 1.4 + Math.sin(tt * 7.3) * 1.1,
+            Math.cos(tt * 11.3) * 1.1
+          );
+        }
       },
       onComplete: () => {
         // Leaves have all flown away — hand off to the Destination.
@@ -326,13 +330,14 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
       },
     });
 
-    // Gale: slight push-in + full sweep as the leaves detach and fly.
+    // Gale: a slow, barely-there push-in while the leaves detach and fly.
+    // (The per-tick shudder is applied in the timeline onUpdate above, so
+    // this tween carries no onUpdate of its own — the two never fight.)
     tl.to(camObj, {
-      z: 1.12,
+      z: 1.06,
       duration: 6.5,
-      ease: 'power1.in',
+      ease: 'power1.inOut',
       overwrite: 'auto',
-      onUpdate: () => applyCam(camObj.z),
     })
       .to(
         progressObj,
@@ -351,6 +356,10 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   // RAF/IO/RO/listeners, leaf particle arrays are dropped with their refs,
   // and temporary transition elements (fade, light veil) go with this tree.
   useEffect(() => {
+    // Copy refs for cleanup: accessing ref.current inside the cleanup
+    // reads a potentially-changed value (react-hooks/exhaustive-deps).
+    const cam = camRef.current;
+    const fade = fadeRef.current;
     return () => {
       autoGrowthTlRef.current?.kill();
       autoGrowthTlRef.current = null;
@@ -360,11 +369,10 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
       stormReadyCallRef.current = null;
       leavesTlRef.current?.kill();
       leavesTlRef.current = null;
-      if (camRef.current) gsap.killTweensOf(camRef.current);
-      if (fadeRef.current) gsap.killTweensOf(fadeRef.current);
-      setActiveTreeQuote(null);
+      if (cam) gsap.killTweensOf(cam);
+      if (fade) gsap.killTweensOf(fade);
     };
-  }, [setActiveTreeQuote]);
+  }, []);
 
   // External unlock (nav / milestones / Escape) bypasses the cinematic, so
   // kill any orphaned timeline and settle the camera instead of leaving the
@@ -392,13 +400,19 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     setPhase('destination');
   }, [introState, applyCam, applyFade, setPhase]);
 
-  // Background-tab stranding guard: GSAP timers throttle while hidden, so
-  // fast-forward only the timeline that is actively playing.
+  // Background-tab guard: GSAP timers throttle while hidden. Do NOT
+  // fast-forward with progress(1) — that skips growth/storm with an abrupt
+  // visual jump plus onComplete side effects from a visibility handler.
+  // Simply resume; the timelines continue from their current position.
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) return;
-      if (stormTlRef.current?.isActive()) stormTlRef.current.progress(1);
-      else if (autoGrowthTlRef.current?.isActive()) autoGrowthTlRef.current.progress(1);
+      if (document.hidden) {
+        stormTlRef.current?.pause();
+        autoGrowthTlRef.current?.pause();
+        return;
+      }
+      stormTlRef.current?.resume();
+      autoGrowthTlRef.current?.resume();
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -414,8 +428,9 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   }, [activeTreeQuote]);
 
   // Bypass path (Escape / nav unlock without leaves): the leaf timeline never
-  // ran, so there is no LightTransition to signal completion. Settle under a
-  // tick, scroll to the new page, then destroy this landing component.
+  // ran, so there is no LightTransition to signal completion. Destroy this
+  // landing component on a tick — App scrolls to the pending nav target
+  // (or top) only after unmount, when layout is final.
   useEffect(() => {
     if (introState !== 'EXPERIENCE_UNLOCKED') return;
     if (phaseRef.current !== 'destination') return;
@@ -425,8 +440,6 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
     // a second call, this only fires for the bypass path.
     if (hasStormedRef.current) return;
     const t = window.setTimeout(() => {
-      const destEl = document.getElementById('destination');
-      if (destEl) destEl.scrollIntoView({ behavior: 'auto', block: 'start' });
       completeIntro();
     }, 120);
     return () => window.clearTimeout(t);
@@ -457,19 +470,30 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   const barsVisible =
     introState !== 'EXPERIENCE_UNLOCKED' || isGrowing || isStorming || isLeavesTransition;
 
+  // Quote popup position: viewport-dependent layout must live in state
+  // (not read during render) so SSR/first paint never mismatches.
+  const [viewportW, setViewportW] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+  useEffect(() => {
+    const onResize = () => setViewportW(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const quoteLeft = activeTreeQuote
+    ? Math.max(12, Math.min(activeTreeQuote.x - 120, viewportW - Math.min(320, viewportW - 24) - 12))
+    : 12;
+
   return (
     <section
       id="story-experience"
-      ref={containerRef}
-      className="relative w-full h-screen h-[100svh] bg-[#0d0408] text-[#fffdf8]"
+      className="relative w-full h-[100svh] min-h-[100svh] bg-[#0d0408] text-[#fffdf8]"
       aria-label="Interactive Story Experience"
       aria-busy={isTransitionLocked}
     >
-      <style>{`@keyframes cinematicQuoteIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } } .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; } .storm-tint { background: radial-gradient(ellipse at 50% 20%, rgba(42,14,30,0.65) 0%, rgba(13,4,8,0.35) 55%, transparent 80%); animation: stormPulse 1.6s ease-in-out infinite; } @keyframes stormPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .storm-tint { animation: none; opacity: 0.7; } }`}</style>
       {/* Sticky Interactive Viewport */}
       <div
-        ref={stickyRef}
-        className="sticky top-0 w-full h-screen h-[100svh] overflow-hidden flex flex-col justify-between select-none"
+        className="sticky top-0 w-full h-[100svh] min-h-[100svh] overflow-hidden flex flex-col justify-between select-none"
       >
         {/* Screen-reader stage announcements removed */}
 
@@ -491,10 +515,10 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
           </div>
         </div>
 
-        {/* Ambient Vignette Overlay */}
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(13,4,8,0.75)_100%)] z-10" />
+        {/* Soft vignette — kept light so the storm never goes dark */}
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_52%,rgba(26,8,18,0.42)_100%)] z-10" />
 
-        {/* Living sky — automatic tint shifting with the story (environmental only) */}
+        {/* Living sky — warm gale glow that brightens (never darkens) with the story */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[4] transition-opacity duration-1000"
@@ -502,8 +526,8 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             opacity: targetProgress > BLOOM_T.BUDS_START ? 1 : 0,
             background:
               targetProgress >= WIND_T.WIND_PEAK
-                ? 'radial-gradient(ellipse at 50% 30%, rgba(168,20,56,0.24) 0%, transparent 60%)'
-                : 'radial-gradient(ellipse at 50% 35%, rgba(216,27,70,0.16) 0%, transparent 60%)',
+                ? 'radial-gradient(ellipse at 50% 42%, rgba(255,206,160,0.20) 0%, rgba(255,143,163,0.09) 45%, transparent 65%)'
+                : 'radial-gradient(ellipse at 50% 35%, rgba(255,179,193,0.18) 0%, transparent 60%)',
           }}
         />
 
@@ -516,19 +540,39 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
         <div className="absolute inset-0 z-[6] pointer-events-none">
           <WindOverlay
             active={isStorming || isLeavesTransition}
-            strength={isStorming ? 2.4 : 1 + Math.abs(userWind) * 0.15}
+            strength={isStorming ? 1.5 : 1 + Math.abs(userWind) * 0.15}
           />
         </div>
 
-        {/* Storm clouds while the gale blows */}
-        {isStorming && <div aria-hidden="true" className="storm-tint pointer-events-none absolute inset-0 z-[7]" />}
+        {/* Overcast grade — dulls the sky naturally as wind rises, full in
+            the gale. Always mounted so it cross-fades instead of popping. */}
+        <div
+          aria-hidden="true"
+          className="storm-grade pointer-events-none absolute inset-0 z-[7]"
+          style={{
+            opacity: isStorming || isLeavesTransition ? 1 : targetProgress > WIND_T.WIND_START ? 0.45 : 0,
+          }}
+        />
 
-        {/* Fade to black following the trailing leaves */}
+        {/* Natural storm sky — soft cloud masses, low sun-glow, rare heat-lightning */}
+        {isStorming && (
+          <>
+            <div aria-hidden="true" className="storm-clouds pointer-events-none absolute inset-0 z-[7]" />
+            <div aria-hidden="true" className="storm-tint pointer-events-none absolute inset-0 z-[7]" />
+            <div aria-hidden="true" className="storm-flash pointer-events-none absolute inset-0 z-[7]" />
+          </>
+        )}
+
+        {/* Warm dusk veil following the trailing leaves (never full black) */}
         <div
           ref={fadeRef}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-[45] bg-black"
-          style={{ opacity: 0 }}
+          className="pointer-events-none absolute inset-0 z-[45]"
+          style={{
+            opacity: 0,
+            background:
+              'linear-gradient(180deg, rgba(58,22,36,0.85) 0%, rgba(42,14,30,0.75) 45%, rgba(26,8,18,0.9) 100%)',
+          }}
         />
 
         {/* Cinematic letterbox (automatic film framing) */}
@@ -547,7 +591,7 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             type="button"
             onClick={skipGrowth}
             aria-label="Skip growth animation"
-            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 px-6 py-3 min-h-[44px] rounded-full bg-white/10 backdrop-blur-md border border-[#ffd6a5]/50 text-[#fffdf8] font-serif text-base md:text-lg tracking-wide transition-all hover:bg-white/20 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2"
+            className="absolute bottom-20 sm:bottom-16 left-1/2 -translate-x-1/2 z-40 px-5 sm:px-6 py-3 min-h-[44px] rounded-full bg-[#1a0812]/85 backdrop-blur-md border border-[#ffb3c1]/40 text-[#fffdf8] font-serif tracking-wide transition-all hover:bg-[#250b18]/90 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 whitespace-nowrap max-w-[calc(100vw-2rem)] text-sm sm:text-base md:text-lg"
           >
             Skip growth →
           </button>
@@ -560,7 +604,7 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             CTA unmounts the moment the leaf flight starts so it cannot be
             clicked multiple times during the transition. */}
         {phase === 'stormReady' && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-3 animate-fade-in">
+          <div className="absolute bottom-20 sm:bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-3 animate-fade-in w-max max-w-[calc(100vw-2rem)] px-2 text-center">
             <button
               type="button"
               onClick={startStorm}
@@ -569,7 +613,7 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             >
               Let the Storm Begin →
             </button>
-            <span className="text-sm font-sans tracking-widest uppercase text-[#ffd6a5]/90">
+            <span className="text-xs sm:text-sm font-sans tracking-widest uppercase text-[#ffd6a5] px-2">
               The wind will carry every leaf
             </span>
           </div>
@@ -590,11 +634,9 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             onBlur={isTransitionLocked ? undefined : resumeTreeQuote}
             className={`absolute z-50 w-[min(20rem,calc(100vw-2.5rem))] max-w-xs md:max-w-sm max-h-[60vh] overflow-y-auto p-4 rounded-2xl bg-[#1f0915]/90 backdrop-blur-md border border-[#ffb3c1]/40 shadow-[0_10px_30px_rgba(0,0,0,0.6)] cinematic-quote-enter ${isTransitionLocked ? 'pointer-events-none' : 'pointer-events-auto'}`}
             style={{
-              left: `${typeof window !== 'undefined'
-                ? Math.max(12, Math.min(activeTreeQuote.x - 120, window.innerWidth - Math.min(320, window.innerWidth - 24) - 12))
-                : 12}px`,
+              left: `${quoteLeft}px`,
               width: 'min(20rem, calc(100vw - 2.5rem))',
-              top: `${Math.max(activeTreeQuote.y - 90, 40)}px`,
+              top: `${activeTreeQuote ? Math.max(activeTreeQuote.y - 90, 40) : 40}px`,
             }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -609,7 +651,7 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
               <button
                 ref={quoteCloseRef}
                 onClick={() => setActiveTreeQuote(null)}
-                className="text-[#fff8eb]/70 hover:text-[#fffdf8] text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
+                className="text-[#fff8eb]/85 hover:text-[#fffdf8] text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
                 aria-label="Dismiss message"
               >
                 ✕

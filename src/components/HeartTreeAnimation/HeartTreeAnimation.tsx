@@ -155,6 +155,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   const mountedRef = useRef(true);
   const rafRef = useRef<number>(0);
   const decayRafRef = useRef<number>(0);
+  const parkTimeoutRef = useRef<number | null>(null);
   const completedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const autoPlayRef = useRef(autoPlay);
@@ -227,9 +228,11 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     return () => {
       mountedRef.current = false;
       cancelAnimationFrame(rafRef.current);
-      window.clearTimeout(rafRef.current);
       cancelAnimationFrame(decayRafRef.current);
-      window.clearTimeout(decayRafRef.current);
+      if (parkTimeoutRef.current !== null) {
+        window.clearTimeout(parkTimeoutRef.current);
+        parkTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -270,6 +273,19 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   // Geometry rebuilds, but flight/detachment state is preserved: clearing
   // detached hearts + particles here made the bloom visibly replay on
   // every mobile URL-bar resize / orientation nudge.
+  // Window-level pointerup clears a drag that ends outside the canvas
+  // (otherwise isDown sticks true and dragWindX goes stale).
+  useEffect(() => {
+    const onWindowPointerUp = () => {
+      pointerRef.current.isDown = false;
+    };
+    window.addEventListener('pointerup', onWindowPointerUp);
+    window.addEventListener('pointercancel', onWindowPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', onWindowPointerUp);
+      window.removeEventListener('pointercancel', onWindowPointerUp);
+    };
+  }, []);
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -320,9 +336,15 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   }, []);
 
   // Hit testing and click/tap interaction
+  const quoteIndexRef = useRef(0);
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* intentional: capture may be unavailable */
+    }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -377,8 +399,14 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     }
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {    const canvas = canvasRef.current;
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
     if (!canvas) return;
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      /* intentional: capture may already be released */
+    }
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
@@ -386,15 +414,18 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     const dragDist = Math.hypot(clickX - pointerRef.current.startX, clickY - pointerRef.current.startY);
     pointerRef.current.isDown = false;
 
-    // Smoothly decay drag wind
+    // Smoothly decay drag wind — notify the parent during + after decay so
+    // WindOverlay strength never stays stale until the next pointer move.
     cancelAnimationFrame(decayRafRef.current);
     const decayWind = () => {
       if (!mountedRef.current) return;
       pointerRef.current.dragWindX *= 0.92;
       if (Math.abs(pointerRef.current.dragWindX) > 0.1) {
+        onWindChangeRef.current?.(pointerRef.current.dragWindX);
         decayRafRef.current = requestAnimationFrame(decayWind);
       } else {
         pointerRef.current.dragWindX = 0;
+        onWindChangeRef.current?.(0);
       }
     };
     decayRafRef.current = requestAnimationFrame(decayWind);
@@ -449,7 +480,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
         }
 
         if (hitHeart) {
-          const quote = HEART_QUOTES[Math.floor(Math.random() * HEART_QUOTES.length)];
+          // Deterministic cycle (not Math.random) so quotes are stable per tap.
+          const quote = HEART_QUOTES[quoteIndexRef.current % HEART_QUOTES.length];
+          quoteIndexRef.current += 1;
           onTreeInteractRef.current?.({
             text: quote,
             type: 'heart',
@@ -498,13 +531,15 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     const loop = (now: number) => {
       if (!running || !mountedRef.current) return;
       // Suspended off-screen: poll at 2fps instead of 60fps heartbeat.
+      // Park timeout uses its own ref (never mixed with RAF ids).
       if (!visibleRef.current) {
-        rafRef.current = window.setTimeout(() => {
+        parkTimeoutRef.current = window.setTimeout(() => {
+          parkTimeoutRef.current = null;
           if (running && mountedRef.current) {
             lastTime = performance.now();
             rafRef.current = requestAnimationFrame(loop);
           }
-        }, 500) as unknown as number;
+        }, 500);
         return;
       }
 
@@ -577,18 +612,30 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
           if (detachP > heart.detachOrder) {
             detachedRef.current.add(idx);
             const pos = getHeartWorldPos(heart, tree.branches, windStr, time, baseX, baseY);
+            // Per-leaf character: outer leaves tear free first; every leaf
+            // loiters for a beat (the update ramp brings it up to cruise),
+            // tumbles its own way, and flutters at its own rate — smaller
+            // leaves spin and flutter faster, like real foliage.
+            const seed = (idx * 0.61803398875 + heart.detachOrder * 0.381966) % 1;
+            const smallness = 1 - Math.min(1, heart.size / 14);
+            const spinDir = seed > 0.5 ? 1 : -1;
             particlesRef.current.push({
               x: pos.x,
               y: pos.y,
-              vx: 2.2 + (1 - heart.detachOrder) * 3.2 + heart.size * 0.08 + (pointerRef.current.dragWindX * 0.1),
-              vy: -1.2 + (heart.detachOrder - 0.5) * 1.5,
+              vx: 0.9 + seed * 1.1 + (1 - Math.min(1, Math.max(0, heart.detachOrder))) * 1.2,
+              vy: -0.4 + (heart.detachOrder - 0.5) * 0.7 + (seed - 0.5) * 0.6,
               size: heart.size,
               originalSize: heart.size,
               starRatio: 0,
               color: heart.color,
-              rotation: heart.rotation,
-              rotSpeed: (heart.detachOrder - 0.5) * 0.06,
+              rotation: heart.rotation + (seed - 0.5) * 0.9,
+              rotSpeed: spinDir * (0.8 + seed * 1.2 + smallness * 0.9),
               alpha: 1,
+              age: 0,
+              seed,
+              flutterPhase: seed * Math.PI * 2 + idx * 0.35,
+              flutterSpeed: 2.2 + seed * 2.4 + smallness * 0.9,
+              swayAmp: 5 + seed * 9,
             });
             if (particlesRef.current.length > MAX_PARTICLES) {
               particlesRef.current.splice(0, particlesRef.current.length - MAX_PARTICLES);
@@ -611,7 +658,8 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // (a fixed per-frame chance would spawn 2x faster at 120Hz).
       const speedFactor = dt * 60;
       const rng = emberRng;
-      if (embersRef.current.length < 24 && rng.next() < 0.3 * speedFactor) {
+      const emberCap = windStr > 10 ? 10 : 24;
+      if (embersRef.current.length < emberCap && rng.next() < 0.3 * speedFactor) {
         embersRef.current.push({
           x: rng.range(0, w),
           y: groundY - rng.range(0, h * 0.55),
@@ -627,7 +675,9 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
 
       for (let i = embersRef.current.length - 1; i >= 0; i--) {
         const emb = embersRef.current[i];
-        emb.x += (emb.vx + (windStr > 0 ? windStr * 0.15 : 0)) * speedFactor;
+        // Embers drift on the breeze — capped so the gale carries them
+        // instead of firing them across the sky.
+        emb.x += (emb.vx + Math.min(2.2, Math.max(0, windStr) * 0.06)) * speedFactor;
         emb.y += emb.vy * speedFactor;
         emb.life += speedFactor;
         if (emb.life >= emb.maxLife || emb.x > w * 1.3) {
@@ -912,9 +962,18 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // J. Flying Hearts Stream (Stage 14) -> Transformation into Stars
       particlesRef.current.forEach(ph => {
         if (ph.alpha <= 0) return;
-        if (ph.starRatio > 0.45) {
+        if (ph.starRatio > 0.7) {
           ctx.save();
           ctx.globalAlpha = clamp01(ph.alpha);
+          // Faint ember warmth so the morph glows softly instead of popping.
+          const glowR = Math.max(3, ph.size * 2.2);
+          const emberGlow = ctx.createRadialGradient(ph.x, ph.y, 0, ph.x, ph.y, glowR);
+          emberGlow.addColorStop(0, 'rgba(255, 220, 170, 0.32)');
+          emberGlow.addColorStop(1, 'rgba(255, 220, 170, 0)');
+          ctx.fillStyle = emberGlow;
+          ctx.beginPath();
+          ctx.arc(ph.x, ph.y, glowR, 0, Math.PI * 2);
+          ctx.fill();
           ctx.fillStyle = '#fff5dc';
           ctx.beginPath();
           ctx.arc(ph.x, ph.y, Math.max(1.2, ph.size * 0.7), 0, Math.PI * 2);
@@ -930,9 +989,14 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
           ctx.stroke();
           ctx.restore();
         } else {
-          const flip3D = Math.cos(time * 3 + ph.rotation * 5);
-          const displaySize = ph.size * Math.max(0.35, Math.abs(flip3D));
-          drawHeartShape(ctx, ph.x, ph.y, displaySize, ph.color, ph.rotation, ph.alpha);
+          // Natural flutter: the leaf's net tumble (rotation) plus a
+          // back-and-forth pitch tilt; turning edge-on narrows it, exactly
+          // like a real leaf flashing its edge as it rolls through the air.
+          const pitch = Math.sin(time * ph.flutterSpeed + ph.flutterPhase);
+          const edge = Math.cos(time * ph.flutterSpeed * 0.66 + ph.flutterPhase);
+          const tilt = pitch * 0.5;
+          const narrow = 0.5 + 0.5 * Math.abs(edge);
+          drawHeartShape(ctx, ph.x, ph.y, ph.size * narrow, ph.color, ph.rotation + tilt, ph.alpha);
         }
       });
 
@@ -976,7 +1040,10 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     return () => {
       running = false;
       cancelAnimationFrame(rafRef.current);
-      window.clearTimeout(rafRef.current);
+      if (parkTimeoutRef.current !== null) {
+        window.clearTimeout(parkTimeoutRef.current);
+        parkTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -985,7 +1052,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       ref={containerRef}
       className={`heart-tree-wrapper select-none ${className}`}
       style={style}
-      role="application"
+      role="group"
       aria-label="Interactive Heart Tree. Drag across the sky to move the wind, or use the arrow keys."
       aria-describedby="heart-tree-wind-help"
       tabIndex={0}

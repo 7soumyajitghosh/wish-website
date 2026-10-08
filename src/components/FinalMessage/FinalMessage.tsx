@@ -66,7 +66,7 @@ export const FinalMessage = () => {
     <section
       id="final-message"
       ref={sectionRef}
-      className="section relative flex flex-col items-center justify-center min-h-screen bg-[#0d0408] px-6 overflow-hidden"
+      className="section relative flex flex-col items-center justify-center min-h-screen bg-[#0d0408] px-4 sm:px-6 overflow-hidden"
       aria-label="Final Message"
     >
       {/* Subtle Vignette (single primary glow) */}
@@ -77,24 +77,24 @@ export const FinalMessage = () => {
         className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_55%_40%_at_50%_55%,rgba(216,27,70,0.12),transparent_70%)]"
       />
 
-      <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto text-center">
+      <div className="relative z-10 flex flex-col items-center w-full max-w-4xl mx-auto text-center px-1">
         {!unlocked ? (
           /* The 'One last thing...' Gated Prompt */
-          <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-5 sm:gap-6 w-full">
             <span className="eyebrow">
               The Journey's Crest
             </span>
-            <Reveal className="flex flex-col items-center">
-              <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide text-balance" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+            <Reveal className="flex flex-col items-center w-full">
+              <h2 className="font-serif text-[#fffdf8] font-normal tracking-wide text-balance break-words" style={{ fontSize: 'clamp(1.75rem,8vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
                 One last thing...
               </h2>
             </Reveal>
             <div aria-hidden="true" className="w-20 h-px bg-gradient-to-r from-transparent via-[#ffd6a5]/60 to-transparent my-2" />
-            <p className="text-base font-serif text-[#fff8eb]/85 max-w-md">
+            <p className="font-serif text-[#fff8eb]/85 max-w-md px-2 text-sm sm:text-base">
               Before you step away, there is a quiet truth waiting to be unveiled.
             </p>
 
-            <MagneticButton>
+            <MagneticButton className="max-w-full">
               <button
                 onClick={handleTakeFinalStep}
                 className="btn-primary mt-4 font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer transition-transform duration-300 hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(216,27,70,0.65)] active:scale-95"
@@ -106,13 +106,13 @@ export const FinalMessage = () => {
           </div>
         ) : (
           /* The Grand Revealed Message */
-          <div ref={messageCardRef} className="flex flex-col items-center" aria-live="polite">
-            <span className="final-fade-item eyebrow mb-8">
+          <div ref={messageCardRef} className="flex flex-col items-center w-full" aria-live="polite">
+            <span className="final-fade-item eyebrow mb-6 sm:mb-8">
               Forever Remembered
             </span>
 
-            <Reveal delay={0.1} className="flex flex-col items-center">
-              <h2 ref={headingRef} tabIndex={-1} className="font-serif text-[#fffdf8] leading-tight tracking-wide mb-10 drop-shadow-2xl text-balance focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
+            <Reveal delay={0.1} className="flex flex-col items-center w-full">
+              <h2 ref={headingRef} tabIndex={-1} className="font-serif text-[#fffdf8] leading-tight tracking-wide mb-8 sm:mb-10 drop-shadow-2xl text-balance break-words px-1 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded" style={{ fontSize: 'clamp(1.6rem,7vw,3.5rem)', lineHeight: 'var(--leading-tight,1.05)' }}>
                 Somewhere between a beginning and a forever,
                 <br className="hidden md:block" /> love takes flight.
               </h2>
@@ -134,7 +134,7 @@ export const FinalMessage = () => {
               </div>
             </div>
 
-            <p className="final-fade-item text-xl md:text-2xl font-serif text-[#ffd6a5] font-normal tracking-wider opacity-95 max-w-2xl">
+            <p className="final-fade-item font-serif text-[#ffd6a5] font-normal tracking-wider max-w-2xl px-2 text-lg sm:text-xl md:text-2xl">
               And in that space, everything beautiful begins.
             </p>
             {/* Chapter link — keeps every page connected in one flow. */}

@@ -30,16 +30,25 @@ export const LoveExperience: React.FC = () => {
   const sweepRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef(currentScene);
-  sceneRef.current = currentScene;
+  useEffect(() => {
+    sceneRef.current = currentScene;
+  }, [currentScene]);
   const isTransitioningRef = useRef(false);
   const resolveTlRef = useRef<gsap.core.Timeline | null>(null);
+  const transitionTlRef = useRef<gsap.core.Timeline | null>(null);
 
-  // Kill any in-flight overlay tween on unmount.
+  // Kill any in-flight overlay tween on unmount (copy refs — cleanup must
+  // not read ref.current directly).
   useEffect(() => {
+    const overlay = overlayRef.current;
+    const sweep = sweepRef.current;
+    const stage = stageRef.current;
     return () => {
-      if (overlayRef.current) gsap.killTweensOf(overlayRef.current);
-      if (sweepRef.current) gsap.killTweensOf(sweepRef.current);
-      if (stageRef.current) gsap.killTweensOf(stageRef.current);
+      if (overlay) gsap.killTweensOf(overlay);
+      if (sweep) gsap.killTweensOf(sweep);
+      if (stage) gsap.killTweensOf(stage);
+      transitionTlRef.current?.kill();
+      transitionTlRef.current = null;
       resolveTlRef.current?.kill();
       resolveTlRef.current = null;
       isTransitioningRef.current = false;
@@ -83,6 +92,7 @@ export const LoveExperience: React.FC = () => {
     const tl = gsap.timeline({
       defaults: { overwrite: 'auto' },
       onComplete: () => {
+        if (transitionTlRef.current === tl) transitionTlRef.current = null;
         setCurrentScene(nextScene);
         setIncomingScene(null);
         setAnnouncement(SCENE_LABELS[nextScene]);
@@ -104,6 +114,7 @@ export const LoveExperience: React.FC = () => {
           .to(overlay, { opacity: 0, duration: 0.45, ease: 'power2.out' }, 0.45);
       },
     });
+    transitionTlRef.current = tl;
 
     // Phase 1 — settle the outgoing scene back + draw the veil down.
     tl.set(overlay, { clipPath: 'inset(0 0 0% 0)', opacity: 0 })

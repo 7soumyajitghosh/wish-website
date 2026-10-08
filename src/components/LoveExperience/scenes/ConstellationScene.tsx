@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { EXPERIENCE_CONFIG } from '../config/experienceConfig';
 
@@ -51,11 +51,11 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  const finishScene = () => {
+  const finishScene = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
     onCompleteRef.current?.();
-  };
+  }, []);
 
   // 15s fallback: never strand the visitor if GSAP fails or timers throttle.
   useEffect(() => {
@@ -63,7 +63,7 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
       if (mountedRef.current) finishScene();
     }, 15000);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [finishScene]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -206,10 +206,7 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
       holdCallRef.current?.kill();
       ctx.revert();
     };
-    // onComplete is routed via onCompleteRef so resize/re-render never
-    // restarts the entrance timeline (restart = visible flicker).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [finishScene]);
 
   // Constellation contour path string
   const mainContourPath =
@@ -229,11 +226,12 @@ export const ConstellationScene: React.FC<ConstellationSceneProps> = ({ onComple
         Skip →
       </button>
 
-      {/* SVG Constellation */}
+      {/* SVG Constellation — purely decorative, hidden from AT */}
       <svg
         viewBox="0 0 800 600"
         className="constellation-svg"
         preserveAspectRatio="xMidYMid meet"
+        aria-hidden="true"
       >
         <defs>
           <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">

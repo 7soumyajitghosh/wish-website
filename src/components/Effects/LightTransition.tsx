@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 
 /**
@@ -17,7 +17,15 @@ export const LightTransition: React.FC<{
   const playedRef = useRef(false);
   // 60vmin blurred glow scaled every frame: blur(20px) repaints heavily on
   // mobile GPUs, so use a cheaper blur on small screens.
-  const glowBlur = typeof window !== 'undefined' && window.innerWidth <= 768 ? 8 : 20;
+  // Viewport-dependent value lives in state (not read during render).
+  const [glowBlur, setGlowBlur] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth <= 768 ? 8 : 20
+  );
+  useEffect(() => {
+    const onResize = () => setGlowBlur(window.innerWidth <= 768 ? 8 : 20);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   useEffect(() => {
     doneRef.current = onDone;
   }, [onDone]);

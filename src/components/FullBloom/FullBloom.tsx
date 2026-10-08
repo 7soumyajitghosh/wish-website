@@ -164,26 +164,6 @@ export const FullBloom: React.FC = () => {
       ref={sectionRef}
       className="section relative min-h-screen w-full bg-[#0d0408] overflow-hidden flex items-center justify-center py-24 md:py-32"
     >
-      {/* Embedded CSS for floating animation */}
-      <style>{`
-        @keyframes floatUpBloom {
-          0% {
-            transform: translateY(0) scale(1) rotate(0deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.6;
-          }
-          90% {
-            opacity: 0.6;
-          }
-          100% {
-            transform: translateY(-120vh) scale(0.5) rotate(45deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
-
       {/* Radial Gradient Glow behind tree (single, subtle) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-[min(90vw,24rem)] h-[min(90vw,24rem)] rounded-full bg-[radial-gradient(circle_at_center,rgba(168,20,56,0.15)_0%,rgba(34,11,23,0.4)_50%,transparent_100%)] blur-[80px] opacity-15" />

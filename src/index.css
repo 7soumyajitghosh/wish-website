@@ -63,6 +63,23 @@ body {
   background-color: var(--color-bg-deep);
   color: var(--color-star-white);
   font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+/* Mobile safeguards: never allow horizontal page scroll from
+   full-bleed / translated decorations (heart-chain flies 108vw,
+   parallax layers, fixed drag cards). */
+html,
+body,
+#root {
+  max-width: 100vw;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
 }
 
 body {
@@ -176,8 +193,27 @@ section[id] {
   font-weight: 600;
   line-height: 1.2;
   min-height: 44px;
+  max-width: 100%;
   cursor: pointer;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
   transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+/* Small screens: tighter buttons so long labels never force overflow. */
+@media (max-width: 640px) {
+  .btn-primary,
+  .btn-ghost {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+    max-width: calc(100vw - 3rem);
+    white-space: normal;
+  }
+  .container-prose,
+  .container-md {
+    padding-inline: 1rem;
+  }
 }
 
 /* Small variant for inline / floating actions (launch, cancel). */
@@ -325,6 +361,158 @@ textarea::placeholder {
   .grain-overlay::after {
     display: none;
   }
+}
+
+/* ============================================================
+   CINEMATIC EXPERIENCE (moved from inline <style> for CSP)
+   ============================================================ */
+@keyframes cinematicQuoteIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; }
+.storm-grade {
+  /* Thin overcast that dulls the pink sky as the gale arrives — a natural
+     dimming, never a blackout. Opacity is driven by the storm state. */
+  background: linear-gradient(
+    180deg,
+    rgba(105, 82, 96, 0.30) 0%,
+    rgba(96, 70, 84, 0.16) 45%,
+    rgba(52, 34, 46, 0.20) 100%
+  );
+  transition: opacity 1.2s ease;
+}
+.storm-tint {
+  /* Low warm sun-glow lingering under the cloud — static, no throbbing. */
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 220, 180, 0.20) 0%, rgba(255, 178, 155, 0.09) 40%, transparent 68%);
+}
+.storm-clouds {
+  /* A few large soft cloud masses drifting past — plain blurred blobs,
+     never stripes. Slow alternate drift for a natural parallax. */
+  background:
+    radial-gradient(ellipse 46% 16% at 18% 22%, rgba(255, 228, 210, 0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 13% at 66% 16%, rgba(122, 90, 104, 0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 52% 15% at 88% 30%, rgba(255, 222, 200, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 44% 14% at 40% 34%, rgba(110, 80, 94, 0.10) 0%, transparent 70%);
+  animation: stormDrift 26s ease-in-out infinite alternate;
+}
+.storm-flash {
+  /* Rare distant heat-lightning: brief double-blink, then long dark calm. */
+  background: radial-gradient(ellipse at 74% 16%, rgba(255, 242, 214, 0.55) 0%, transparent 55%);
+  opacity: 0;
+  animation: stormGlow 11s linear infinite;
+}
+@keyframes stormDrift { from { transform: translateX(-2.5%); } to { transform: translateX(2.5%); } }
+@keyframes stormGlow {
+  0%, 90.5% { opacity: 0; }
+  91% { opacity: 0.30; }
+  92.5% { opacity: 0.04; }
+  94% { opacity: 0.18; }
+  96%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .storm-clouds, .storm-flash { animation: none; opacity: 0; } .storm-tint { opacity: 0.6; } }
+
+/* ============================================================
+   MARQUEE (moved from inline <style> for CSP)
+   ============================================================ */
+.marquee-track { display: flex; width: max-content; animation: marqueeSlide 28s linear infinite; will-change: transform; }
+.group:hover .marquee-track, .group:focus-within .marquee-track { animation-play-state: paused; }
+@keyframes marqueeSlide { to { transform: translate3d(-50%, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+/* ============================================================
+   FULL BLOOM FLOAT (moved from inline <style> for CSP)
+   ============================================================ */
+@keyframes floatUpBloom {
+  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-120vh) scale(0.5) rotate(45deg); opacity: 0; }
+}
+
+/* ============================================================
+   SEED WATERING (moved from inline <style> for CSP)
+   ============================================================ */
+@keyframes water-drop-fall {
+  0% { transform: translateY(0) scale(0.45); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(var(--fall, 48px)) scale(1); opacity: 0; }
+}
+@keyframes water-stream-flow {
+  0% { opacity: 0; }
+  20% { opacity: 0.55; }
+  80% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+@keyframes water-splash-ring {
+  0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+}
+@keyframes seed-soak-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.45; }
+  50% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; }
+}
+.water-drop {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 11px;
+  background: linear-gradient(180deg, #eaf9ff 0%, #a2d2ff 45%, #4aa8ff 100%);
+  border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+  box-shadow: 0 0 8px rgba(162, 210, 255, 0.9), inset -1px -1px 2px rgba(255,255,255,0.7);
+  animation: water-drop-fall 0.85s cubic-bezier(0.45, 0, 0.7, 0.4) infinite;
+}
+.water-drop::after {
+  content: "";
+  position: absolute;
+  left: 1.5px;
+  top: 2px;
+  width: 2px;
+  height: 3.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  .water-drop, .water-splash-ring, .seed-soak-pulse { animation: none !important; }
+}
+
+/* ============================================================
+   HERO (moved from inline <style> for CSP)
+   ============================================================ */
+.hero-line { display: block; overflow: hidden; padding-bottom: 0.16em; margin-bottom: -0.16em; }
+.hero-line > span { display: block; animation: heroRise 1s cubic-bezier(0.22,1,0.36,1) both; }
+.hero-line:nth-child(2) > span { animation-delay: 0.14s; }
+@keyframes heroRise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: translateY(0); } }
+.heart-chain { position: absolute; inset-inline: 0; top: 50%; height: 0; pointer-events: none; }
+.heart-chain > span {
+  position: absolute; top: 0; left: 0;
+  font-size: clamp(1rem, 2.4vw, 1.6rem); line-height: 1;
+  color: #ff8fa3; text-shadow: 0 0 12px rgba(216,27,70,0.9), 0 0 30px rgba(216,27,70,0.5);
+  opacity: 0; animation: heartSlide 2.8s linear infinite;
+}
+@keyframes heartSlide {
+  0% { opacity: 0; transform: translate(-8vw, 10px) scale(0.7); }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(108vw, -14px) scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) { .hero-line > span { animation: none; } .heart-chain { display: none; } }
+@media (max-width: 768px) { .heart-chain { display: none; } }
+
+/* ============================================================
+   LOVE LETTER CLIPS + DESTINATION FLOAT (moved from inline <style>)
+   ============================================================ */
+.clip-left-flap { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.clip-right-flap { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.clip-bottom-flap { clip-path: polygon(0 100%, 50% 0, 100% 100%); }
+.clip-top-flap { clip-path: polygon(0 0, 100% 0, 50% 100%); }
+@keyframes floatUpDestination {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
+  100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
 }
 
 /* ============================================================

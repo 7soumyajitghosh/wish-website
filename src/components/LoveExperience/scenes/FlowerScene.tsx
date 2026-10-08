@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 interface FlowerSceneProps {
@@ -26,11 +26,11 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  const finishScene = () => {
+  const finishScene = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
     onCompleteRef.current?.();
-  };
+  }, []);
 
   // 15s fallback: never strand the visitor if GSAP fails or timers throttle.
   useEffect(() => {
@@ -38,7 +38,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       if (mountedRef.current) finishScene();
     }, 15000);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [finishScene]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -268,10 +268,7 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       fadeTweenRef.current?.kill();
       ctx.revert();
     };
-    // onComplete is routed via onCompleteRef/finishScene so parent
-    // re-renders never restart the bloom timeline (restart = flicker).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [finishScene]);
 
   return (
     <div ref={containerRef} className="flower-scene">
@@ -290,11 +287,12 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       {/* Originating spark of light */}
       <div ref={sparkRef} className="flower-light-spark" />
 
-      {/* SVG Authored Botanical Bloom */}
+      {/* SVG Authored Botanical Bloom — purely decorative */}
       <svg
         viewBox="0 0 800 650"
         className="flower-svg"
         preserveAspectRatio="xMidYMid meet"
+        aria-hidden="true"
       >
         <defs>
           <linearGradient id="stemGrad" x1="0" y1="1" x2="0" y2="0">
