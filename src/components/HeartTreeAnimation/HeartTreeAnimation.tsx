@@ -164,6 +164,10 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
   // Render loop parks while the canvas is off-screen (one shared sticky
   // viewport + several ambient canvases otherwise burn frames forever).
   const visibleRef = useRef(true);
+  // Wake channel: the IO effect below only flips visibleRef, so scrolling
+  // back needs an explicit nudge — otherwise the first frame waits up to
+  // 500ms for the park poll and the canvas looks frozen.
+  const wakeRef = useRef<() => void>(() => {});
   const bgCacheRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
   const bgPhotoRef = useRef<HTMLImageElement | null>(null);
 
@@ -252,6 +256,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     if (!container || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([entry]) => {
       visibleRef.current = entry.isIntersecting;
+      if (entry.isIntersecting) wakeRef.current();
     }, { threshold: 0 });
     io.observe(container);
     return () => io.disconnect();
@@ -592,6 +597,13 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       const time = now * 0.001;
       const tree = treeRef.current;
       const layout = layoutRef.current;
+      // TEMP debug readout for the storm lab (removed before ship).
+      (window as unknown as { __treedbg?: unknown }).__treedbg = {
+        p: +p.toFixed(4),
+        detached: detachedRef.current.size,
+        hearts: tree ? tree.hearts.length : -1,
+        flying: particlesRef.current.length,
+      };
 
       if (!tree || layout.w === 0) {
         rafRef.current = requestAnimationFrame(loop);
@@ -962,7 +974,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       // J. Flying Hearts Stream (Stage 14) -> Transformation into Stars
       particlesRef.current.forEach(ph => {
         if (ph.alpha <= 0) return;
-        if (ph.starRatio > 0.7) {
+        if (ph.starRatio > 0.85) {
           ctx.save();
           ctx.globalAlpha = clamp01(ph.alpha);
           // Faint ember warmth so the morph glows softly instead of popping.
@@ -1037,8 +1049,21 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
     };
 
     rafRef.current = requestAnimationFrame(loop);
+    // Publish the wake channel for the visibility observer above.
+    wakeRef.current = () => {
+      if (!running || !mountedRef.current) return;
+      if (!visibleRef.current) return;
+      if (rafRef.current) return;
+      if (parkTimeoutRef.current !== null) {
+        window.clearTimeout(parkTimeoutRef.current);
+        parkTimeoutRef.current = null;
+      }
+      lastTime = performance.now();
+      rafRef.current = requestAnimationFrame(loop);
+    };
     return () => {
       running = false;
+      wakeRef.current = () => {};
       cancelAnimationFrame(rafRef.current);
       if (parkTimeoutRef.current !== null) {
         window.clearTimeout(parkTimeoutRef.current);
@@ -1063,6 +1088,7 @@ export const HeartTreeAnimation = forwardRef<HeartTreeHandle, HeartTreeAnimation
       </p>
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         className="heart-tree-canvas cursor-pointer touch-pan-y"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

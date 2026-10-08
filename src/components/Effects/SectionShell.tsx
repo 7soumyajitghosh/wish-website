@@ -16,7 +16,7 @@ export const SectionShell: React.FC<{
   glass?: boolean;
 }> = ({ id, eyebrow, title, subtitle, children, className = '', glass = false }) => {
   return (
-    <section id={id} className={`relative overflow-hidden px-6 py-24 md:px-8 md:py-32 ${className}`}>
+    <section id={id} className={`relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 md:px-8 md:py-32 ${className}`}>
       {/* layered ambient background */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_45%_at_50%_0%,rgba(168,20,56,0.10),transparent_70%)]" />

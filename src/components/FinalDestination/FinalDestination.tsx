@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { Reveal } from '../Effects/Reveal';
 import { MagneticButton } from '../Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../../utils/storyNav';
 
 const DESTINATION_HEARTS = [
   { left: 10, top: 62, duration: 18, delay: 1.5, size: 18 },
@@ -405,17 +406,8 @@ export const FinalDestination: React.FC = () => {
             <Reveal delay={0.16} className={`mt-2 sm:mt-4 w-full flex justify-center ${isVisible ? '' : 'opacity-0'}`}>
               <MagneticButton className="max-w-full">
               <button
-                onClick={() => {
-                  const el = document.getElementById('love-letter');
-                  if (el) {
-                    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                    el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-                  } else {
-                    window.scrollTo({ top: 0 });
-                  }
-                }}
+                onClick={() => scrollToIdWhenReady('love-letter', { timeoutMs: 4000 })}
                 className="btn-ghost font-serif tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] text-sm sm:text-base"
-                aria-label="Proceed to the Love Letter"
               >
                 A letter awaits upon the bench →
               </button>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import gsap from 'gsap';
 import { Reveal } from '../Effects/Reveal';
 import { MagneticButton } from '../Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../../utils/storyNav';
 
 type Wish = {
   id: string;
@@ -17,13 +18,27 @@ export const WishSection = () => {
   const [currentWish, setCurrentWish] = useState<Wish | null>(null);
   const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const hasMovedRef = useRef(false);
   const [flyingHearts, setFlyingHearts] = useState<{ id: string; text: string; startX: number; startY: number }[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heartRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusRafRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      cancelAnimationFrame(focusRafRef.current);
+    };
+  }, []);
+  const focusTextarea = useCallback(() => {
+    cancelAnimationFrame(focusRafRef.current);
+    focusRafRef.current = requestAnimationFrame(() => {
+      if (mountedRef.current) textareaRef.current?.focus();
+    });
+  }, []);
 
   // Background stars — cached size, IO-gated (no off-screen 60fps).
   useEffect(() => {
@@ -50,6 +65,7 @@ export const WishSection = () => {
         velocity: (Math.random() - 0.5) * 0.015,
       }));
     let stars = seedStars(canvas.offsetWidth || 300, canvas.offsetHeight || 300);
+    let resizeRaf = 0;
     const resize = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
@@ -62,7 +78,14 @@ export const WishSection = () => {
       // Re-seed stars proportionally so they cover the new size (keep 45 stars)
       stars = seedStars(Math.max(1, w), Math.max(1, h));
     };
-    window.addEventListener('resize', resize);
+    const onResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        resize();
+      });
+    };
+    window.addEventListener('resize', onResize);
     resize();
 
     // Reduced motion: render one static frame, no RAF loop.
@@ -75,7 +98,8 @@ export const WishSection = () => {
         ctx.fill();
       });
       return () => {
-        window.removeEventListener('resize', resize);
+        window.removeEventListener('resize', onResize);
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
       };
     }
 
@@ -115,7 +139,8 @@ export const WishSection = () => {
     animationFrameId = requestAnimationFrame(render);
     return () => {
       running = false;
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       io.disconnect();
       cancelAnimationFrame(animationFrameId);
     };
@@ -139,7 +164,6 @@ export const WishSection = () => {
     const cx = window.innerWidth / 2;
     const cy = Math.min(window.innerHeight * 0.55, Math.max(220, window.innerHeight - 260));
     setHeartPos({ x: cx, y: cy });
-    hasMovedRef.current = false;
     setIsHoldingWish(true);
   };
 
@@ -159,15 +183,15 @@ export const WishSection = () => {
     setWishCount((prev) => prev + 1);
     setCurrentWish(null);
     // Return focus so keyboard users land back in the form + hear confirmation.
-    requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [isHoldingWish, currentWish]);
+    focusTextarea();
+  }, [isHoldingWish, currentWish, focusTextarea]);
 
   const cancelWish = useCallback(() => {
     setIsDragging(false);
     setIsHoldingWish(false);
     setCurrentWish(null);
-    requestAnimationFrame(() => textareaRef.current?.focus());
-  }, []);
+    focusTextarea();
+  }, [focusTextarea]);
 
   const applyHeartTransform = (x: number, y: number) => {
     const el = heartRef.current;
@@ -186,6 +210,12 @@ export const WishSection = () => {
   // counts as a drag-launch only after >10px of movement; a simple tap
   // keeps holding so keyboard users and tap users can use the Launch button.
   // Ref-driven transform during drag (no per-move re-render); state committed on release.
+  // launchWish identity changes with currentWish — a stable ref avoids
+  // resubscribing window listeners mid-gesture.
+  const launchWishRef = useRef(launchWish);
+  useEffect(() => {
+    launchWishRef.current = launchWish;
+  }, [launchWish]);
   useEffect(() => {
     if (!isDragging) return;
     let raf = 0;
@@ -199,9 +229,6 @@ export const WishSection = () => {
     const onMove = (e: PointerEvent) => {
       pending = { x: e.clientX, y: e.clientY };
       if (!raf) raf = requestAnimationFrame(flush);
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      if (Math.hypot(dx, dy) > 10) hasMovedRef.current = true;
     };
     const onUp = (e: PointerEvent) => {
       if (raf) cancelAnimationFrame(raf);
@@ -211,7 +238,7 @@ export const WishSection = () => {
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
       if (Math.hypot(dx, dy) > 10) {
-        launchWish(e.clientX, e.clientY);
+        launchWishRef.current(e.clientX, e.clientY);
       }
     };
     window.addEventListener('pointermove', onMove, { passive: true });
@@ -223,7 +250,7 @@ export const WishSection = () => {
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
     };
-  }, [isDragging, launchWish]);
+  }, [isDragging]);
 
   // Keyboard alternative: arrows move, Enter launches, Escape cancels.
   const handleHeartKeyDown = (e: React.KeyboardEvent) => {
@@ -231,19 +258,15 @@ export const WishSection = () => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       setHeartPos((p) => ({ x: Math.max(80, p.x - step), y: p.y }));
-      hasMovedRef.current = true;
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       setHeartPos((p) => ({ x: Math.min(window.innerWidth - 80, p.x + step), y: p.y }));
-      hasMovedRef.current = true;
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHeartPos((p) => ({ x: p.x, y: Math.max(120, p.y - step) }));
-      hasMovedRef.current = true;
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHeartPos((p) => ({ x: p.x, y: Math.min(window.innerHeight - 120, p.y + step) }));
-      hasMovedRef.current = true;
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       launchWish(heartPos.x, heartPos.y);
@@ -308,7 +331,7 @@ export const WishSection = () => {
                 aria-describedby="wish-count-hint"
                 maxLength={150}
               />
-              <p id="wish-count-hint" className="mt-2 text-right text-xs font-sans tracking-widest text-[#fff8eb]/70">
+              <p id="wish-count-hint" className="mt-2 text-right text-xs font-sans tracking-widest text-[#fff8eb]/80">
                 {wishText.trim().length} / 150
               </p>
             </div>
@@ -335,13 +358,7 @@ export const WishSection = () => {
           {/* Chapter link — keeps every page connected in one flow. */}
           <button
             type="button"
-            onClick={() => {
-              const el = document.getElementById('final-message');
-              if (el) {
-                const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-              }
-            }}
+            onClick={() => scrollToIdWhenReady('final-message', { timeoutMs: 4000 })}
             className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
             aria-label="Continue to the final message"
           >
@@ -479,6 +496,7 @@ const SoaringWishItem = ({
   return (
     <div
       ref={elRef}
+      aria-hidden="true"
       className="fixed z-40 flex flex-col items-center pointer-events-none"
       style={{ left: 0, top: 0 }}
     >

@@ -148,6 +148,17 @@ section[id] {
   color: var(--color-coral);
 }
 
+/* Long eyebrow labels ("A Keepsake of Affection") overflow 320px
+   viewports at 0.35em tracking — tighten + wrap on small screens. */
+@media (max-width: 640px) {
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    line-height: 1.6;
+    overflow-wrap: break-word;
+  }
+}
+
 /* Skip link — visible only on keyboard focus. */
 .skip-link {
   position: fixed;
@@ -371,47 +382,18 @@ textarea::placeholder {
   to { opacity: 1; transform: scale(1); }
 }
 .cinematic-quote-enter { animation: cinematicQuoteIn 0.3s ease both; }
-.storm-grade {
-  /* Thin overcast that dulls the pink sky as the gale arrives — a natural
-     dimming, never a blackout. Opacity is driven by the storm state. */
-  background: linear-gradient(
-    180deg,
-    rgba(105, 82, 96, 0.30) 0%,
-    rgba(96, 70, 84, 0.16) 45%,
-    rgba(52, 34, 46, 0.20) 100%
-  );
-  transition: opacity 1.2s ease;
-}
-.storm-tint {
-  /* Low warm sun-glow lingering under the cloud — static, no throbbing. */
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(255, 220, 180, 0.20) 0%, rgba(255, 178, 155, 0.09) 40%, transparent 68%);
-}
 .storm-clouds {
-  /* A few large soft cloud masses drifting past — plain blurred blobs,
-     never stripes. Slow alternate drift for a natural parallax. */
+  /* A few large soft cloud masses drifting past — plain neutral blobs,
+     never stripes, no sun glow. Slow alternate drift for parallax. */
   background:
-    radial-gradient(ellipse 46% 16% at 18% 22%, rgba(255, 228, 210, 0.13) 0%, transparent 70%),
-    radial-gradient(ellipse 38% 13% at 66% 16%, rgba(122, 90, 104, 0.13) 0%, transparent 70%),
-    radial-gradient(ellipse 52% 15% at 88% 30%, rgba(255, 222, 200, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 44% 14% at 40% 34%, rgba(110, 80, 94, 0.10) 0%, transparent 70%);
+    radial-gradient(ellipse 46% 16% at 18% 22%, rgba(255, 244, 240, 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 13% at 66% 16%, rgba(244, 232, 232, 0.11) 0%, transparent 70%),
+    radial-gradient(ellipse 52% 15% at 88% 30%, rgba(255, 246, 242, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 44% 14% at 40% 34%, rgba(244, 234, 234, 0.09) 0%, transparent 70%);
   animation: stormDrift 26s ease-in-out infinite alternate;
 }
-.storm-flash {
-  /* Rare distant heat-lightning: brief double-blink, then long dark calm. */
-  background: radial-gradient(ellipse at 74% 16%, rgba(255, 242, 214, 0.55) 0%, transparent 55%);
-  opacity: 0;
-  animation: stormGlow 11s linear infinite;
-}
 @keyframes stormDrift { from { transform: translateX(-2.5%); } to { transform: translateX(2.5%); } }
-@keyframes stormGlow {
-  0%, 90.5% { opacity: 0; }
-  91% { opacity: 0.30; }
-  92.5% { opacity: 0.04; }
-  94% { opacity: 0.18; }
-  96%, 100% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) { .storm-clouds, .storm-flash { animation: none; opacity: 0; } .storm-tint { opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) { .storm-clouds { animation: none; } }
 
 /* ============================================================
    MARQUEE (moved from inline <style> for CSP)

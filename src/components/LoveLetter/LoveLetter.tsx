@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { Reveal } from '../Effects/Reveal';
 import { MagneticButton } from '../Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../../utils/storyNav';
 
 const content = {
   recipient: 'My Dearest,',
@@ -142,7 +143,16 @@ export const LoveLetter: React.FC = () => {
         {/* Envelope Interactive Unit */}
         <div className="relative flex flex-col items-center mb-10 w-full px-2">
           <div
-            className={`relative rounded-xl select-none focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-[#ffd6a5] transition-transform duration-300 ${isOpen ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]'}`}
+            role={isOpen ? undefined : 'button'}
+            tabIndex={isOpen ? undefined : 0}
+            aria-label={isOpen ? undefined : 'Open the love letter'}
+            onKeyDown={isOpen ? undefined : (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openLetter();
+              }
+            }}
+            className={`relative rounded-xl select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] transition-transform duration-300 ${isOpen ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_-12px_rgba(216,27,70,0.45)]'}`}
             onClick={isOpen ? undefined : openLetter}
             style={{ perspective: '1000px', width: 'min(90vw,420px)', aspectRatio: '4 / 3' }}
           >
@@ -160,7 +170,7 @@ export const LoveLetter: React.FC = () => {
                   <span className="text-[11px] sm:text-xs shrink-0">{content.date}</span>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 mb-2 sm:mb-3">
+                <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 mb-2 sm:mb-3" role="region" aria-label="Letter contents" tabIndex={0}>
                   {content.paragraphs.map((text, i) => (
                     <p key={i} className="letter-line text-[#3a1d24] leading-relaxed font-serif text-sm sm:text-base">
                       {text}
@@ -252,13 +262,7 @@ export const LoveLetter: React.FC = () => {
             {/* Chapter link — keeps every page connected in one flow. */}
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById('make-a-wish');
-                if (el) {
-                  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-                }
-              }}
+              onClick={() => scrollToIdWhenReady('make-a-wish', { timeoutMs: 4000 })}
               className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
               aria-label="Continue to Make a Wish"
             >

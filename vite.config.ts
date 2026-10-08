@@ -9,6 +9,22 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  build: {
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        // Long-lived vendor chunks: react/gsap change far less often than
+        // app code, so browsers keep them cached across deploys.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'vendor';
+          }
+          if (id.includes('node_modules/gsap')) {
+            return 'motion';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 })
-
-

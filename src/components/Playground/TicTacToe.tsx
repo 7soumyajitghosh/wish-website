@@ -49,6 +49,7 @@ export const TicTacToe = () => {
   const [tally, setTally] = useState({ you: 0, cupid: 0, draws: 0 });
   const result = winnerOf(board);
   const over = result !== null;
+  const playAgainRef = useRef<HTMLButtonElement>(null);
   // Tally is event-driven (not setState-in-effect): each terminal board is
   // counted once via its board key, reset clears the key for the next round.
   const talliedKeyRef = useRef<string | null>(null);
@@ -78,7 +79,11 @@ export const TicTacToe = () => {
 
   // Cupid answers shortly after you play.
   useEffect(() => {
-    if (over) return;
+    if (over) {
+      // Announce the result to keyboard/SR users by moving focus on.
+      playAgainRef.current?.focus({ preventScroll: true });
+      return;
+    }
     const current = boardRef.current;
     const youCount = current.filter((m) => m === 'YOU').length;
     const cupidCount = current.filter((m) => m === 'CUPID').length;
@@ -149,12 +154,12 @@ export const TicTacToe = () => {
       </p>
       {over && (
         <div className="mt-2 text-center">
-          <button type="button" onClick={reset} className="btn-primary btn-sm font-serif cursor-pointer">
+          <button ref={playAgainRef} type="button" onClick={reset} className="btn-primary btn-sm font-serif cursor-pointer">
             Play again
           </button>
         </div>
       )}
-      <p className="mt-3 text-center text-xs font-sans tracking-widest uppercase text-[#fff8eb]/60">
+      <p className="mt-3 text-center text-xs font-sans tracking-widest uppercase text-[#fff8eb]/80">
         You are ❤️ · Cupid is 🌹
       </p>
     </div>

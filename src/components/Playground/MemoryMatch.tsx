@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Reveal } from '../Effects/Reveal';
 
 const SYMBOLS = ['❤️', '🌹', '🌙', '✨', '💌', '🦋'];
@@ -20,15 +20,44 @@ function shuffledDeck(): Card[] {
   return doubled.map((symbol, id) => ({ id, symbol, matched: false }));
 }
 
+const readBest = (): number | null => {
+  try {
+    const raw = localStorage.getItem(BEST_KEY);
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    // Storage blocked (private mode / SSR) — play on without a best score.
+    return null;
+  }
+};
+
+const writeBest = (moves: number) => {
+  try {
+    localStorage.setItem(BEST_KEY, String(moves));
+  } catch {
+    /* blocked storage — best score simply isn't persisted */
+  }
+};
+
 export const MemoryMatch = () => {
   const [cards, setCards] = useState<Card[]>(() => shuffledDeck());
   const [open, setOpen] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
-  const [best, setBest] = useState<number | null>(() => {
-    const raw = localStorage.getItem(BEST_KEY);
-    return raw ? Number(raw) : null;
-  });
+  const [best, setBest] = useState<number | null>(readBest);
   const [lock, setLock] = useState(false);
+  // The mismatch timeout is tracked so restart/unmount cancels it instead
+  // of it firing late and clearing the next game's cards.
+  const mismatchTimerRef = useRef<number | null>(null);
+  const winRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (mismatchTimerRef.current !== null) {
+        window.clearTimeout(mismatchTimerRef.current);
+        mismatchTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const pairsFound = useMemo(() => cards.filter((c) => c.matched).length / 2, [cards]);
   const won = pairsFound === SYMBOLS.length;
@@ -38,7 +67,7 @@ export const MemoryMatch = () => {
   const recordBest = (finalMoves: number) => {
     setBest((prev) => {
       if (prev === null || finalMoves < prev) {
-        localStorage.setItem(BEST_KEY, String(finalMoves));
+        writeBest(finalMoves);
         return finalMoves;
       }
       return prev;
@@ -46,7 +75,9 @@ export const MemoryMatch = () => {
   };
 
   const flip = (id: number) => {
-    if (lock || won) return;
+    // Discrete taps re-render between events, so closure state is fresh.
+    // The lock + open-length guards make double-fires harmless.
+    if (lock || open.length >= 2 || won) return;
     const card = cards.find((c) => c.id === id);
     if (!card || card.matched || open.includes(id)) return;
     const nextOpen = [...open, id];
@@ -54,17 +85,27 @@ export const MemoryMatch = () => {
     if (nextOpen.length === 2) {
       const nextMoves = moves + 1;
       setMoves(nextMoves);
-      const [a, b] = nextOpen.map((oid) => cards.find((c) => c.id === oid)!);
+      const byId = new Map(cards.map((c) => [c.id, c]));
+      const a = byId.get(nextOpen[0]);
+      const b = byId.get(nextOpen[1]);
+      if (!a || !b) {
+        setOpen([]);
+        return;
+      }
       if (a.symbol === b.symbol) {
         const nextCards = cards.map((c) => (c.id === a.id || c.id === b.id ? { ...c, matched: true } : c));
         setCards(nextCards);
         setOpen([]);
         if (nextCards.filter((c) => c.matched).length / 2 === SYMBOLS.length) {
           recordBest(nextMoves);
+          // Move focus to the win announcement so SR users hear it.
+          requestAnimationFrame(() => winRef.current?.focus());
         }
       } else {
         setLock(true);
-        window.setTimeout(() => {
+        if (mismatchTimerRef.current !== null) window.clearTimeout(mismatchTimerRef.current);
+        mismatchTimerRef.current = window.setTimeout(() => {
+          mismatchTimerRef.current = null;
           setOpen([]);
           setLock(false);
         }, 700);
@@ -73,6 +114,10 @@ export const MemoryMatch = () => {
   };
 
   const restart = () => {
+    if (mismatchTimerRef.current !== null) {
+      window.clearTimeout(mismatchTimerRef.current);
+      mismatchTimerRef.current = null;
+    }
     setCards(shuffledDeck());
     setOpen([]);
     setMoves(0);
@@ -94,13 +139,14 @@ export const MemoryMatch = () => {
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3" role="group" aria-label="Memory match board">
         {cards.map((card) => {
           const faceUp = card.matched || open.includes(card.id);
+          const position = `card ${card.id + 1} of ${cards.length}`;
           return (
             <button
               key={card.id}
               type="button"
               onClick={() => flip(card.id)}
               disabled={faceUp}
-              aria-label={faceUp ? `${card.symbol}` : 'Hidden card'}
+              aria-label={faceUp ? `${card.symbol}, ${position}, ${card.matched ? 'matched' : 'showing'}` : `Hidden ${position}`}
               className={`aspect-square rounded-2xl border text-2xl sm:text-3xl transition-all duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] min-h-[56px] ${
                 faceUp
                   ? 'border-[#ffb3c1]/50 bg-[#250b18] scale-100'
@@ -115,9 +161,11 @@ export const MemoryMatch = () => {
 
       {won && (
         <Reveal className="mt-5 rounded-2xl border border-[#ffd6a5]/40 bg-[#ffd6a5]/10 p-4 text-center">
+          <div ref={winRef} tabIndex={-1} role="status" className="focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded">
           <p className="font-serif italic text-lg text-[#ffd6a5]">
             You matched every memory in {moves} moves. <span aria-hidden="true">💖</span>
           </p>
+          </div>
           <button type="button" onClick={restart} className="btn-primary btn-sm mt-3 font-serif cursor-pointer">
             Play again
           </button>

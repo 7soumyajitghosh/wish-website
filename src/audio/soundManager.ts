@@ -7,7 +7,10 @@ class SoundManager {
   private isMuted: boolean = true; // Default muted — no autoplay
   private ambientGain: GainNode | null = null;
   private isAmbientPlaying: boolean = false;
-  private ambientNodes: OscillatorNode[] = [];
+  // Every node created for the ambient drone (oscillators, gains, filters,
+  // LFOs). stopAmbient disconnects all of them — previously only the
+  // oscillators were tracked, leaking Gain/Filter nodes per start cycle.
+  private ambientNodes: AudioNode[] = [];
 
   private initContext() {
     if (!this.ctx) {
@@ -53,7 +56,7 @@ class SoundManager {
 
       // Chord frequencies: C3, G3, B3, E4 (peaceful, romantic Cmaj7/9)
       const freqs = [130.81, 196.00, 246.94, 329.63, 392.00];
-      const created: OscillatorNode[] = [];
+      const created: AudioNode[] = [];
       freqs.forEach((f, i) => {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -76,7 +79,7 @@ class SoundManager {
         lfo.connect(lfoGain);
         lfoGain.connect(gain.gain);
         lfo.start();
-        created.push(lfo);
+        created.push(lfo, lfoGain, gain, filter);
 
         osc.connect(filter);
         filter.connect(gain);
@@ -96,7 +99,8 @@ class SoundManager {
     try {
       for (const node of this.ambientNodes) {
         try {
-          node.stop();
+          // Oscillators expose stop(); other nodes only need disconnect.
+          (node as OscillatorNode).stop?.();
         } catch {
           /* already stopped */
         }

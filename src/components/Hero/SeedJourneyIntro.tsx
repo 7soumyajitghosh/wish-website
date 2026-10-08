@@ -18,7 +18,7 @@ export interface SeedJourneyIntroProps {
  */
 export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterComplete }) => {
   const { introState, setIntroState, setTargetProgress } = useStory();
-  const potRef = useRef<HTMLDivElement>(null);
+  const potRef = useRef<HTMLButtonElement>(null);
   const potTlRef = useRef<gsap.core.Tween | null>(null);
   const waterTlRef = useRef<gsap.core.Timeline | null>(null);
   const seedTimeoutRef = useRef<number | null>(null);
@@ -305,6 +305,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       ease: 'power2.in',
       overwrite: 'auto',
       onComplete: () => {
+        if (waterTlRef.current === tl) waterTlRef.current = null;
         if (!mountedRef.current) return;
         setIntroState('WATERED');
         // Notify parent of watering completion to launch auto-growth
@@ -314,8 +315,16 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     // NOTE: timeline persists (no ctx.revert); killed on unmount via waterTlRef.
   }, [isWatering, pourPos.x, pourPos.y, restingPotPos.x, restingPotPos.y, setIntroState]);
 
+  // Stable ref to the trigger: its identity changes on every viewport
+  // resize (pour/resting positions), which must NOT reset the auto timer.
+  const triggerWateringRef = useRef(triggerWatering);
+  useEffect(() => {
+    triggerWateringRef.current = triggerWatering;
+  }, [triggerWatering]);
+
   // Automatic fallback: if the visitor just watches, water after a beat.
   // Manual drag/tap/Enter still wins (hasWateredRef guard inside triggerWatering).
+  // Runs once per WATERING entry — resizes don't restart the countdown.
   useEffect(() => {
     if (introState !== 'WATERING') return;
     const reduced =
@@ -324,7 +333,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (autoWaterRef.current !== null) window.clearTimeout(autoWaterRef.current);
     autoWaterRef.current = window.setTimeout(
-      () => triggerWatering(),
+      () => triggerWateringRef.current(),
       reduced ? 2500 : 6000
     );
     return () => {
@@ -333,7 +342,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
         autoWaterRef.current = null;
       }
     };
-  }, [introState, triggerWatering]);
+  }, [introState]);
 
   // Pointer drag event handlers for watering pot (mouse + touch)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -382,11 +391,18 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
     setIsDragging(false);
   };
 
-  // Keyboard accessibility: space or enter triggers watering
+  // Keyboard accessibility: space or enter triggers watering, Escape
+  // cancels an in-progress drag (can snaps back to its pre-drag spot).
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.key === 'Enter' || e.key === ' ') && introState === 'WATERING') {
       e.preventDefault();
       triggerWatering();
+    } else if (e.key === 'Escape' && isDragging) {
+      e.preventDefault();
+      dragOffsetRef.current = { ...dragStartOffsetRef.current };
+      applyPotTransform(dragOffsetRef.current.x, dragOffsetRef.current.y);
+      setDragOffset({ ...dragOffsetRef.current });
+      setIsDragging(false);
     }
   };
 
@@ -405,18 +421,18 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
             transition: isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
-        <div
+        <button
           ref={potRef}
+          type="button"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onClick={triggerWatering}
           onKeyDown={handleKeyDown}
-          tabIndex={0}
-          role="button"
-          aria-label="give some love & care"
-          className="cursor-pointer"
+          aria-label="Water the seed to help it grow"
+          aria-disabled={isWatering}
+          className="cursor-pointer bg-transparent border-0 p-2 -m-2 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-4 rounded-full"
           style={{ scale: isDragging ? '1.05' : '1' }}
         >
           {/* Watering Can Visual */}
@@ -470,7 +486,7 @@ export const SeedJourneyIntro: React.FC<SeedJourneyIntroProps> = ({ onWaterCompl
               </svg>
             </div>
           </div>
-          </div>
+          </button>
         </div>
       )}
 

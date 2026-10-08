@@ -28,6 +28,7 @@ export const CursorGlow: React.FC = () => {
       half = el.offsetWidth / 2 || 260;
     };
     measure();
+    window.addEventListener('resize', measure);
 
     const onMove = (e: PointerEvent) => {
       tx = e.clientX;
@@ -108,6 +109,7 @@ export const CursorGlow: React.FC = () => {
       io.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('resize', measure);
       document.documentElement.removeEventListener('pointerleave', onLeave);
     };
   }, []);
@@ -116,7 +118,7 @@ export const CursorGlow: React.FC = () => {
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none fixed left-0 top-0 z-40 h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-700"
+      className="pointer-events-none fixed left-0 top-0 z-40 hidden h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-700 md:block"
       style={{
         background:
           'radial-gradient(circle, rgba(216,27,70,0.10) 0%, rgba(255,179,193,0.06) 35%, transparent 65%)',

@@ -3,8 +3,10 @@
  *
  * Requirements:
  * - Hearts detach from outer/right branches first, sweeping rightward into a continuous stream.
- * - The tree retains leaves on left/inner branches while the vortex streams to the right.
- * - The bare tree never becomes the dominant final frame.
+ * - The wave travels inward and leftward so every leaf is blowing in the
+ *   wind by the cycle end (storyboard panel 15: bare tree, stream departed).
+ * - The dusk veil covers the final cut, so the bare tree is a passing
+ *   frame, never the resting state.
  * - Supports seamless looping or hold state.
  */
 
@@ -111,12 +113,12 @@ export function updateFlyingHearts(
     // Slow net tumble; the back-and-forth flutter tilt is added at render.
     ph.rotation += ph.rotSpeed * dt;
 
-    // Stay a big tumbling heart for most of the flight, then melt softly
-    // into an ember only far downwind.
-    ph.starRatio = Math.min(1, ph.starRatio + 0.0022 * speed);
+    // Stay a big red heart for the whole visible flight — only the oldest,
+    // farthest-downwind travellers melt softly into an ember.
+    ph.starRatio = Math.min(1, ph.starRatio + 0.0012 * speed);
     const eased =
       ph.starRatio * ph.starRatio * (3 - 2 * ph.starRatio);
-    const targetSize = 2.0;
+    const targetSize = 3.2;
     ph.size = ph.originalSize * (1 - eased) + targetSize * eased;
 
     // Hold full opacity across the sky; fade only once past the edge.

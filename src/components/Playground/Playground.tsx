@@ -43,17 +43,17 @@ export const Playground = () => {
           </header>
         </Reveal>
 
-        {/* Game picker */}
+        {/* Game picker — toggle buttons (not tabs: each game keeps its
+            own state and there is no tabpanel keyboard contract). */}
         <Reveal delay={0.1}>
-          <div className="mb-8 flex flex-col justify-center gap-3 sm:flex-row" role="tablist" aria-label="Choose a game">
+          <div className="mb-8 flex flex-col justify-center gap-3 sm:flex-row" role="group" aria-label="Choose a game">
             {TABS.map((tab) => {
               const selected = tab.id === active;
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  role="tab"
-                  aria-selected={selected}
+                  aria-pressed={selected}
                   onClick={() => setActive(tab.id)}
                   className={`flex-1 cursor-pointer rounded-2xl border px-5 py-4 text-left transition-all duration-300 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] ${
                     selected
@@ -63,7 +63,7 @@ export const Playground = () => {
                 >
                   <span aria-hidden="true" className="text-2xl">{tab.icon}</span>
                   <span className="mt-1 block font-serif text-lg text-[#fffdf8]">{tab.label}</span>
-                  <span className="block font-sans text-xs tracking-wide text-[#fff8eb]/70">{tab.blurb}</span>
+                  <span className="block font-sans text-xs tracking-wide text-[#fff8eb]/80">{tab.blurb}</span>
                 </button>
               );
             })}
@@ -72,7 +72,7 @@ export const Playground = () => {
 
         <Reveal delay={0.15}>
           <div
-            role="tabpanel"
+            role="group"
             aria-label={current.label}
             className="spotlight rounded-3xl border border-white/10 bg-[#190710]/60 p-4 sm:p-8 overflow-hidden"
           >

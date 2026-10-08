@@ -18,11 +18,17 @@ export const LightTransition: React.FC<{
   // 60vmin blurred glow scaled every frame: blur(20px) repaints heavily on
   // mobile GPUs, so use a cheaper blur on small screens.
   // Viewport-dependent value lives in state (not read during render).
+  // Only updates when the breakpoint flips — raw resize fires per pixel.
   const [glowBlur, setGlowBlur] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth <= 768 ? 8 : 20
   );
   useEffect(() => {
-    const onResize = () => setGlowBlur(window.innerWidth <= 768 ? 8 : 20);
+    const onResize = () => {
+      setGlowBlur((prev) => {
+        const next = window.innerWidth <= 768 ? 8 : 20;
+        return prev === next ? prev : next;
+      });
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);

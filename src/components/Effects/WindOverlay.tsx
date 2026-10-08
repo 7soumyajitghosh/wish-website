@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * WindOverlay — barely-there gale air (Scene 6).
- * Real wind is invisible: you read it in drifting leaves, dust and cloud.
- * So this layer stays whisper-faint — a few long, slow, soft breath-trails
- * plus tiny tumbling leaf chips. Purely environmental: never touches
+ * WindOverlay — drifting petal air (Scene 6).
+ * The storyboard sky holds no streaks or speed-lines: wind reads through
+ * tumbling petals and chips alone. Purely environmental: never touches
  * HeartTreeAnimation internals.
  */
 export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
@@ -32,34 +31,20 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
     let raf = 0;
     let running = true;
     let visible = true;
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Small screens get a lower DPR cap (matches AmbientField): full-width
+    // canvas at dpr 2+ drops frames on mobile GPUs.
+    const dprCap = () => (window.innerWidth <= 768 ? 1.5 : 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, dprCap());
 
-    interface Breath {
-      x: number; y: number; len: number; sp: number;
-      width: number; alpha: number; amp: number; freq: number; phase: number;
-    }
     interface Chip {
       x: number; y: number; sp: number; fall: number;
       rx: number; ry: number; rot: number; spin: number; phase: number;
       color: string; alpha: number;
     }
-    let breaths: Breath[] = [];
     let chips: Chip[] = [];
     const seed = () => {
-      // Few, long, very faint — spaced across the sky, never banded.
-      breaths = Array.from({ length: 14 }, (_, i) => ({
-        x: Math.random() * w,
-        y: (h * (i + 0.5)) / 14 + (Math.random() - 0.5) * (h / 14),
-        len: 200 + Math.random() * 160,
-        sp: 1.6 + Math.random() * 2.6,
-        width: 1 + Math.random() * 1.2,
-        alpha: 0.05 + Math.random() * 0.06,
-        amp: 4 + Math.random() * 8,
-        freq: 0.003 + Math.random() * 0.005,
-        phase: Math.random() * Math.PI * 2,
-      }));
-      const chipCols = ['#e8a88f', '#d98a94', '#f2c9a8', '#c9757f'];
-      chips = Array.from({ length: 14 }, () => ({
+      const chipCols = ['#e8a88f', '#d98a94', '#f2c9a8', '#c9757f', '#f5baa4'];
+      chips = Array.from({ length: 20 }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
         sp: 1.2 + Math.random() * 1.8,
@@ -74,7 +59,7 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
       }));
     };
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, dprCap());
       const r = canvas.getBoundingClientRect();
       w = Math.max(1, r.width);
       h = Math.max(1, r.height);
@@ -123,34 +108,8 @@ export const WindOverlay: React.FC<{ active: boolean; strength?: number }> = ({
         const s = stateRef.current.strength;
         // Gusts roll through over seconds — nothing here flickers.
         const gust = 0.8 + 0.2 * Math.sin(t * 0.5) + 0.1 * Math.sin(t * 0.83 + 1.1);
-        ctx.lineCap = 'round';
 
-        // Whisper breath-trails: long soft arcs, barely brighter than air.
-        for (const b of breaths) {
-          b.x += b.sp * dt * 60 * s * (0.5 + opacity * 0.6) * gust;
-          if (b.x - b.len > w + 40) {
-            b.x = -b.len - Math.random() * 160;
-            b.y = Math.random() * h;
-          }
-          const y0 = b.y + Math.sin(b.x * b.freq + b.phase + t * 0.6) * b.amp;
-          const y1 = b.y + Math.sin((b.x - b.len) * b.freq + b.phase + t * 0.6) * b.amp;
-          // Dissolve at both ends so trails never pop or end abruptly.
-          // Trails live in the sky: dissolve toward the ground line (~72%)
-          // so no bright scratches cross the dark soil.
-          const headFade = Math.min(1, Math.max(0, (w - b.x + 60) / 160));
-          const tailFade = Math.min(1, Math.max(0, (b.x - b.len + 200) / 220));
-          const groundFade = Math.min(1, Math.max(0, (h * 0.8 - y0) / (h * 0.12)));
-          const a = b.alpha * opacity * Math.min(headFade, Math.min(tailFade, groundFade));
-          if (a <= 0.004) continue;
-          ctx.strokeStyle = `rgba(255,220,190,${a.toFixed(3)})`;
-          ctx.lineWidth = b.width;
-          ctx.beginPath();
-          ctx.moveTo(b.x - b.len, y1);
-          ctx.quadraticCurveTo(b.x - b.len * 0.5, (y0 + y1) / 2, b.x, y0);
-          ctx.stroke();
-        }
-
-        // Tumbling leaf chips riding the same slow air.
+        // Tumbling petal chips riding the slow air.
         for (const c of chips) {
           c.x += c.sp * s * gust * dt * 60;
           c.y += (c.fall + Math.sin(t * 1.3 + c.phase) * 0.35) * dt * 60;

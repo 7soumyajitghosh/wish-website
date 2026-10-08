@@ -31,7 +31,7 @@ export const Marquee: React.FC<{
     <div aria-hidden="true" className="flex shrink-0 items-center">
       {words.map((w) => (
         <span key={`${keyPrefix}-${w}`} className="flex items-center">
-          <span className="mx-6 font-serif italic text-lg md:text-xl text-[#f5baa4] whitespace-nowrap">
+          <span className="mx-4 sm:mx-6 font-serif italic text-base sm:text-lg md:text-xl text-[#f5baa4] whitespace-nowrap">
             {w}
           </span>
           <svg className="h-3 w-3 shrink-0 text-[#d81b46]/80" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -43,13 +43,13 @@ export const Marquee: React.FC<{
   );
 
   return (
-    <div ref={ref} aria-hidden="true" className={`group relative overflow-hidden py-5 ${className}`}>
+    <div ref={ref} aria-hidden="true" className={`group relative overflow-hidden py-4 sm:py-5 ${className}`}>
       <div className="marquee-track">
         {row('a')}
         {row('b')}
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0d0408] to-transparent" />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0d0408] to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-12 sm:w-24 bg-gradient-to-r from-[#0d0408] to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-12 sm:w-24 bg-gradient-to-l from-[#0d0408] to-transparent" />
     </div>
   );
 };

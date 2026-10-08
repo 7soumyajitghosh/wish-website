@@ -195,6 +195,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
                 <span className="relative z-10 flex items-center gap-3">
                   Let&rsquo;s Start Our Journey
                   <svg
+                    aria-hidden="true"
                     className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
                     viewBox="0 0 24 24"
                     fill="none"

@@ -26,7 +26,11 @@ export function Navigation() {
     let raf = 0;
     const update = () => {
       raf = 0;
-      setIsScrolled(window.scrollY > 50);
+      // Functional set: no re-render when the state doesn't actually change.
+      setIsScrolled((prev) => {
+        const next = window.scrollY > 50;
+        return prev === next ? prev : next;
+      });
     };
     const handleScroll = () => {
       if (raf) return;
@@ -111,26 +115,48 @@ export function Navigation() {
   }, []);
 
   // Mobile menu a11y: focus first link on open, return focus on close,
-  // Esc closes, and body scroll locks while open.
+  // Esc closes, focus stays trapped inside while open, and body scroll
+  // locks while open (re-asserted if the intro gate unlocks underneath).
   useEffect(() => {
     if (isOpen) {
       prevOpenRef.current = true;
-      const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       linksRef.current[0]?.focus();
       const onKey = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setIsOpen(false);
+        if (e.key === 'Escape') {
+          setIsOpen(false);
+          return;
+        }
+        // Simple focus trap: wrap Tab around the toggle + menu links.
+        if (e.key === 'Tab') {
+          const toggle = toggleRef.current;
+          const links = linksRef.current.filter((el): el is HTMLAnchorElement => el !== null);
+          if (!toggle && links.length === 0) return;
+          const first: HTMLElement = toggle ?? links[0];
+          const last: HTMLElement = links.length > 0 ? links[links.length - 1] : toggle as HTMLElement;
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       };
       window.addEventListener('keydown', onKey);
       return () => {
         window.removeEventListener('keydown', onKey);
-        document.body.style.overflow = prevOverflow;
+        // Gate-aware restore: the intro gate (App) and this menu are the
+        // only body-overflow writers. Restore the gate's state, not a stale
+        // snapshot — unlocking mid-menu must not leave the page scrollable
+        // under an open menu, nor locked after the menu closes.
+        document.body.style.overflow = isExperienceUnlocked ? '' : 'hidden';
       };
     } else if (prevOpenRef.current) {
       prevOpenRef.current = false;
       toggleRef.current?.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, isExperienceUnlocked]);
 
   const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
@@ -195,7 +221,7 @@ export function Navigation() {
       <div className="container mx-auto px-4 sm:px-6 flex justify-between items-center">
         {/* Logo */}
         <a
-          href="#destination"
+          href="#main-content"
           className="relative z-50 text-[#fffdf8] font-serif tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm truncate max-w-[62vw] sm:max-w-none text-lg sm:text-2xl"
           onClick={(e) => handleSmoothScroll(e, 'body')}
         >
@@ -251,7 +277,7 @@ export function Navigation() {
           transition: isOpen ? 'visibility 0s' : 'visibility 0s linear 0.45s',
         }}
         aria-hidden={!isOpen}
-        inert={!isOpen}
+        inert={!isOpen ? true : undefined}
       >
         <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
           {navLinks.map((link, index) => (

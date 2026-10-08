@@ -152,10 +152,12 @@ export const WishScene: React.FC = () => {
   // prompt node stays mounted for its exit tween (conditional render below).
   const handleWish = useCallback(() => {
     if (wishedRef.current) return;
-    wishedRef.current = true;
 
     const orb = orbRef.current;
     if (!orb) return;
+    // Commit only once the orb is confirmed present — an early return
+    // above must not dead-end the wish (flag would block all retries).
+    wishedRef.current = true;
 
     // Kill the infinite entrance pulse so it doesn't fight the wish timeline
     gsap.killTweensOf(orb);
@@ -309,7 +311,7 @@ export const WishScene: React.FC = () => {
 
         {/* Final Message Reveal — hidden from AT until the wish is released
             (previously only opacity:0, so SR users heard it early). */}
-        <div ref={finaleRef} className="wish-finale-container" aria-hidden={!hasWished} inert={!hasWished}>
+        <div ref={finaleRef} className="wish-finale-container" aria-hidden={!hasWished} inert={!hasWished ? true : undefined}>
           <h2 className="finale-header finale-reveal-item">{wish.finalHeader}</h2>
           <div className="finale-body">
             {wish.finalMessage.map((line) => (

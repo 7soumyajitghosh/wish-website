@@ -61,15 +61,17 @@ export function buildHearts(
   const crownCenterX = baseX - 8 * s;
   const crownRadiusX = 185 * s;
 
-  // Detach order: outer right hearts detach first (0.1 to 0.4), mid hearts (0.4 to 0.7),
-  // inner/left canopy leaves stay firmly anchored (0.7 to 1.2) so the tree never becomes bare
+  // Detach order: outer right hearts peel first (near 0.05), the wave
+  // sweeps leftward and inward, and the last inner-left leaves let go just
+  // before the cycle ends (near 0.95) — the whole crown takes flight, as in
+  // storyboard panels 14–15, with the dusk veil covering the final cut.
   const detachOrderFor = (x: number, y: number): number => {
     const dx = (x - crownCenterX) / crownRadiusX;
     const rightToLeft = clamp01((1.2 - dx) / 2.4);
     const dy = (baseY - y) / (trunkH * 1.8);
     const heightFactor = (1 - clamp01(dy)) * 0.10;
-    const randomJitter = rng.range(-0.06, 0.06);
-    return 0.12 + rightToLeft * 0.95 + heightFactor + randomJitter;
+    const randomJitter = rng.range(-0.04, 0.04);
+    return 0.05 + rightToLeft * 0.8 + heightFactor * 0.6 + randomJitter;
   };
 
   const addHeart = (

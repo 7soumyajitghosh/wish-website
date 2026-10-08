@@ -136,17 +136,24 @@ export const FlowerScene: React.FC<FlowerSceneProps> = ({ onComplete }) => {
       // 3. Stem grows upward via SVG stroke animation
       const stem = stemPathRef.current;
       if (stem) {
-        const len = stem.getTotalLength();
-        gsap.set(stem, { strokeDasharray: len, strokeDashoffset: len });
-        tl.to(
-          stem,
-          {
-            strokeDashoffset: 0,
-            duration: 2.2,
-            ease: 'power2.out',
-          },
-          '-=0.2'
-        );
+        let len = 0;
+        try {
+          len = stem.getTotalLength();
+        } catch {
+          // Non-geometry path (or unmounted SVG) — skip stroke animation.
+        }
+        if (len > 0) {
+          gsap.set(stem, { strokeDasharray: len, strokeDashoffset: len });
+          tl.to(
+            stem,
+            {
+              strokeDashoffset: 0,
+              duration: 2.2,
+              ease: 'power2.out',
+            },
+            '-=0.2'
+          );
+        }
       }
 
       // 4. Leaves unfurl as stem reaches their junction

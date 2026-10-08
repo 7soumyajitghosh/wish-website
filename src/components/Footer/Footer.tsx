@@ -67,7 +67,6 @@ export const Footer = () => {
           type="button"
           onClick={scrollToTop}
           className="font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-3 py-2 min-h-[44px]"
-          aria-label="Back to top"
         >
           Back to the beginning ↑
         </button>

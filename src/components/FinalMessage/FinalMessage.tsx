@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { useStory } from '../../context/StoryContext';
 import { Reveal } from '../Effects/Reveal';
 import { MagneticButton } from '../Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../../utils/storyNav';
 
 export const FinalMessage = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -13,12 +14,14 @@ export const FinalMessage = () => {
   const [localUnlocked, setLocalUnlocked] = useState(isFinalUnlocked);
   const unlocked = isFinalUnlocked || localUnlocked;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusRafRef = useRef(0);
 
-  // Kill any running reveal timeline on unmount.
+  // Kill any running reveal timeline + pending focus on unmount.
   useEffect(() => {
     return () => {
       tlRef.current?.kill();
       tlRef.current = null;
+      cancelAnimationFrame(focusRafRef.current);
     };
   }, []);
 
@@ -59,7 +62,8 @@ export const FinalMessage = () => {
     setLocalUnlocked(true);
     unlockFinal();
     // Move focus to the revealed message so screen readers announce it.
-    requestAnimationFrame(() => headingRef.current?.focus());
+    cancelAnimationFrame(focusRafRef.current);
+    focusRafRef.current = requestAnimationFrame(() => headingRef.current?.focus());
   };
 
   return (
@@ -105,8 +109,9 @@ export const FinalMessage = () => {
             </MagneticButton>
           </div>
         ) : (
-          /* The Grand Revealed Message */
-          <div ref={messageCardRef} className="flex flex-col items-center w-full" aria-live="polite">
+          /* The Grand Revealed Message — focus moves to the heading on
+             unlock (no live region, announced exactly once). */
+          <div ref={messageCardRef} className="flex flex-col items-center w-full">
             <span className="final-fade-item eyebrow mb-6 sm:mb-8">
               Forever Remembered
             </span>
@@ -140,13 +145,7 @@ export const FinalMessage = () => {
             {/* Chapter link — keeps every page connected in one flow. */}
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById('journey');
-                if (el) {
-                  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-                }
-              }}
+              onClick={() => scrollToIdWhenReady('journey', { timeoutMs: 4000 })}
               className="final-fade-item font-serif italic text-sm tracking-wide text-[#f5baa4] hover:text-[#ffd6a5] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] rounded px-2 py-2 min-h-[44px]"
               aria-label="Explore the sixteen milestones"
             >

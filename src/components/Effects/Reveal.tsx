@@ -30,13 +30,17 @@ export const Reveal: React.FC<{
       return;
     }
     // Opacity + transform only (no blur filter — non-composited repaint).
-    gsap.set(el, { opacity: 0, y });
+    // visibility:hidden until revealed: invisible content must not be
+    // focusable or exposed to AT. No-JS never runs this, so content stays
+    // visible without JS.
+    gsap.set(el, { opacity: 0, y, visibility: 'hidden' });
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
         gsap.to(el, {
           opacity: 1,
           y: 0,
+          visibility: 'visible',
           duration: 0.9,
           delay,
           ease: 'power3.out',

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { Reveal } from '../Effects/Reveal';
 
 const WORDS = [
@@ -14,12 +14,17 @@ const WORDS = [
 
 function scramble(word: string): string {
   const letters = word.split('');
-  for (let i = letters.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [letters[i], letters[j]] = [letters[j], letters[i]];
+  // Shuffle until different, bounded: short words with repeated letters
+  // (e.g. "AA") could otherwise recurse until stack overflow.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    for (let i = letters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [letters[i], letters[j]] = [letters[j], letters[i]];
+    }
+    if (letters.join('') !== word) return letters.join('');
   }
-  const result = letters.join('');
-  return result === word ? scramble(word) : result;
+  // Last resort: rotate one position (guaranteed different for length > 1).
+  return word.length > 1 ? word.slice(1) + word[0] : word;
 }
 
 export const WordScramble = () => {
@@ -35,6 +40,7 @@ export const WordScramble = () => {
   const tiles = useMemo(() => scramble(current.word), [current.word]);
   const [reshuffled, setReshuffled] = useState<string | null>(null);
   const shown = reshuffled ?? tiles;
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
 
   const next = () => {
     setIndex((i) => (i + 1 + Math.floor(Math.random() * (WORDS.length - 1))) % WORDS.length);
@@ -53,6 +59,8 @@ export const WordScramble = () => {
       setScore((s) => s + 1);
       setStreak((s) => s + 1);
       setMessage('Correct — your heart knew it all along.');
+      // Input disables on solve, which would strand focus — move it on.
+      requestAnimationFrame(() => nextButtonRef.current?.focus());
     } else {
       setStreak(0);
       setMessage('Not quite — try again, slowly.');
@@ -81,7 +89,7 @@ export const WordScramble = () => {
 
       <div className="rounded-2xl border border-white/10 bg-[#190710]/60 p-4 sm:p-5 text-center overflow-hidden">
         <p className="text-xs font-sans tracking-[0.3em] uppercase text-[#f5baa4]">Hint — {current.hint}</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-1.5 sm:gap-2" aria-label={`Scrambled word: ${shown.split('').join(' ')}`}>
+        <div className="mt-4 flex flex-wrap justify-center gap-1.5 sm:gap-2" role="img" aria-label={`Scrambled word: ${shown.split('').join(' ')}`}>
           {shown.split('').map((letter, i) => (
             <span
               key={`${current.word}-${i}-${letter}`}
@@ -117,7 +125,7 @@ export const WordScramble = () => {
         </div>
 
         {solved ? (
-          <button type="button" onClick={next} className="btn-ghost btn-sm mt-1 font-serif cursor-pointer">
+          <button ref={nextButtonRef} type="button" onClick={next} className="btn-ghost btn-sm mt-1 font-serif cursor-pointer">
             Next puzzle →
           </button>
         ) : (

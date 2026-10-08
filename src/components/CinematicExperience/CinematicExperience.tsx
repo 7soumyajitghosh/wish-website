@@ -313,15 +313,6 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
         }
         // Soft dusk veil following the trailing leaves — never a blackout.
         applyFade(rangeProgress(progressObj.p, FLIGHT_T.DETACH_START + 0.03, FLIGHT_T.CYCLE_END));
-        // Faint handheld shudder in the gale (skipped for reduced motion).
-        if (!prefersReducedMotion) {
-          const tt = now * 0.001;
-          applyCam(
-            camObj.z,
-            Math.sin(tt * 13.7) * 1.4 + Math.sin(tt * 7.3) * 1.1,
-            Math.cos(tt * 11.3) * 1.1
-          );
-        }
       },
       onComplete: () => {
         // Leaves have all flown away — hand off to the Destination.
@@ -420,12 +411,30 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
 
   // Move focus to the quote's close button when it appears (keyboard/SR users).
   // Never steal focus during the locked leaf transition.
+  // When the quote closes (dismiss or 8s auto-dismiss), return focus to the
+  // tree so it is never dropped to <body>.
+  const quoteWrapRef = useRef<HTMLDivElement>(null);
+  const focusTree = useCallback(() => {
+    const tree = camRef.current?.querySelector('.heart-tree-wrapper') as HTMLElement | null;
+    (tree ?? camRef.current)?.focus({ preventScroll: true });
+  }, []);
+  const dismissQuote = useCallback(() => {
+    setActiveTreeQuote(null);
+    focusTree();
+  }, [focusTree, setActiveTreeQuote]);
+  const prevQuoteRef = useRef(false);
   useEffect(() => {
     if (activeTreeQuote) {
+      prevQuoteRef.current = true;
       if (phaseRef.current === 'storm' || phaseRef.current === 'leavesTransition') return;
       quoteCloseRef.current?.focus();
+    } else if (prevQuoteRef.current) {
+      prevQuoteRef.current = false;
+      // Auto-dismiss path: only reclaim focus if it was inside the quote
+      // (click-dismiss already moved it via dismissQuote).
+      if (quoteWrapRef.current?.contains(document.activeElement)) focusTree();
     }
-  }, [activeTreeQuote]);
+  }, [activeTreeQuote, focusTree]);
 
   // Bypass path (Escape / nav unlock without leaves): the leaf timeline never
   // ran, so there is no LightTransition to signal completion. Destroy this
@@ -472,13 +481,24 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
 
   // Quote popup position: viewport-dependent layout must live in state
   // (not read during render) so SSR/first paint never mismatches.
+  // rAF-throttled: raw resize fires per pixel, this only positions a popup.
   const [viewportW, setViewportW] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1024
   );
   useEffect(() => {
-    const onResize = () => setViewportW(window.innerWidth);
+    let raf = 0;
+    const onResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        setViewportW(window.innerWidth);
+      });
+    };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
   const quoteLeft = activeTreeQuote
     ? Math.max(12, Math.min(activeTreeQuote.x - 120, viewportW - Math.min(320, viewportW - 24) - 12))
@@ -502,11 +522,12 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             drag-wind can't perturb the intended leaf path. */}
         <div
           ref={camRef}
-          className={`absolute inset-0 z-0 will-change-transform ${isTransitionLocked ? 'pointer-events-none' : ''}`}
+          tabIndex={-1}
+          className={`absolute inset-0 z-0 will-change-transform outline-none ${isTransitionLocked ? 'pointer-events-none' : ''}`}
           style={{ transformOrigin: '46% 73%' }}
           aria-hidden={isTransitionLocked}
         >
-          <div className="h-full w-full" inert={isTransitionLocked}>
+          <div className="h-full w-full" inert={isTransitionLocked ? true : undefined}>
             <HeartTreeAnimation
               targetProgress={targetProgress}
               onTreeInteract={isTransitionLocked ? undefined : handleTreeInteract}
@@ -544,23 +565,9 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
           />
         </div>
 
-        {/* Overcast grade — dulls the sky naturally as wind rises, full in
-            the gale. Always mounted so it cross-fades instead of popping. */}
-        <div
-          aria-hidden="true"
-          className="storm-grade pointer-events-none absolute inset-0 z-[7]"
-          style={{
-            opacity: isStorming || isLeavesTransition ? 1 : targetProgress > WIND_T.WIND_START ? 0.45 : 0,
-          }}
-        />
-
-        {/* Natural storm sky — soft cloud masses, low sun-glow, rare heat-lightning */}
+        {/* Natural storm sky — soft cloud masses drifting past (no sun added) */}
         {isStorming && (
-          <>
-            <div aria-hidden="true" className="storm-clouds pointer-events-none absolute inset-0 z-[7]" />
-            <div aria-hidden="true" className="storm-tint pointer-events-none absolute inset-0 z-[7]" />
-            <div aria-hidden="true" className="storm-flash pointer-events-none absolute inset-0 z-[7]" />
-          </>
+          <div aria-hidden="true" className="storm-clouds pointer-events-none absolute inset-0 z-[7]" />
         )}
 
         {/* Warm dusk veil following the trailing leaves (never full black) */}
@@ -624,9 +631,9 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
             fully non-interactive via inert + pointer-events-none. */}
         {activeTreeQuote && (
           <div
+            ref={quoteWrapRef}
             role="status"
-            aria-live="polite"
-            inert={isTransitionLocked}
+            inert={isTransitionLocked ? true : undefined}
             aria-hidden={isTransitionLocked}
             onMouseEnter={isTransitionLocked ? undefined : pauseTreeQuote}
             onMouseLeave={isTransitionLocked ? undefined : resumeTreeQuote}
@@ -650,7 +657,7 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
               </div>
               <button
                 ref={quoteCloseRef}
-                onClick={() => setActiveTreeQuote(null)}
+                onClick={dismissQuote}
                 className="text-[#fff8eb]/85 hover:text-[#fffdf8] text-xs cursor-pointer min-w-[44px] min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded"
                 aria-label="Dismiss message"
               >
