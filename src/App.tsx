@@ -224,7 +224,7 @@ const AppContent = () => {
 
         {/* Locked sections: hidden from keyboard/AT until the intro unlocks
             AND the landing page is destroyed. */}
-        <div inert={!isExperienceUnlocked || introAlive ? true : undefined}>
+        <div className="editorial-ui" inert={!isExperienceUnlocked || introAlive ? true : undefined}>
           <Suspense fallback={<SectionSkeleton label="Loading the story" />}>
             {/* The Final Destination: Where Love Takes Flight */}
             <SectionErrorBoundary label="destination">

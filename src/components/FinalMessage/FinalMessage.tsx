@@ -98,7 +98,7 @@ export const FinalMessage = () => {
               Before you step away, there is a quiet truth waiting to be unveiled.
             </p>
 
-            <MagneticButton className="max-w-full">
+            <MagneticButton strength={4} className="max-w-full">
               <button
                 onClick={handleTakeFinalStep}
                 className="btn-primary mt-4 font-serif tracking-wider shadow-[0_0_30px_rgba(216,27,70,0.5)] cursor-pointer transition-transform duration-300 hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(216,27,70,0.65)] active:scale-95"

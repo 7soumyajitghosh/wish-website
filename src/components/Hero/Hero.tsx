@@ -159,18 +159,9 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
             A Journey of Love
           </p>
 
-          <h1 className="relative font-serif text-[#fffdf8] tracking-wide mb-4 sm:mb-6 drop-shadow-2xl text-balance break-words px-2" style={{ fontSize: 'clamp(2.4rem,11vw,7rem)', lineHeight: 1.14 }}>
+          <h1 className="relative font-serif text-[#fffdf8] tracking-[-0.02em] mb-4 sm:mb-6 drop-shadow-2xl text-balance break-words px-2" style={{ fontSize: 'clamp(2.4rem,11vw,7rem)', lineHeight: 1.14 }}>
             <span className="hero-line"><span>Where Love</span></span>
             <span className="hero-line"><span>Takes Flight</span></span>
-            <span aria-hidden="true" className="heart-chain">
-              <span style={{ animationDelay: '0.9s' }}>♥️</span>
-              <span style={{ animationDelay: '1.15s' }}>♥️</span>
-              <span style={{ animationDelay: '1.4s' }}>♥️</span>
-              <span style={{ animationDelay: '1.65s' }}>♥️</span>
-              <span style={{ animationDelay: '1.9s' }}>♥️</span>
-              <span style={{ animationDelay: '2.15s' }}>♥️</span>
-              <span style={{ animationDelay: '2.4s' }}>♥️</span>
-            </span>
           </h1>
 
           <p className="font-serif italic text-[#ffd6a5] mb-6 sm:mb-8 max-w-xl leading-relaxed px-4 text-base sm:text-lg md:text-xl">
@@ -182,7 +173,7 @@ export const Hero: React.FC<HeroProps> = ({ onWaterComplete, className = '' }) =
           {/* The Begin Action Button — locked/disabled once clicked until the
               intro transition finishes (prevents multi-click restarts). */}
           <div className="flex flex-col items-center gap-4 w-full px-4">
-            <MagneticButton className="max-w-full">
+            <MagneticButton strength={4} className="max-w-full">
               <button
                 onClick={handleBegin}
                 disabled={hasBegun}

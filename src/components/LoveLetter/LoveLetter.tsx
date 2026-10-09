@@ -237,7 +237,7 @@ export const LoveLetter: React.FC = () => {
               {isOpen ? 'The love letter is open.' : 'The love letter is sealed.'}
             </p>
             {!isOpen ? (
-              <MagneticButton>
+              <MagneticButton strength={4}>
               <button
                 onClick={openLetter}
                 aria-expanded={false}
@@ -248,7 +248,7 @@ export const LoveLetter: React.FC = () => {
               </button>
               </MagneticButton>
             ) : (
-              <MagneticButton>
+              <MagneticButton strength={4}>
               <button
                 onClick={(e) => closeLetter(e)}
                 aria-expanded={true}

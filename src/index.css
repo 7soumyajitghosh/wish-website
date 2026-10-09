@@ -515,3 +515,105 @@ textarea::placeholder {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Editorial package: strictly below the cinematic intro. No tree selectors,
+   scene dimensions, atmosphere, or story timings are changed. */
+.editorial-ui {
+  --ui-border: rgba(255, 214, 165, .16);
+  --ui-muted: #e2cec7;
+  --ui-micro: 180ms;
+}
+.editorial-ui .section { padding-block: clamp(4.5rem, 8vw, 7.5rem); }
+.editorial-ui .eyebrow { font-size: .75rem; letter-spacing: .16em; line-height: 1.7; }
+.editorial-ui h2 { letter-spacing: -.025em; line-height: 1.12 !important; }
+.editorial-ui header > p { max-width: 42rem; margin-inline: auto; font-size: clamp(1rem, 1.4vw, 1.125rem); line-height: 1.7; color: var(--ui-muted); }
+.editorial-ui #journey article { border-color: var(--ui-border); background: rgba(25,7,16,.7); }
+.editorial-ui #journey article p { line-height: 1.7; }
+.editorial-ui #journey article:hover { border-color: rgba(255,214,165,.3); background: #200c16; }
+.editorial-ui #journey .spotlight::before { opacity: 0; }
+.editorial-ui #destination h2 { letter-spacing: -.03em; }
+.editorial-ui #destination p { max-width: 42rem; font-size: clamp(1rem, 1.6vw, 1.25rem); line-height: 1.7; }
+.editorial-ui .btn-primary, .editorial-ui .btn-ghost {
+  transition: transform var(--ui-micro) ease, background-color var(--ui-micro) ease, border-color var(--ui-micro) ease, box-shadow var(--ui-micro) ease;
+  letter-spacing: .02em; box-shadow: none;
+}
+.editorial-ui .btn-primary { background: #a81438; border-color: rgba(255,179,193,.3); }
+.editorial-ui .btn-ghost { background: #220b17; backdrop-filter: none; border-color: rgba(255,214,165,.28); }
+.editorial-ui .btn-primary:hover:not(:disabled), .editorial-ui .btn-ghost:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px #0003; }
+.editorial-ui .btn-primary:hover:not(:disabled) { background: #8f1130; }
+.editorial-ui .btn-ghost:hover:not(:disabled) { background: #2a0e1e; border-color: rgba(255,214,165,.5); }
+.editorial-ui .btn-primary:active:not(:disabled), .editorial-ui .btn-ghost:active:not(:disabled) { transform: scale(.98); }
+.editorial-ui button:focus-visible, .editorial-ui input:focus-visible, .editorial-ui textarea:focus-visible { outline: 2px solid #ffd6a5; outline-offset: 4px; }
+.editorial-ui .btn-primary:disabled, .editorial-ui .btn-ghost:disabled { transform: none; box-shadow: none; }
+.editorial-ui button svg { flex-shrink: 0; }
+.editorial-ui #wish-text { background: #190710; border-color: rgba(255,214,165,.25); box-shadow: none; }
+.editorial-ui #wish-text:focus { border-color: #ffd6a5; }
+/* Keep the existing envelope geometry and sequence: only its closed surface. */
+.editorial-ui #love-letter [role="button"]:hover { box-shadow: 0 16px 35px #0004; }
+.editorial-nav a { letter-spacing: .12em; }
+.editorial-nav a.font-serif { letter-spacing: -.015em; }
+.editorial-nav .xl\:flex { gap: 1.5rem; }
+.editorial-nav .xl\:flex > a { margin-left: 0; font-size: .75rem; }
+.love-icon { display: block; width: 1.65rem; height: 1.65rem; }
+.inline-icon { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -.22em; margin-inline: .35em; }
+.game-picker { flex: 1; cursor: pointer; text-align: left; padding: 1.25rem; border: 1px solid var(--ui-border); border-radius: 1rem; background: #190710; transition: background-color 180ms, border-color 180ms, transform 180ms; }
+.game-picker > .love-icon { color: #f5baa4; margin-bottom: .6rem; }
+.game-picker.is-selected { background: #250e1b; border-color: #bf7a8a; box-shadow: inset 0 2px 0 #ffb3c1; }
+.game-picker:hover { border-color: #bf7a8a; }
+.game-picker:active { transform: scale(.98); }
+.game-panel { border: 1px solid var(--ui-border); border-radius: 1.5rem; background: #15070e; overflow: hidden; }
+.game-content { position: relative; }
+.game-content > div:first-of-type p, .game-content > div:first-of-type p span { letter-spacing: .08em; line-height: 1.7; }
+.game-enter { animation: gameEnter 160ms ease-out both; }
+@keyframes gameEnter { from { opacity: 0; } to { opacity: 1; } }
+.memory-card { aspect-ratio: 1; min-height: 56px; position: relative; border: 0; border-radius: 1rem; background: none; perspective: 750px; cursor: pointer; }
+.memory-flip { display: block; width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 320ms cubic-bezier(.2,.7,.2,1); }
+.memory-card.is-open .memory-flip { transform: rotateY(180deg); }
+.memory-face { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; backface-visibility: hidden; -webkit-backface-visibility: hidden; border: 1px solid var(--ui-border); border-radius: 1rem; }
+.memory-back { background: #190710; color: #c894a2; }
+.memory-front { transform: rotateY(180deg); background: #250b18; color: #ffb3c1; border-color: #bf7a8a; }
+.memory-face .love-icon { width: clamp(1.6rem,4vw,2.4rem); height: clamp(1.6rem,4vw,2.4rem); }
+.memory-card:hover:not(:disabled) .memory-back { border-color: #bf7a8a; background: #250b18; }
+.memory-card:active:not(:disabled) .memory-back { background: #321324; }
+.memory-card:disabled { cursor: default; }
+.memory-card.is-matched .memory-front { color: #ffd6a5; animation: pairSettle 500ms ease-out; }
+@keyframes pairSettle { 0% { scale: 1; box-shadow: 0 0 0 #ffb3c100; } 35% { scale: 1.02; box-shadow: 0 0 15px #ffb3c135; } 100% { scale: 1; box-shadow: 0 0 0 #ffb3c100; } }
+.game-result { border: 1px solid rgba(255,214,165,.3); border-radius: 1rem; background: #ffd6a50b; }
+.word-feedback { padding: .6rem; border-radius: .75rem; transition: background-color 180ms; }
+.word-feedback.is-correct { background: #ffd6a510; }
+.word-feedback.is-incorrect { background: #ffb3c108; }
+.tic-board { position: relative; }
+.tic-mark { display: inline-flex; animation: ticPlace 150ms ease-out; color: #ffb3c1; }
+.tic-mark .love-icon { width: 2rem; height: 2rem; }
+@keyframes ticPlace { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+.tic-winning-line { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tic-winning-line line { stroke: #ffd6a5; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1; animation: winningLine 350ms ease-out both; }
+@keyframes winningLine { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.game-celebration { pointer-events: none; position: absolute; inset: 0; overflow: hidden; z-index: 1; }
+.game-celebration > span { position: absolute; top: 50%; color: #ffb3c1; opacity: 0; animation: gamePetal 700ms ease-out both; }
+.game-celebration .love-icon { width: .8rem; height: .8rem; }
+@keyframes gamePetal { 0% { opacity: 0; transform: translateY(10px) rotate(-15deg); } 20% { opacity: .65; } 100% { opacity: 0; transform: translateY(-95px) rotate(35deg); } }
+@media (hover: none), (pointer: coarse) {
+  .editorial-ui .btn-primary:hover:not(:disabled), .editorial-ui .btn-ghost:hover:not(:disabled) { transform: none; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-celebration { display: none; }
+  .memory-flip { transition: none; transform: none !important; }
+  .memory-front { transform: none; display: none; }
+  .memory-card.is-open .memory-front { display: flex; }
+  .memory-card.is-open .memory-back { display: none; }
+  .memory-card.is-matched .memory-front, .game-enter, .tic-mark, .tic-winning-line line { animation: none; }
+  .editorial-ui .btn-primary:hover:not(:disabled), .editorial-ui .btn-ghost:hover:not(:disabled), .editorial-ui .btn-primary:active:not(:disabled), .editorial-ui .btn-ghost:active:not(:disabled) { transform: none; }
+}
+.editorial-nav a[aria-current="location"] { color: #ffd6a5; }
+.editorial-nav a[aria-current="location"] > span { transform: translateX(0); }
+/* The existing lifted paper rests above its envelope. Reserve that space
+   below the heading so opening does not cover the subtitle. */
+.editorial-ui #love-letter header { margin-bottom: 7.5rem; }
+@media (max-width: 640px) {
+  .editorial-ui #love-letter header { margin-bottom: 5.5rem; }
+  .editorial-ui #journey h2 { font-size: clamp(1.65rem,7.3vw,2rem) !important; }
+  .game-picker { padding: .875rem 1rem; display: grid; grid-template-columns: 1.65rem 1fr; column-gap: .875rem; }
+  .game-picker > .love-icon { grid-row: 1 / 3; align-self: center; margin-bottom: 0; }
+  .game-picker > span { grid-column: 2; }
+}

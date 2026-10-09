@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Reveal } from '../Effects/Reveal';
+import { LoveIcon } from './LoveIcon';
+import { symbolIcon } from './symbolIcons';
+import { GameCelebration } from './GameCelebration';
 
 const SYMBOLS = ['❤️', '🌹', '🌙', '✨', '💌', '🦋'];
 const BEST_KEY = 'love-memory-best';
@@ -125,7 +127,8 @@ export const MemoryMatch = () => {
   };
 
   return (
-    <div>
+    <div className="game-content">
+      {won && <GameCelebration />}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p aria-live="polite" className="text-sm font-sans tracking-widest uppercase text-[#fff8eb]/80">
           Moves: {moves} · Pairs: {pairsFound}/{SYMBOLS.length}
@@ -147,29 +150,28 @@ export const MemoryMatch = () => {
               onClick={() => flip(card.id)}
               disabled={faceUp}
               aria-label={faceUp ? `${card.symbol}, ${position}, ${card.matched ? 'matched' : 'showing'}` : `Hidden ${position}`}
-              className={`aspect-square rounded-2xl border text-2xl sm:text-3xl transition-all duration-300 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#ffd6a5] min-h-[56px] ${
-                faceUp
-                  ? 'border-[#ffb3c1]/50 bg-[#250b18] scale-100'
-                  : 'border-white/10 bg-[#190710]/70 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80 hover:-translate-y-0.5'
-              } ${card.matched ? 'opacity-90 shadow-[0_0_18px_rgba(216,27,70,0.35)]' : ''}`}
+              className={`memory-card ${faceUp ? 'is-open' : ''} ${card.matched ? 'is-matched' : ''}`}
             >
-              <span aria-hidden="true">{faceUp ? card.symbol : '💭'}</span>
+              <span className="memory-flip" aria-hidden="true">
+                <span className="memory-face memory-back"><LoveIcon name="thought" /></span>
+                <span className="memory-face memory-front"><LoveIcon name={symbolIcon[card.symbol]} /></span>
+              </span>
             </button>
           );
         })}
       </div>
 
       {won && (
-        <Reveal className="mt-5 rounded-2xl border border-[#ffd6a5]/40 bg-[#ffd6a5]/10 p-4 text-center">
+        <div className="game-result game-enter mt-5 p-4 text-center">
           <div ref={winRef} tabIndex={-1} role="status" className="focus-visible:outline-2 focus-visible:outline-[#ffd6a5] rounded">
           <p className="font-serif italic text-lg text-[#ffd6a5]">
-            You matched every memory in {moves} moves. <span aria-hidden="true">💖</span>
+            You matched every memory in {moves} moves. <LoveIcon name="heart" className="inline-icon" />
           </p>
           </div>
           <button type="button" onClick={restart} className="btn-primary btn-sm mt-3 font-serif cursor-pointer">
             Play again
           </button>
-        </Reveal>
+        </div>
       )}
     </div>
   );

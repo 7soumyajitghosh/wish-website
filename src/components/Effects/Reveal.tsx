@@ -11,7 +11,7 @@ export const Reveal: React.FC<{
   delay?: number;
   y?: number;
   as?: 'div' | 'section' | 'span' | 'h2' | 'p';
-}> = ({ children, className = '', delay = 0, y = 28, as = 'div' }) => {
+}> = ({ children, className = '', delay = 0, y = 16, as = 'div' }) => {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
@@ -41,7 +41,7 @@ export const Reveal: React.FC<{
           opacity: 1,
           y: 0,
           visibility: 'visible',
-          duration: 0.9,
+          duration: 0.6,
           delay,
           ease: 'power3.out',
           overwrite: 'auto',

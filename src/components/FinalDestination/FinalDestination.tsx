@@ -404,7 +404,7 @@ export const FinalDestination: React.FC = () => {
             </Reveal>
 
             <Reveal delay={0.16} className={`mt-2 sm:mt-4 w-full flex justify-center ${isVisible ? '' : 'opacity-0'}`}>
-              <MagneticButton className="max-w-full">
+              <MagneticButton strength={4} className="max-w-full">
               <button
                 onClick={() => scrollToIdWhenReady('love-letter', { timeoutMs: 4000 })}
                 className="btn-ghost font-serif tracking-wide shadow-lg cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ffd6a5] text-sm sm:text-base"

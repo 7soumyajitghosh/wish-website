@@ -3,13 +3,14 @@ import { Reveal } from '../Effects/Reveal';
 import { MemoryMatch } from './MemoryMatch';
 import { WordScramble } from './WordScramble';
 import { TicTacToe } from './TicTacToe';
+import { LoveIcon, type LoveIconName } from './LoveIcon';
 
 type GameId = 'memory' | 'scramble' | 'tictactoe';
 
-const TABS: { id: GameId; label: string; icon: string; blurb: string }[] = [
-  { id: 'memory', label: 'Memory Match', icon: '💞', blurb: 'Find every pair of love tokens.' },
-  { id: 'scramble', label: 'Word Puzzle', icon: '🧩', blurb: 'Unscramble words of love.' },
-  { id: 'tictactoe', label: 'Hearts vs Roses', icon: '🌹', blurb: 'Tic-tac-toe against Cupid.' },
+const TABS: { id: GameId; label: string; icon: LoveIconName; blurb: string }[] = [
+  { id: 'memory', label: 'Memory Match', icon: 'memory', blurb: 'Find every pair of love tokens.' },
+  { id: 'scramble', label: 'Word Puzzle', icon: 'puzzle', blurb: 'Unscramble words of love.' },
+  { id: 'tictactoe', label: 'Hearts vs Roses', icon: 'rose', blurb: 'Tic-tac-toe against Cupid.' },
 ];
 
 export const Playground = () => {
@@ -43,8 +44,8 @@ export const Playground = () => {
           </header>
         </Reveal>
 
-        {/* Game picker — toggle buttons (not tabs: each game keeps its
-            own state and there is no tabpanel keyboard contract). */}
+        {/* Game picker — toggle buttons (not tabs: switching games intentionally resets
+            the previous board and there is no tabpanel keyboard contract). */}
         <Reveal delay={0.1}>
           <div className="mb-8 flex flex-col justify-center gap-3 sm:flex-row" role="group" aria-label="Choose a game">
             {TABS.map((tab) => {
@@ -55,13 +56,9 @@ export const Playground = () => {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setActive(tab.id)}
-                  className={`flex-1 cursor-pointer rounded-2xl border px-5 py-4 text-left transition-all duration-300 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] ${
-                    selected
-                      ? 'border-[#ffb3c1]/60 bg-[#250b18]/90 shadow-[0_0_24px_rgba(216,27,70,0.35)]'
-                      : 'border-white/10 bg-[#190710]/60 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80'
-                  }`}
+                  className={`game-picker ${selected ? 'is-selected' : ''}`}
                 >
-                  <span aria-hidden="true" className="text-2xl">{tab.icon}</span>
+                  <LoveIcon name={tab.icon} />
                   <span className="mt-1 block font-serif text-lg text-[#fffdf8]">{tab.label}</span>
                   <span className="block font-sans text-xs tracking-wide text-[#fff8eb]/80">{tab.blurb}</span>
                 </button>
@@ -74,11 +71,13 @@ export const Playground = () => {
           <div
             role="group"
             aria-label={current.label}
-            className="spotlight rounded-3xl border border-white/10 bg-[#190710]/60 p-4 sm:p-8 overflow-hidden"
+            className="game-panel p-4 sm:p-8"
           >
+            <div key={active} className="game-enter">
             {active === 'memory' && <MemoryMatch />}
             {active === 'scramble' && <WordScramble />}
             {active === 'tictactoe' && <TicTacToe />}
+            </div>
           </div>
         </Reveal>
       </div>

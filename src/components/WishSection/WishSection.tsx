@@ -339,7 +339,7 @@ export const WishSection = () => {
               </p>
             </div>
 
-            <MagneticButton>
+            <MagneticButton strength={4}>
               <button
                 type="submit"
                 disabled={!wishText.trim()}

@@ -13,6 +13,7 @@ const navLinks = [
 
 export function Navigation() {
   const { isExperienceUnlocked, setIntroState, setPendingTarget } = useStory();
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -44,6 +45,29 @@ export function Navigation() {
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isExperienceUnlocked) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (document.querySelector('#story-experience')) return;
+      const candidates = navLinks.filter((link) => link.href !== '#story-experience')
+        .map((link) => ({ href: link.href, el: document.querySelector(link.href) }))
+        .filter((item): item is { href: string; el: Element } => !!item.el);
+      let current = candidates[0]?.href ?? null;
+      for (const item of candidates) {
+        if (item.el.getBoundingClientRect().top <= window.innerHeight * 0.35) current = item.href;
+      }
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = candidates.at(-1)?.href ?? current;
+      setActiveSection(current);
+    };
+    const request = () => { if (!frame) frame = requestAnimationFrame(update); };
+    request();
+    window.addEventListener('scroll', request, { passive: true });
+    window.addEventListener('resize', request);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', request); window.removeEventListener('resize', request); };
+  }, [isExperienceUnlocked]);
 
   // Intro + initial menu position (layout effect avoids flash).
   useLayoutEffect(() => {
@@ -212,7 +236,7 @@ export function Navigation() {
     <>
     <nav
       ref={navRef}
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
+      className={`editorial-nav fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-in-out ${
         isScrolled
           ? 'bg-[#0d0408]/85 backdrop-blur-md shadow-lg py-2.5'
           : 'bg-transparent py-4'
@@ -235,6 +259,7 @@ export function Navigation() {
             <a
               key={link.name}
               href={link.href}
+              aria-current={activeSection === link.href ? 'location' : undefined}
               className="text-[#fff8eb] font-sans text-sm tracking-widest uppercase relative group overflow-hidden py-2 focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm"
               onClick={(e) => handleSmoothScroll(e, link.href)}
             >
@@ -288,6 +313,7 @@ export function Navigation() {
               key={link.name}
               ref={(el) => { linksRef.current[index] = el; }}
               href={link.href}
+              aria-current={activeSection === link.href ? 'location' : undefined}
               tabIndex={isOpen ? 0 : -1}
               className="text-[#fffdf8] font-serif tracking-wide hover:text-[#f5baa4] transition-colors focus-visible:outline-2 focus-visible:outline-[#ffd6a5] focus-visible:outline-offset-2 rounded-sm px-4 py-2 min-h-[44px] inline-flex items-center justify-center text-center text-2xl sm:text-3xl"
               onClick={(e) => handleSmoothScroll(e, link.href)}

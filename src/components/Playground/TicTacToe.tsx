@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { LoveIcon } from './LoveIcon';
+import { GameCelebration } from './GameCelebration';
 
 type Mark = 'YOU' | 'CUPID' | null;
 
@@ -49,6 +51,8 @@ export const TicTacToe = () => {
   const [tally, setTally] = useState({ you: 0, cupid: 0, draws: 0 });
   const result = winnerOf(board);
   const over = result !== null;
+  const winningLine = LINES.find(([a, b, c]) => board[a] && board[a] === board[b] && board[a] === board[c]);
+  const point = (i: number) => [((i % 3) + 0.5) * 100, (Math.floor(i / 3) + 0.5) * 100];
   const playAgainRef = useRef<HTMLButtonElement>(null);
   // Tally is event-driven (not setState-in-effect): each terminal board is
   // counted once via its board key, reset clears the key for the next round.
@@ -131,7 +135,8 @@ export const TicTacToe = () => {
     board.filter((m) => m === 'CUPID').length;
 
   return (
-    <div>
+    <div className="game-content">
+      {result === 'YOU' && <GameCelebration />}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p aria-live="polite" className="text-sm font-sans tracking-widest uppercase text-[#fff8eb]/80">
           You {tally.you} · Cupid {tally.cupid} · Draws {tally.draws}
@@ -141,7 +146,7 @@ export const TicTacToe = () => {
         </button>
       </div>
 
-      <div className="mx-auto grid w-full max-w-[320px] grid-cols-3 gap-2 sm:gap-3" role="group" aria-label="Tic tac toe board">
+      <div className="tic-board mx-auto grid w-full max-w-[320px] grid-cols-3 gap-2 sm:gap-3" role="group" aria-label="Tic tac toe board">
         {board.map((mark, i) => (
           <button
             key={i}
@@ -155,12 +160,13 @@ export const TicTacToe = () => {
                 : 'border-white/10 bg-[#190710]/70 hover:border-[#ffb3c1]/40 hover:bg-[#250b18]/80'
             } ${!mark && !over ? 'hover:-translate-y-0.5' : ''} disabled:cursor-default`}
           >
-            <span aria-hidden="true">{mark ? EMOJI[mark] : ''}</span>
+            {mark && <span className="tic-mark" aria-hidden="true"><LoveIcon name={mark === 'YOU' ? 'heart' : 'rose'} /></span>}
           </button>
         ))}
+        {winningLine && <svg className="tic-winning-line" aria-hidden="true" viewBox="0 0 300 300"><line x1={point(winningLine[0])[0]} y1={point(winningLine[0])[1]} x2={point(winningLine[2])[0]} y2={point(winningLine[2])[1]} pathLength="1" /></svg>}
       </div>
 
-      <p aria-live="polite" className="mt-4 text-center font-serif italic text-[#ffd6a5]">
+      <p aria-live="polite" className={`mt-4 text-center font-serif italic text-[#ffd6a5] ${over ? 'game-result p-3' : ''}`}>
         {status}
       </p>
       {over && (

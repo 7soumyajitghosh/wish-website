@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { Reveal } from '../Effects/Reveal';
+import { LoveIcon } from './LoveIcon';
+import { GameCelebration } from './GameCelebration';
 
 const WORDS = [
   { word: 'FOREVER', hint: 'What love promises' },
@@ -68,7 +70,8 @@ export const WordScramble = () => {
   };
 
   return (
-    <div>
+    <div className="game-content">
+      {solved && <GameCelebration />}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p aria-live="polite" className="text-sm font-sans tracking-widest uppercase text-[#fff8eb]/80">
           Solved: {score} · Streak: {streak}
@@ -120,8 +123,8 @@ export const WordScramble = () => {
           </button>
         </form>
 
-        <div aria-live="polite" className="mt-3 min-h-[1.75rem]">
-          {message && <p className={`font-serif italic ${solved ? 'text-[#ffd6a5]' : 'text-[#f5baa4]'}`}>{message}</p>}
+        <div aria-live="polite" className={`word-feedback mt-3 min-h-[1.75rem] ${solved ? 'is-correct' : message ? 'is-incorrect' : ''}`}>
+          {message && <p className={`font-serif italic ${solved ? 'text-[#ffd6a5]' : 'text-[#f5baa4]'}`}>{solved && <LoveIcon name="check" className="inline-icon" />}{message}</p>}
         </div>
 
         {solved ? (
