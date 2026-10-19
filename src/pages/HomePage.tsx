@@ -1,19 +1,19 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
-import HeartTreeAnimation from '../HeartTreeAnimation';
-import { Hero } from '../Hero/Hero';
-import { WindOverlay } from '../Effects/WindOverlay';
-import { LightTransition } from '../Effects/LightTransition';
-import { AmbientField } from '../Effects/AmbientField';
-import { CinematicBars } from '../Effects/CinematicBars';
+import HeartTreeAnimation from '../components/HeartTreeAnimation';
+import { Hero } from '../components/Hero/Hero';
+import { WindOverlay } from '../components/Effects/WindOverlay';
+import { LightTransition } from '../components/Effects/LightTransition';
+import { AmbientField } from '../components/Effects/AmbientField';
+import { CinematicBars } from '../components/Effects/CinematicBars';
 import {
   useStory,
   STAGE_PROGRESS_MAP,
-} from '../../context/StoryContext';
-import { BLOOM_T } from '../HeartTreeAnimation/animation/bloomTimeline';
-import { WIND_T } from '../HeartTreeAnimation/animation/windTimeline';
-import { FLIGHT_T } from '../HeartTreeAnimation/animation/flightTimeline';
-import { rangeProgress } from '../../animation/bezierUtils';
+} from '../context/StoryContext';
+import { BLOOM_T } from '../components/HeartTreeAnimation/animation/bloomTimeline';
+import { WIND_T } from '../components/HeartTreeAnimation/animation/windTimeline';
+import { FLIGHT_T } from '../components/HeartTreeAnimation/animation/flightTimeline';
+import { rangeProgress } from '../animation/bezierUtils';
 
 /**
  * One-way story flow. There is no transition backwards and no scroll-driven

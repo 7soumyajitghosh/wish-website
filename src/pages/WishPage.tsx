@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import gsap from 'gsap';
 import { Reveal } from '../components/Effects/Reveal';
 import { MagneticButton } from '../components/Effects/MagneticButton';
-import { scrollToIdWhenReady } from '../../utils/storyNav';
+import { scrollToIdWhenReady } from '../utils/storyNav';
 
 type Wish = {
   id: string;
   text: string;
 };
 
-export const WishSection = () => {
+export const WishPage = () => {
   const [wishText, setWishText] = useState('');
   const [wishCount, setWishCount] = useState(0);
 
@@ -515,4 +515,4 @@ const SoaringWishItem = ({
   );
 };
 
-export default WishSection;
+export default WishPage;
