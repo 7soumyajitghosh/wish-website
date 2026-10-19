@@ -421,3 +421,5 @@ export const DestinationPage: React.FC = () => {
     </section>
   );
 };
+
+export default DestinationPage;
