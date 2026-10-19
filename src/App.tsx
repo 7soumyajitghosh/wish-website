@@ -164,13 +164,13 @@ const FullWebsiteView: React.FC = () => {
             <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
 
             <SectionErrorBoundary label="make-a-wish">
-              <WishSection />
+              <WishPage />
             </SectionErrorBoundary>
 
             <StoryDivider label="sealed with love" />
 
             <SectionErrorBoundary label="final-message">
-              <FinalMessage />
+              <FinalMessagePage />
             </SectionErrorBoundary>
 
             <Marquee words={['full bloom', 'hearts in flight', 'where love lands', 'always']} />
@@ -184,7 +184,7 @@ const FullWebsiteView: React.FC = () => {
             <StoryDivider />
 
             <SectionErrorBoundary label="journey">
-              <Journey />
+              <JourneyPage />
             </SectionErrorBoundary>
           </Suspense>
         </div>
