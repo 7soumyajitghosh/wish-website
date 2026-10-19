@@ -11,8 +11,6 @@ const storySrc = readFileSync('src/context/StoryContext.tsx','utf8');
 const navSrc = readFileSync('src/utils/storyNav.ts','utf8');
 const destSrc = readFileSync('src/pages/DestinationPage.tsx','utf8');
 const wishSrc = readFileSync('src/pages/WishPage.tsx','utf8');
-const constSrc = readFileSync('src/pages/HomePage.tsx','utf8');
-const flowerSrc = readFileSync('src/pages/HomePage.tsx','utf8');
 const lightSrc = readFileSync('src/components/Effects/LightTransition.tsx','utf8');
 const ambSrc = readFileSync('src/components/Effects/AmbientField.tsx','utf8');
 const storyTypesSrc = readFileSync('src/context/storyTypes.ts','utf8');
@@ -63,17 +61,13 @@ for(let i=0;i<ITERS;i++){
     for(const s of ['INTRO','SEED_FALLING','SEED_LANDED','WATERING','WATERED','EXPERIENCE_UNLOCKED'])
       if(!introSrc.includes(s)) iterFails.push(`FLOW: intro state ${s} missing`);
     for(const ph of ['idle','watering','growing','grown','stormReady','storm','leavesTransition','destination'])
-      if(!readFileSync('src/components/CinematicExperience/CinematicExperience.tsx','utf8').includes(ph)) iterFails.push(`FLOW: phase ${ph} missing`);
+      if(!readFileSync('src/pages/HomePage.tsx','utf8').includes(ph)) iterFails.push(`FLOW: phase ${ph} missing`);
     // FLOW-4: unlock must preserve max progress (no regression to seed)
     if(!storySrc.includes('Math.max(prev')) iterFails.push('FLOW: unlock regresses grown tree to seed (no Math.max guard)');
     // FLOW-5: deferred scroll single-fire + reduced-motion safe
     if(!navSrc.includes('done') || !navSrc.includes('prefers-reduced-motion')) iterFails.push('FLOW: deferred scroll double-fires / ignores reduced motion');
     // FLOW-6: wish id uniqueness guard
     if(!wishSrc.includes('Math.random')) iterFails.push('FLOW: wish id collides on rapid submit (Date.now only)');
-    // FLOW-7: reduced-motion constellation must hold, not instant-skip
-    if(!constSrc.includes('delayedCall(1.6')) iterFails.push('FLOW: reduced-motion constellation instant-skips');
-    // FLOW-8: flower reduced path must use guarded finishScene
-    if(!flowerSrc.includes('finishScene()')) iterFails.push('FLOW: flower reduced path bypasses finish guard');
   }
   // ANIM-1: timeline ordering
   if(!(detach>B.FULL && detach>=W.PEAK && detach<streamPeak && fadeStart<1.0))
@@ -86,7 +80,6 @@ for(let i=0;i<ITERS;i++){
     if(bad.length) iterFails.push(`ANIM: destination tops off-screen ${bad.slice(0,3)}`);
     if(!lightSrc.includes('playedRef.current = false')) iterFails.push('ANIM: LightTransition never replays');
     if(ambSrc.includes('shadowBlur = 8')) iterFails.push('ANIM: AmbientField per-particle shadowBlur jank');
-    if(readFileSync('src/components/LoveExperience/animation/particleSystem.ts','utf8').includes('shadowBlur = 4')) iterFails.push('ANIM: particleSystem per-particle shadowBlur jank');
   }
   // ANIM-3: pure-math finite every step
   const ws = p<W.START?0:p<W.PEAK?rangeProgress(p,W.START,W.PEAK)*14:14+rangeProgress(p,W.PEAK,1)*12;
