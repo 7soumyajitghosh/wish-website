@@ -158,4 +158,4 @@ export const FinalMessagePage = () => {
   );
 };
 
-export default FinalMessage;
+export default FinalMessagePage;

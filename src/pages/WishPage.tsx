@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import gsap from 'gsap';
-import { Reveal } from '../Effects/Reveal';
-import { MagneticButton } from '../Effects/MagneticButton';
+import { Reveal } from '../components/Effects/Reveal';
+import { MagneticButton } from '../components/Effects/MagneticButton';
 import { scrollToIdWhenReady } from '../../utils/storyNav';
 
 type Wish = {

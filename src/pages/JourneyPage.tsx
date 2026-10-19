@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { spotlightMove } from '../Effects/spotlight';
-import { STAGE_DESCRIPTIONS } from '../../context/StoryContext';
-import { Reveal } from '../Effects/Reveal';
+import { spotlightMove } from '../components/Effects/spotlight';
+import { STAGE_DESCRIPTIONS } from '../context/StoryContext';
+import { Reveal } from '../components/Effects/Reveal';
 
-export const Journey: React.FC = () => {
+export const JourneyPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLElement | null)[]>([]);
 
@@ -118,4 +118,4 @@ export const Journey: React.FC = () => {
   );
 };
 
-export default Journey;
+export default JourneyPage;
