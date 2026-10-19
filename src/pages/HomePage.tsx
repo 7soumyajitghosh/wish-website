@@ -34,13 +34,13 @@ type FlowPhase =
   | 'destination'
   | 'completed';
 
-export interface CinematicExperienceProps {
+export interface HomePageProps {
   /** Called once the leaf transition has fully completed and the warm
    *  reveal finished — parent must unmount this entire component. */
   onTransitionComplete?: () => void;
 }
 
-export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
+export const HomePage: React.FC<HomePageProps> = ({
   onTransitionComplete,
 }) => {
   const isAutoGrowingRef = useRef(false);
@@ -615,4 +615,4 @@ export const CinematicExperience: React.FC<CinematicExperienceProps> = ({
   );
 };
 
-export default CinematicExperience;
+export default HomePage;
