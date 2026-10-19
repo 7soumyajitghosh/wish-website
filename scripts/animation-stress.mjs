@@ -15,7 +15,7 @@ const flightSrc = readFileSync('src/components/HeartTreeAnimation/animation/flig
 const detach = parseFloat(/DETACH_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const streamPeak = parseFloat(/STREAM_PEAK:\s*([0-9.]+)/.exec(flightSrc)[1]);
 const fadeStart = parseFloat(/FADE_LOOP_START:\s*([0-9.]+)/.exec(flightSrc)[1]);
-const destSrc = readFileSync('src/components/FinalDestination/FinalDestination.tsx','utf8');
+const destSrc = readFileSync('src/pages/DestinationPage.tsx','utf8');
 const tops = [...destSrc.matchAll(/top:\s*([0-9.]+)/g)].map(m=>parseFloat(m[1]));
 
 const num = (src, key) => parseFloat(new RegExp(key + ':\\s*([0-9.]+)').exec(src)[1]);
