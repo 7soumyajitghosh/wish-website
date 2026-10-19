@@ -7,7 +7,8 @@ import { Footer } from './components/Footer/Footer';
 import { Marquee } from './components/Effects/Marquee';
 import { scrollToIdWhenReady } from './utils/storyNav';
 
-// Lazy-loaded sections only loaded if explicitly requested (?full=true or ?stormlab)
+// Lazy-loaded story sections: not part of the initial bundle, so the
+// intro (HomePage) paints fast and the rest streams in behind a skeleton.
 const StormLab = lazy(() =>
   import('./components/Debug/StormLab').then((m) => ({ default: m.StormLab }))
 );
@@ -114,7 +115,7 @@ const CinematicOnlyView: React.FC = () => {
   );
 };
 
-/** Full website view (accessible via ?full=true) */
+/** Full website view — the default route (`/`). */
 const FullWebsiteView: React.FC = () => {
   const { isExperienceUnlocked, setIntroState, setPendingTarget } = useStory();
   const [introAlive, setIntroAlive] = useState(true);
@@ -197,8 +198,13 @@ const FullWebsiteView: React.FC = () => {
 
 export const App = () => {
   const search = typeof window !== 'undefined' ? window.location.search : '';
+  // Routing is query-param based (the site is a single page driven by hash
+  // anchors, so no client-side router and no Vercel rewrite rules are needed).
+  //   ?stormlab  -> storm debug stage
+  //   ?cinematic -> tree-only view
+  //   (default)  -> full website, so `/` shows the whole story on deploy
   const isStormLab = search.includes('stormlab');
-  const isFull = search.includes('full');
+  const isCinematicOnly = search.includes('cinematic');
 
   return (
     <StoryProvider>
@@ -206,10 +212,10 @@ export const App = () => {
         <Suspense fallback={<SectionSkeleton label="Loading storm stage" />}>
           <StormLab />
         </Suspense>
-      ) : isFull ? (
-        <FullWebsiteView />
-      ) : (
+      ) : isCinematicOnly ? (
         <CinematicOnlyView />
+      ) : (
+        <FullWebsiteView />
       )}
     </StoryProvider>
   );
