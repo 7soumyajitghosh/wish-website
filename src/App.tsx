@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useRef, useState, Component, type ReactNode, lazy, Suspense } from 'react';
-import { Navigation } from './components/Navigation/Navigation';
+import { useCallback, useState, Component, type ReactNode, lazy, Suspense } from 'react';
 import { CinematicExperience } from './components/CinematicExperience/CinematicExperience';
-import { Footer } from './components/Footer/Footer';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
 import { StoryProvider, useStory } from './context/StoryContext';
 import { CursorGlow } from './components/Effects/CursorGlow';
+import { Navigation } from './components/Navigation/Navigation';
+import { Footer } from './components/Footer/Footer';
 import { Marquee } from './components/Effects/Marquee';
 import { scrollToIdWhenReady } from './utils/storyNav';
 
-// Dev-only storm stage (?stormlab): lazy so it never ships in the prod
-// initial bundle — the chunk loads only when the query param is present.
+// Lazy-loaded sections only loaded if explicitly requested (?full=true or ?stormlab)
 const StormLab = lazy(() =>
   import('./components/Debug/StormLab').then((m) => ({ default: m.StormLab }))
 );
-
-// Below-fold sections are code-split: the intro (CinematicExperience) stays
-// in the initial bundle while the story sections load in parallel chunks.
-// This keeps the initial JS small (was a single 420kB bundle).
 const FinalDestination = lazy(() =>
   import('./components/FinalDestination/FinalDestination').then((m) => ({ default: m.FinalDestination }))
 );
@@ -36,8 +31,6 @@ const Playground = lazy(() =>
   import('./components/Playground/Playground').then((m) => ({ default: m.Playground }))
 );
 
-/** Isolates a crashing section so the rest of the story stays readable.
- *  Logs the failure and offers a retry (transient chunk errors recover). */
 class SectionErrorBoundary extends Component<
   { children: ReactNode; label?: string },
   { failed: boolean }
@@ -74,7 +67,6 @@ class SectionErrorBoundary extends Component<
   }
 }
 
-/** Reserved-height skeleton so lazy chunks don't pop layout (no CLS). */
 const SectionSkeleton: React.FC<{ label: string }> = ({ label }) => (
   <div
     aria-hidden="true"
@@ -103,97 +95,59 @@ const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
   </div>
 );
 
-const AppContent = () => {
-  const { isExperienceUnlocked, setIntroState, pendingTarget, setPendingTarget } = useStory();
-  // Landing intro lives only for the intro experience. Once the leaf
-  // transition finishes (signalled via onTransitionComplete), the entire
-  // CinematicExperience is unmounted — never merely hidden.
+/**
+ * Dedicated Cinematic Experience & Tree standalone view.
+ * Kept mounted permanently on localhost without unmounting or auto-scrolling away.
+ */
+const CinematicOnlyView: React.FC = () => {
+  const [replayKey, setReplayKey] = useState(0);
+
+  const handleReplay = useCallback(() => {
+    setReplayKey((k) => k + 1);
+  }, []);
+
+  return (
+    <div className="grain-overlay relative min-h-screen h-[100svh] w-screen overflow-hidden bg-[#0d0408] text-[#fffdf8]">
+      <h1 className="sr-only">Cinematic Experience & Tree</h1>
+      <CursorGlow />
+
+      <main className="w-full h-full relative" id="main-content" tabIndex={-1}>
+        <SectionErrorBoundary label="cinematic-tree">
+          <CinematicExperience key={replayKey} />
+        </SectionErrorBoundary>
+      </main>
+
+      {/* Floating replay button to re-experience the tree growth anytime */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleReplay}
+          className="px-3.5 py-1.5 rounded-full bg-[#1a0812]/80 hover:bg-[#2b0d1e]/90 text-xs font-serif text-[#f5baa4] border border-[#ffb3c1]/30 backdrop-blur-md shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-[#ffd6a5]"
+          title="Replay Tree Growth & Cinematic Experience"
+        >
+          <svg className="w-3.5 h-3.5 text-[#ffb3c1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Replay Tree</span>
+        </button>
+      </div>
+
+      <SoundToggle />
+    </div>
+  );
+};
+
+/** Full website view (accessible via ?full=true) */
+const FullWebsiteView: React.FC = () => {
+  const { isExperienceUnlocked, setIntroState, setPendingTarget } = useStory();
   const [introAlive, setIntroAlive] = useState(true);
 
   const handleIntroComplete = useCallback(() => {
     setIntroAlive(false);
   }, []);
 
-  // Scroll gate preserves the original cinematic timing: body scroll unlocks
-  // the moment the black fade covers the cut so the programmatic jump to
-  // #destination under cover works exactly as designed. Interaction (keyboard
-  // / AT via inert, buttons via disabled, canvas via pointer-events-none)
-  // stays locked until the landing page is destroyed (introAlive false).
-  const scrollLocked = !isExperienceUnlocked;
-
-  useEffect(() => {
-    if (scrollLocked) {
-      document.body.style.overflow = 'hidden';
-      window.scrollTo(0, 0);
-    } else {
-      document.body.style.overflow = '';
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [scrollLocked]);
-
-  // Focus moves to the new page only after the old landing page is gone.
-  // During the covered leaf transition we deliberately do not steal focus.
-  // A nav link clicked while locked stashes its target in pendingTarget;
-  // scrolling here (after unmount) lands correctly since the 100vh intro
-  // is already out of the layout. Scrolling earlier would be off by exactly
-  // the removed intro height.
-  // Runs once per unlock: the consumed flag prevents the pendingTarget=null
-  // clearing pass from re-triggering a scroll-to-top over the target section.
-  // Single-scroll contract: CinematicExperience never scrolls mid-transition,
-  // so this is the ONLY programmatic scroll after the storm — one jump, no
-  // double. Below-fold sections are code-split, so we retry a few frames
-  // until the target element exists before scrolling/focusing.
-  // Below-fold sections are code-split, so we wait (cancellable) until the
-  // target element exists before scrolling/focusing — up to 4s on slow
-  // networks instead of wrongly falling back to scroll-to-top.
-  const hasScrolledRef = useRef(false);
-  const scrollCancelRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => scrollCancelRef.current?.(), []);
-  useEffect(() => {
-    if (!isExperienceUnlocked || introAlive) return;
-    if (hasScrolledRef.current) return;
-    hasScrolledRef.current = true;
-
-    const consumeTarget = pendingTarget;
-    if (consumeTarget) setPendingTarget(null);
-
-    const targetId =
-      !consumeTarget || consumeTarget === 'top' || consumeTarget === '#story-experience'
-        ? 'destination'
-        : consumeTarget.replace(/^#/, '');
-
-    scrollCancelRef.current = scrollToIdWhenReady(targetId, { timeoutMs: 4000 });
-  }, [isExperienceUnlocked, introAlive, pendingTarget, setPendingTarget]);
-
-  // Keep the overflow-hidden intro gate escapable via keyboard.
-  useEffect(() => {
-    if (isExperienceUnlocked) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIntroState('EXPERIENCE_UNLOCKED');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isExperienceUnlocked, setIntroState]);
-
-  // Query-param check runs once (never during render).
-  const [isStormLab] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).has('stormlab')
-  );
-
   return (
-    <div className={`grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8] ${scrollLocked ? 'overflow-hidden max-h-screen' : ''}`}>
-      {/* TEMPORARY dev-only storm test-stage (?stormlab). Removed before ship. */}
-      {isStormLab ? (
-        <Suspense fallback={<SectionSkeleton label="Loading storm stage" />}>
-          <StormLab />
-        </Suspense>
-      ) : (
-      <>
+    <div className="grain-overlay min-h-screen bg-[#0d0408] text-[#fffdf8]">
       <a
         href="#destination"
         className="skip-link"
@@ -209,45 +163,36 @@ const AppContent = () => {
       >
         Skip to story
       </a>
-      {/* Single h1 for the whole page — the destination headline renders it visually. */}
       <h1 className="sr-only">Where Love Takes Flight — A Journey of Love</h1>
       <CursorGlow />
       <Navigation />
       <main id="main-content" tabIndex={-1} className="focus:outline-none">
-        {/* Intro landing lives only for the intro experience. After the leaf
-            transition completes it is fully unmounted (not hidden). */}
         {introAlive && (
           <SectionErrorBoundary label="intro">
             <CinematicExperience onTransitionComplete={handleIntroComplete} />
           </SectionErrorBoundary>
         )}
 
-        {/* Locked sections: hidden from keyboard/AT until the intro unlocks
-            AND the landing page is destroyed. */}
         <div className="editorial-ui" inert={!isExperienceUnlocked || introAlive ? true : undefined}>
           <Suspense fallback={<SectionSkeleton label="Loading the story" />}>
-            {/* The Final Destination: Where Love Takes Flight */}
             <SectionErrorBoundary label="destination">
               <FinalDestination />
             </SectionErrorBoundary>
 
             <StoryDivider label="and the story continues…" />
 
-            {/* User-Controlled Love Letter */}
             <SectionErrorBoundary label="love-letter">
               <LoveLetter />
             </SectionErrorBoundary>
 
             <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
 
-            {/* Draggable Wish Release */}
             <SectionErrorBoundary label="make-a-wish">
               <WishSection />
             </SectionErrorBoundary>
 
             <StoryDivider label="sealed with love" />
 
-            {/* Final Revealed Message */}
             <SectionErrorBoundary label="final-message">
               <FinalMessage />
             </SectionErrorBoundary>
@@ -256,14 +201,12 @@ const AppContent = () => {
 
             <StoryDivider label="play a little" />
 
-            {/* Games & puzzles playground */}
             <SectionErrorBoundary label="playground">
               <Playground />
             </SectionErrorBoundary>
 
             <StoryDivider />
 
-            {/* Complete Interactive Milestones Explorer */}
             <SectionErrorBoundary label="journey">
               <Journey />
             </SectionErrorBoundary>
@@ -272,16 +215,28 @@ const AppContent = () => {
       </main>
       <Footer />
       <SoundToggle />
-      </>
-      )}
     </div>
   );
 };
 
-export const App = () => (
-  <StoryProvider>
-    <AppContent />
-  </StoryProvider>
-);
+export const App = () => {
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const isStormLab = search.includes('stormlab');
+  const isFull = search.includes('full');
+
+  return (
+    <StoryProvider>
+      {isStormLab ? (
+        <Suspense fallback={<SectionSkeleton label="Loading storm stage" />}>
+          <StormLab />
+        </Suspense>
+      ) : isFull ? (
+        <FullWebsiteView />
+      ) : (
+        <CinematicOnlyView />
+      )}
+    </StoryProvider>
+  );
+};
 
 export default App;
