@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { useStory } from '../../context/StoryContext';
-import { Reveal } from '../Effects/Reveal';
-import { MagneticButton } from '../Effects/MagneticButton';
-import { scrollToIdWhenReady } from '../../utils/storyNav';
+import { useStory } from '../context/StoryContext';
+import { Reveal } from '../components/Effects/Reveal';
+import { MagneticButton } from '../components/Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../utils/storyNav';
 
 const content = {
   recipient: 'My Dearest,',
@@ -17,7 +17,7 @@ const content = {
   sender: 'With all my heart'
 };
 
-export const LoveLetter: React.FC = () => {
+export const LoveLetterPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const letterRef = useRef<HTMLDivElement>(null);
   const flapRef = useRef<HTMLDivElement>(null);
@@ -276,4 +276,4 @@ export const LoveLetter: React.FC = () => {
   );
 };
 
-export default LoveLetter;
+export default LoveLetterPage;

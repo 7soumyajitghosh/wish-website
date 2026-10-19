@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { TestCinematic } from './TestCinematic';
+import App from './App';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
@@ -9,4 +9,4 @@ if (!rootEl) {
   throw new Error('Root element #root not found');
 }
 
-createRoot(rootEl).render(<TestCinematic />);
+createRoot(rootEl).render(<App />);

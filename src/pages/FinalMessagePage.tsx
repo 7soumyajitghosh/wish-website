@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
-import { useStory } from '../../context/StoryContext';
-import { Reveal } from '../Effects/Reveal';
-import { MagneticButton } from '../Effects/MagneticButton';
-import { scrollToIdWhenReady } from '../../utils/storyNav';
+import { useStory } from '../context/StoryContext';
+import { Reveal } from '../components/Effects/Reveal';
+import { MagneticButton } from '../components/Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../utils/storyNav';
 
-export const FinalMessage = () => {
+export const FinalMessagePage = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const messageCardRef = useRef<HTMLDivElement>(null);
   const tlRef = useRef<gsap.core.Timeline | null>(null);

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import { Reveal } from '../Effects/Reveal';
-import { MagneticButton } from '../Effects/MagneticButton';
-import { scrollToIdWhenReady } from '../../utils/storyNav';
+import { Reveal } from '../components/Effects/Reveal';
+import { MagneticButton } from '../components/Effects/MagneticButton';
+import { scrollToIdWhenReady } from '../utils/storyNav';
 
 const DESTINATION_HEARTS = [
   { left: 10, top: 62, duration: 18, delay: 1.5, size: 18 },
@@ -42,7 +42,7 @@ const FAIRY_LIGHTS = [
   { left: 89, top: 29, size: 2.8, duration: 2.2, delay: 1.0 },
 ];
 
-export const FinalDestination: React.FC = () => {
+export const DestinationPage: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);

@@ -17,21 +17,10 @@ export const LightTransition: React.FC<{
   const playedRef = useRef(false);
   // 60vmin blurred glow scaled every frame: blur(20px) repaints heavily on
   // mobile GPUs, so use a cheaper blur on small screens.
-  // Viewport-dependent value lives in state (not read during render).
-  // Only updates when the breakpoint flips — raw resize fires per pixel.
-  const [glowBlur, setGlowBlur] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth <= 768 ? 8 : 20
+  const [isMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth <= 768
   );
-  useEffect(() => {
-    const onResize = () => {
-      setGlowBlur((prev) => {
-        const next = window.innerWidth <= 768 ? 8 : 20;
-        return prev === next ? prev : next;
-      });
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  void isMobile;
   useEffect(() => {
     doneRef.current = onDone;
   }, [onDone]);
@@ -75,6 +64,10 @@ export const LightTransition: React.FC<{
       .set(el, { visibility: 'hidden' });
     return () => {
       tl.kill();
+      if (el) {
+        el.style.opacity = '0';
+        el.style.visibility = 'hidden';
+      }
     };
   }, [play]);
 
@@ -82,22 +75,21 @@ export const LightTransition: React.FC<{
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[80] bg-[#fff8eb]"
+      className="pointer-events-none fixed inset-0 z-[80] bg-transparent"
       style={{
         opacity: 0,
         visibility: 'hidden',
         willChange: 'opacity, clip-path',
-        background:
-          'radial-gradient(ellipse at 50% 45%, #fff8eb 0%, #ffd6a5 45%, #ffb3c1 70%, #220b17 100%)',
+        background: 'transparent',
       }}
     >
       <div
         ref={glowRef}
         className="absolute left-1/2 top-1/2 h-[60vmin] w-[60vmin] rounded-full"
         style={{
-          background:
-            'radial-gradient(circle, rgba(255,214,165,0.95) 0%, rgba(255,179,193,0.75) 40%, rgba(255,248,235,0.4) 65%, transparent 75%)',
-          filter: `blur(${glowBlur}px)`,
+          background: 'transparent',
+          filter: 'none',
+          opacity: 0,
           willChange: 'transform, opacity',
         }}
       />

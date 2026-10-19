@@ -2,7 +2,6 @@ import { useCallback, useState, Component, type ReactNode, lazy, Suspense } from
 import { CinematicExperience } from './components/CinematicExperience/CinematicExperience';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
 import { StoryProvider, useStory } from './context/StoryContext';
-import { CursorGlow } from './components/Effects/CursorGlow';
 import { Navigation } from './components/Navigation/Navigation';
 import { Footer } from './components/Footer/Footer';
 import { Marquee } from './components/Effects/Marquee';
@@ -100,37 +99,15 @@ const StoryDivider: React.FC<{ label?: string }> = ({ label }) => (
  * Kept mounted permanently on localhost without unmounting or auto-scrolling away.
  */
 const CinematicOnlyView: React.FC = () => {
-  const [replayKey, setReplayKey] = useState(0);
-
-  const handleReplay = useCallback(() => {
-    setReplayKey((k) => k + 1);
-  }, []);
-
   return (
     <div className="grain-overlay relative min-h-screen h-[100svh] w-screen overflow-hidden bg-[#0d0408] text-[#fffdf8]">
       <h1 className="sr-only">Cinematic Experience & Tree</h1>
-      <CursorGlow />
 
       <main className="w-full h-full relative" id="main-content" tabIndex={-1}>
         <SectionErrorBoundary label="cinematic-tree">
-          <CinematicExperience key={replayKey} />
+          <CinematicExperience />
         </SectionErrorBoundary>
       </main>
-
-      {/* Floating replay button to re-experience the tree growth anytime */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleReplay}
-          className="px-3.5 py-1.5 rounded-full bg-[#1a0812]/80 hover:bg-[#2b0d1e]/90 text-xs font-serif text-[#f5baa4] border border-[#ffb3c1]/30 backdrop-blur-md shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-[#ffd6a5]"
-          title="Replay Tree Growth & Cinematic Experience"
-        >
-          <svg className="w-3.5 h-3.5 text-[#ffb3c1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span>Replay Tree</span>
-        </button>
-      </div>
 
       <SoundToggle />
     </div>
@@ -164,7 +141,6 @@ const FullWebsiteView: React.FC = () => {
         Skip to story
       </a>
       <h1 className="sr-only">Where Love Takes Flight — A Journey of Love</h1>
-      <CursorGlow />
       <Navigation />
       <main id="main-content" tabIndex={-1} className="focus:outline-none">
         {introAlive && (
