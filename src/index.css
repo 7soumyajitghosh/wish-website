@@ -501,7 +501,7 @@ textarea::placeholder {
    REDUCED MOTION
    CSS forces near-zero durations below. GSAP-driven scenes add JS
    guards (check `matchMedia('(prefers-reduced-motion: reduce)')` and
-   skip / shorten tweens) — see FullBloom, FinalDestination, Journey.
+   skip / shorten tweens) — see DestinationPage, JourneyPage.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   html {
