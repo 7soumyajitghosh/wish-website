@@ -1,5 +1,5 @@
 import { useCallback, useState, Component, type ReactNode, lazy, Suspense } from 'react';
-import { CinematicExperience } from './components/CinematicExperience/CinematicExperience';
+import { HomePage } from './pages/HomePage';
 import { SoundToggle } from './components/SoundToggle/SoundToggle';
 import { StoryProvider, useStory } from './context/StoryContext';
 import { Navigation } from './components/Navigation/Navigation';
@@ -11,20 +11,20 @@ import { scrollToIdWhenReady } from './utils/storyNav';
 const StormLab = lazy(() =>
   import('./components/Debug/StormLab').then((m) => ({ default: m.StormLab }))
 );
-const FinalDestination = lazy(() =>
-  import('./components/FinalDestination/FinalDestination').then((m) => ({ default: m.FinalDestination }))
+const DestinationPage = lazy(() =>
+  import('./pages/DestinationPage').then((m) => ({ default: m.DestinationPage }))
 );
-const LoveLetter = lazy(() =>
-  import('./components/LoveLetter/LoveLetter').then((m) => ({ default: m.LoveLetter }))
+const LoveLetterPage = lazy(() =>
+  import('./pages/LoveLetterPage').then((m) => ({ default: m.LoveLetterPage }))
 );
-const WishSection = lazy(() =>
-  import('./components/WishSection/WishSection').then((m) => ({ default: m.WishSection }))
+const WishPage = lazy(() =>
+  import('./pages/WishPage').then((m) => ({ default: m.WishPage }))
 );
-const FinalMessage = lazy(() =>
-  import('./components/FinalMessage/FinalMessage').then((m) => ({ default: m.FinalMessage }))
+const FinalMessagePage = lazy(() =>
+  import('./pages/FinalMessagePage').then((m) => ({ default: m.FinalMessagePage }))
 );
-const Journey = lazy(() =>
-  import('./components/Journey/Journey').then((m) => ({ default: m.Journey }))
+const JourneyPage = lazy(() =>
+  import('./pages/JourneyPage').then((m) => ({ default: m.JourneyPage }))
 );
 const Playground = lazy(() =>
   import('./components/Playground/Playground').then((m) => ({ default: m.Playground }))
@@ -105,7 +105,7 @@ const CinematicOnlyView: React.FC = () => {
 
       <main className="w-full h-full relative" id="main-content" tabIndex={-1}>
         <SectionErrorBoundary label="cinematic-tree">
-          <CinematicExperience />
+          <HomePage />
         </SectionErrorBoundary>
       </main>
 
@@ -145,20 +145,20 @@ const FullWebsiteView: React.FC = () => {
       <main id="main-content" tabIndex={-1} className="focus:outline-none">
         {introAlive && (
           <SectionErrorBoundary label="intro">
-            <CinematicExperience onTransitionComplete={handleIntroComplete} />
+            <HomePage onTransitionComplete={handleIntroComplete} />
           </SectionErrorBoundary>
         )}
 
         <div className="editorial-ui" inert={!isExperienceUnlocked || introAlive ? true : undefined}>
           <Suspense fallback={<SectionSkeleton label="Loading the story" />}>
             <SectionErrorBoundary label="destination">
-              <FinalDestination />
+              <DestinationPage />
             </SectionErrorBoundary>
 
             <StoryDivider label="and the story continues…" />
 
             <SectionErrorBoundary label="love-letter">
-              <LoveLetter />
+              <LoveLetterPage />
             </SectionErrorBoundary>
 
             <Marquee words={['love letters', 'slow moments', 'starlit wishes', 'forever']} />
