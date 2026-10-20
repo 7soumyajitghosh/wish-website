@@ -46,23 +46,4 @@ A breathtaking, cinematic interactive web experience inspired by the 16-stage jo
 
 ---
 
-## 🚀 Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/7soumyajitghosh/wish-website.git
-cd wish-website
-
-# Install dependencies
-npm install
-
-# Start local dev server
-npm run dev
-
-# Build for production
-npm run build
-```
-
----
-
 *Made with love ❤️*
